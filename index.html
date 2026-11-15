@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comanda — pedidos por QR y WhatsApp para bares y restaurantes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f5f2ea;--ink:#1f1d1a;--muted:#6f6b62;--card:#fff;--line:#e7e1d4;--acc:#c2410c;--acc2:#fff1e8;--ok:#2f7d4a;--okbg:#e7f4ea;--warn:#b45309;--warnbg:#fff4dc;--bad:#b42318;--badbg:#fdecea;--wa:#1fa855;--wabg:#efeae2;--r:14px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif}
+h1,h2,h3{margin:0;line-height:1.2}
+h2{font-size:17px;margin-bottom:12px}
+small{color:var(--muted);display:block}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:8px 12px}
+button:hover{border-color:#cfc6b4}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+button.ghost{background:transparent}
+button.small{padding:4px 9px;font-size:13px}
+button.bad{color:var(--bad)}
+button.link{border:0;padding:0;background:none;color:var(--acc);text-decoration:underline;font-size:13px}
+input,select,textarea{font:inherit;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;width:100%;color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}
+label input,label select{margin-top:4px}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0}
+.row+.row{border-top:1px dashed var(--line)}
+.row.big{font-size:18px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:#f0ece3;color:var(--ink);white-space:nowrap}
+.chip.warn{background:var(--warnbg);color:var(--warn)}.chip.bad{background:var(--badbg);color:var(--bad)}.chip.ok{background:var(--okbg);color:var(--ok)}
+.st-nuevo{background:#e8eefc;color:#2848a8}.st-preparando{background:var(--warnbg);color:var(--warn)}.st-listo,.st-entregado,.st-enviado{background:var(--okbg);color:var(--ok)}
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid #f1ede4;vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.low td{background:#fff8ef}
+tfoot td{font-weight:700;border-bottom:0}
+.tablewrap{overflow-x:auto}
+/* header */
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--ink);color:#fff}
+.top small{color:#bdb6a8}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--acc);color:#fff;display:grid;place-items:center;font:22px "DM Serif Display",serif}
+.logo.big{width:56px;height:56px;font-size:34px;border-radius:14px;margin:0 auto 10px}
+.who{display:flex;gap:8px;align-items:center}
+.who .ghost{color:#fff;border-color:#4a463f}
+nav{display:flex;gap:4px;padding:10px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{border:0;background:none;white-space:nowrap;border-radius:9px;color:var(--muted);font-weight:500}
+nav button.on{background:var(--acc2);color:var(--acc);font-weight:700}
+nav .b{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:99px;background:var(--acc);color:#fff;font-size:11px;line-height:18px;text-align:center}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
+.ptitle{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.ptitle h1{font:28px "DM Serif Display",serif}
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.login .card{width:100%;max-width:360px;text-align:center;padding:28px}
+.login h1{font:32px "DM Serif Display",serif;margin-bottom:4px}
+.login form{display:grid;gap:10px;margin:18px 0 10px}
+.hint{font-size:13px;color:var(--muted);background:#f7f4ee;border-radius:10px;padding:8px}
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi small{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi b{display:block;font-size:24px;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi.hi{background:var(--ink);color:#fff;border-color:var(--ink)}.kpi.hi small{color:#bdb6a8}
+.kpi.acc{border-color:var(--acc);background:var(--acc2)}
+/* cocina */
+.col h2{display:flex;justify-content:space-between}
+.ticket{background:#fff;border:1px solid var(--line);border-left:5px solid #2848a8;border-radius:12px;padding:12px;margin-bottom:10px}
+.ticket.whatsapp{border-left-color:var(--wa)}
+.ticket .th{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.ticket .th b{font-size:18px}
+.ticket .time{margin-left:auto;font-size:12px;color:var(--muted)}
+.ticket ul{margin:0 0 8px;padding-left:18px}
+.ticket .nota{background:var(--warnbg);border-radius:8px;padding:5px 8px;margin:0 0 8px;font-size:13px}
+.ticket .dir{font-size:13px;margin:0 0 8px;color:var(--muted)}
+.ticket button{width:100%}
+.empty{border:2px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+/* caja */
+.grp{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.grp.alerta{border-color:var(--warn);background:#fffaf0}
+.grp .row{padding:0}
+.saldo{border-color:var(--ink)}
+.lock{display:flex;gap:12px;align-items:center;background:#f7f4ee;font-size:22px}
+.lock b{font-size:15px}.lock small{font-size:14px}
+.ok{color:var(--ok)}.badt{color:var(--bad)}
+/* cliente */
+.cli{max-width:520px;margin:0 auto}
+.cli.full{padding:0 0 30px}
+.cli-h{display:flex;justify-content:space-between;align-items:center;padding:22px 18px;background:var(--ink);color:#fff;border-radius:0 0 22px 22px;margin-bottom:12px}
+.cli:not(.full) .cli-h{border-radius:var(--r)}
+.cli-h small{color:#bdb6a8}
+.cli-h h1{font:26px "DM Serif Display",serif}
+.mesa{background:var(--acc);padding:6px 12px;border-radius:99px;font-weight:700}
+.cli .cat{font:20px "DM Serif Display",serif;margin:18px 16px 8px}
+.dish{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 12px 8px}
+.dish.off{opacity:.55}
+.dish .price{font-weight:700;color:var(--acc)}
+.qty{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.qty button{width:34px;height:34px;padding:0;border-radius:50%;font-size:18px;font-weight:700}
+.qty button[data-a=mas]{background:var(--acc);color:#fff;border-color:var(--acc)}
+.mis{margin:0 12px 12px}
+.mis h3{margin-bottom:6px}
+button.mp{background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700}
+.cartbar{position:sticky;bottom:12px;margin:14px 12px 0;display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.staff{text-align:center;font-size:13px;margin-top:30px}.staff a{color:var(--muted)}
+/* whatsapp */
+.wa-wrap{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+@media(max-width:860px){.wa-wrap{grid-template-columns:1fr}}
+.phone{border-radius:24px;overflow:hidden;border:8px solid #1f1d1a;background:var(--wabg);display:flex;flex-direction:column;height:640px}
+.wa-h{background:#075e54;color:#fff;display:flex;gap:10px;align-items:center;padding:10px 12px}
+.wa-h small{color:#cde7e2}
+.av{width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:20px}
+.wa-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+.msg{max-width:85%;padding:7px 10px 4px;border-radius:10px;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.08);white-space:normal}
+.msg small{text-align:right;font-size:10px}
+.msg.user{align-self:flex-end;background:#d9fdd3;border-top-right-radius:2px}
+.msg.bot{align-self:flex-start;background:#fff;border-top-left-radius:2px}
+.msg.sys{align-self:center;background:#fff3c4;font-size:12px;text-align:center}
+.wachips{display:flex;gap:5px;overflow-x:auto;padding:6px 8px;background:#f0f0f0}
+.wachips button{font-size:12px;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.wa-in{display:flex;gap:6px;padding:8px;background:#f0f0f0}
+.wa-in input{border-radius:99px}
+.wa-in button{border-radius:50%;width:42px;background:var(--wa);color:#fff;border-color:var(--wa)}
+.steps{margin:0;padding-left:20px}.steps li{margin-bottom:6px}
+/* qr */
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px}
+.qr{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;background:#fff}
+.qr b{display:block;font:18px "DM Serif Display",serif;margin-bottom:8px}
+.qrc{display:flex;justify-content:center;margin-bottom:8px;min-height:120px;align-items:center;font-size:12px;color:var(--muted)}
+.qrc img,.qrc canvas{width:120px;height:120px}
+.qr small{margin-bottom:6px}
+/* modal / toast */
+.ov{position:fixed;inset:0;background:rgba(20,18,15,.5);display:grid;place-items:center;padding:16px;z-index:20}
+.mod{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:440px;max-height:90vh;overflow:auto}
+.mod h2{font:22px "DM Serif Display",serif}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:30;display:grid;gap:6px}
+.t{background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.t.err{background:var(--bad)}
+.inline{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.inline label{flex:1;min-width:120px;margin:0}
+details summary{cursor:pointer}
+details ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.alerts .chip{margin:0 6px 6px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+const K='comanda-demo-v1';
+const ROLES={
+  dueno:{pin:'1234',nombre:'Dueño',tabs:['cierre','caja','cocina','stock','whatsapp','mesas','menu']},
+  cajera:{pin:'0000',nombre:'Cajera',tabs:['caja','cocina','whatsapp','menu']},
+  cocina:{pin:'1111',nombre:'Cocina',tabs:['cocina','stock']}
+};
+const TABS={cierre:'📊 Cierre del día',caja:'💵 Caja',cocina:'👨‍🍳 Cocina',stock:'📦 Stock y merma',whatsapp:'💬 WhatsApp',mesas:'🔳 QR y ajustes',menu:'📱 Vista cliente'};
+const ESTADO={nuevo:'Recibido',preparando:'En preparación',listo:'Listo',entregado:'Entregado',enviado:'En camino'};
+const MEDIO={efectivo:'💵 Efectivo',mp:'Mercado Pago',tarjeta:'💳 Tarjeta',transferencia:'🏦 Transferencia'};
+
+function hoy(){return new Date().toLocaleDateString('es-AR')}
+function seed(){return{
+  negocio:'La Esquina Bar',mesas:12,envio:1500,apertura:20000,nextNum:1,dia:hoy(),baseUrl:'',
+  insumos:[
+    {id:'pan',nombre:'Pan de hamburguesa',u:'u',stock:60,costo:250,min:15},
+    {id:'carne',nombre:'Carne picada',u:'kg',stock:8,costo:9000,min:2},
+    {id:'cheddar',nombre:'Queso cheddar',u:'kg',stock:3,costo:12000,min:.5},
+    {id:'nalga',nombre:'Nalga (milanesa)',u:'kg',stock:6,costo:11000,min:1.5},
+    {id:'rallado',nombre:'Pan rallado',u:'kg',stock:4,costo:2000,min:1},
+    {id:'huevo',nombre:'Huevos',u:'u',stock:60,costo:200,min:12},
+    {id:'papa',nombre:'Papa',u:'kg',stock:20,costo:1200,min:5},
+    {id:'aceite',nombre:'Aceite',u:'l',stock:10,costo:2500,min:3},
+    {id:'lechuga',nombre:'Lechuga',u:'kg',stock:3,costo:2500,min:.5},
+    {id:'tomate',nombre:'Tomate',u:'kg',stock:4,costo:2800,min:1},
+    {id:'pollo',nombre:'Pechuga de pollo',u:'kg',stock:5,costo:6000,min:1},
+    {id:'harina',nombre:'Masa de pizza',u:'kg',stock:10,costo:1000,min:2},
+    {id:'muzza',nombre:'Muzzarella',u:'kg',stock:5,costo:9500,min:1},
+    {id:'salsa',nombre:'Salsa de tomate',u:'l',stock:5,costo:3000,min:1},
+    {id:'gaseosa',nombre:'Gaseosa 500 ml',u:'u',stock:48,costo:900,min:12},
+    {id:'cerveza',nombre:'Cerveza tirada',u:'l',stock:50,costo:3000,min:10}
+  ],
+  platos:[
+    {id:'hamb',nombre:'Hamburguesa completa',cat:'Platos',precio:9500,desc:'Carne, cheddar, lechuga, tomate y papas',alias:['hambur','burger'],receta:{pan:1,carne:.18,cheddar:.04,lechuga:.02,tomate:.03,papa:.25,aceite:.05}},
+    {id:'mila',nombre:'Milanesa con papas',cat:'Platos',precio:11000,desc:'Milanesa de nalga con papas fritas',alias:['mila'],receta:{nalga:.22,rallado:.06,huevo:1,papa:.3,aceite:.08}},
+    {id:'pizza',nombre:'Pizza muzzarella',cat:'Platos',precio:10500,desc:'Grande, 8 porciones',alias:['pizza','muzza'],receta:{harina:.3,muzza:.25,salsa:.12}},
+    {id:'cesar',nombre:'Ensalada César con pollo',cat:'Platos',precio:8500,desc:'Pollo grillado, lechuga y croutons',alias:['ensalada','cesar'],receta:{pollo:.15,lechuga:.12,cheddar:.02,rallado:.02}},
+    {id:'gaseosa',nombre:'Gaseosa 500 ml',cat:'Bebidas',precio:2500,desc:'Cola, lima-limón o naranja',alias:['gaseosa','coca','sprite','fanta','bebida'],receta:{gaseosa:1}},
+    {id:'pinta',nombre:'Pinta de cerveza',cat:'Bebidas',precio:4500,desc:'Rubia o roja, 500 ml',alias:['cerveza','pinta','birra'],receta:{cerveza:.5}},
+    {id:'papas',nombre:'Papas fritas',cat:'Para picar',precio:5000,desc:'Porción grande',alias:['papa','frita'],receta:{papa:.4,aceite:.08}}
+  ],
+  pedidos:[],mermas:[],egresos:[],arqueo:null,cierres:[],
+  wa:{msgs:[],step:'inicio',draft:{},ultimo:null}
+}}
+
+let S=load();
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.insumos)return s}catch(e){}return seed()}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+let rol=null;try{rol=sessionStorage.getItem('comanda-rol')}catch(e){}
+let tab=null,clienteMode=null,typing=false;
+const C={mesa:1,cart:{}};
+
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+const fmt=n=>(n<0?'−$':'$')+Math.round(Math.abs(n)).toLocaleString('es-AR');
+const num=n=>(+n).toLocaleString('es-AR',{maximumFractionDigits:3});
+const r3=x=>Math.round(x*1000)/1000;
+const pnum=x=>parseFloat(String(x).replace(',','.'));
+const hm=ts=>new Date(ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+const hace=ts=>{const m=Math.floor((Date.now()-ts)/60000);return m<1?'recién':'hace '+m+' min'};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const plato=id=>S.platos.find(p=>p.id===id);
+const insumo=id=>S.insumos.find(i=>i.id===id);
+const disp=p=>Math.max(0,Math.floor(Math.min(...Object.entries(p.receta).map(([i,c])=>insumo(i).stock/c))+1e-6));
+const costoReceta=p=>Object.entries(p.receta).reduce((a,[i,c])=>a+c*insumo(i).costo,0);
+function toast(t,err){const d=document.createElement('div');d.className='t'+(err?' err':'');d.textContent=t;$('#toast').appendChild(d);setTimeout(()=>d.remove(),3200)}
+function modal(html){$('#modal').innerHTML=`<div class="ov" data-a="closeOv"><div class="mod">${html}</div></div>`}
+function closeModal(){$('#modal').innerHTML=''}
+
+/* ---------- lógica del negocio ---------- */
+function crearPedido(o){
+  const need={};
+  for(const it of o.items){const p=plato(it.id);for(const [ins,c] of Object.entries(p.receta))need[ins]=r3((need[ins]||0)+c*it.cant)}
+  for(const [ins,c] of Object.entries(need)){const i=insumo(ins);if(i.stock<c-1e-9)return{error:`No alcanza el stock de ${i.nombre} (hay ${num(i.stock)} ${i.u}, se necesitan ${num(c)} ${i.u})`}}
+  for(const [ins,c] of Object.entries(need)){const i=insumo(ins);i.stock=r3(i.stock-c)}
+  const items=o.items.map(it=>{const p=plato(it.id);return{id:p.id,nombre:p.nombre,precio:p.precio,cant:it.cant}});
+  const subtotal=items.reduce((a,i)=>a+i.precio*i.cant,0),envio=o.origen==='whatsapp'?S.envio:0;
+  const ped={id:uid(),num:S.nextNum++,ts:Date.now(),origen:o.origen,mesa:o.mesa||null,cliente:o.cliente||'',direccion:o.direccion||'',items,subtotal,envio,total:subtotal+envio,estado:'nuevo',medio:o.medio||null,cobrado:false,pideCuenta:false,consumo:need,anulado:false,nota:o.nota||''};
+  S.pedidos.push(ped);save();return ped;
+}
+function anular(p){if(p.anulado)return;for(const [ins,c] of Object.entries(p.consumo)){const i=insumo(ins);i.stock=r3(i.stock+c)}p.anulado=true}
+function siguiente(p){return{nuevo:'preparando',preparando:'listo',listo:p.origen==='mesa'?'entregado':'enviado'}[p.estado]}
+function avanzar(p){
+  p.estado=siguiente(p);
+  if(p.origen==='whatsapp'){
+    const t={preparando:`👨‍🍳 Tu pedido *#${p.num}* ya está en preparación.`,listo:`✅ Tu pedido *#${p.num}* está listo, lo estamos por despachar.`,enviado:`🛵 ¡Tu pedido *#${p.num}* salió para ${p.direccion}! Total a pagar: *${fmt(p.total)}*.`}[p.estado];
+    if(t)S.wa.msgs.push({from:'bot',t,ts:Date.now()});
+  }
+  save();
+}
+function registrarMerma(ins,cant,motivo){
+  const i=insumo(ins);if(!(cant>0))return 'Cantidad inválida';if(cant>i.stock+1e-9)return 'La merma supera el stock disponible';
+  i.stock=r3(i.stock-cant);S.mermas.push({id:uid(),ins,cant,motivo,valor:cant*i.costo,ts:Date.now(),por:rol?ROLES[rol].nombre:''});save();
+}
+function grupos(){
+  const g={};
+  S.pedidos.filter(p=>!p.anulado&&!p.cobrado).forEach(p=>{
+    const k=p.origen==='mesa'?'m'+p.mesa:'w'+p.num;
+    g[k]=g[k]||{key:k,nombre:p.origen==='mesa'?'Mesa '+p.mesa:'🛵 Delivery #'+p.num+' · '+p.cliente,peds:[],total:0,cuenta:false,medioDecl:null};
+    g[k].peds.push(p);g[k].total+=p.total;if(p.pideCuenta)g[k].cuenta=true;if(p.medio)g[k].medioDecl=p.medio;
+  });
+  return Object.values(g).sort((a,b)=>b.cuenta-a.cuenta);
+}
+function pedidosDeGrupo(k){return S.pedidos.filter(p=>!p.anulado&&!p.cobrado&&(k[0]==='m'?p.origen==='mesa'&&p.mesa==k.slice(1):p.origen==='whatsapp'&&p.num==k.slice(1)))}
+function cobrar(peds,medio){peds.forEach(p=>{p.cobrado=true;p.medio=medio;p.tsCobro=Date.now();p.pideCuenta=false});save()}
+function calc(){
+  const v=S.pedidos.filter(p=>!p.anulado),cob=v.filter(p=>p.cobrado);
+  const porMedio={efectivo:0,mp:0,tarjeta:0,transferencia:0};cob.forEach(p=>porMedio[p.medio]+=p.total);
+  const porOrigen={mesa:0,whatsapp:0};v.forEach(p=>porOrigen[p.origen]+=p.total);
+  const ventas=v.reduce((a,p)=>a+p.total,0),pendiente=v.filter(p=>!p.cobrado).reduce((a,p)=>a+p.total,0);
+  const egresos=S.egresos.reduce((a,e)=>a+e.monto,0),saldo=S.apertura+porMedio.efectivo-egresos;
+  const consumo={};v.forEach(p=>Object.entries(p.consumo).forEach(([i,c])=>consumo[i]=r3((consumo[i]||0)+c)));
+  const costoVendido=Object.entries(consumo).reduce((a,[i,c])=>a+c*insumo(i).costo,0);
+  const merma={};S.mermas.forEach(m=>{merma[m.ins]=merma[m.ins]||{cant:0,valor:0};merma[m.ins].cant=r3(merma[m.ins].cant+m.cant);merma[m.ins].valor+=m.valor});
+  const costoMerma=S.mermas.reduce((a,m)=>a+m.valor,0),stockValor=S.insumos.reduce((a,i)=>a+i.stock*i.costo,0);
+  const platos={};v.forEach(p=>p.items.forEach(i=>platos[i.nombre]=(platos[i.nombre]||0)+i.cant));
+  return{v,cob,porMedio,porOrigen,ventas,pendiente,egresos,saldo,consumo,costoVendido,merma,costoMerma,stockValor,platos,
+    bajos:S.insumos.filter(i=>i.stock<=i.min),tickets:v.length,ganancia:ventas-costoVendido-costoMerma};
+}
+
+/* ---------- vistas ---------- */
+function vLogin(){return`<div class="login"><div class="card"><div class="logo big">C</div><h1>Comanda</h1><small>${esc(S.negocio)}</small>
+<form data-f="login"><select name="rol">${Object.entries(ROLES).map(([k,r])=>`<option value="${k}">${r.nombre}</option>`).join('')}</select>
+<input name="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" required><button class="primary">Entrar</button></form>
+<p class="hint">PIN de prueba — Dueño: 1234 · Cajera: 0000 · Cocina: 1111</p>
+<p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p></div></div>`}
+
+function badge(t){
+  let n=0;
+  if(t==='cocina')n=S.pedidos.filter(p=>!p.anulado&&p.estado==='nuevo').length;
+  if(t==='caja')n=grupos().filter(g=>g.cuenta).length;
+  if(t==='stock')n=S.insumos.filter(i=>i.stock<=i.min).length;
+  return n?`<span class="b">${n}</span>`:'';
+}
+function header(){const tabs=ROLES[rol].tabs;return`<header class="top"><div class="brand"><span class="logo">C</span><div><b>Comanda</b><small>${esc(S.negocio)} · ${S.dia}</small></div></div>
+<div class="who"><span class="chip">${ROLES[rol].nombre}</span><button class="ghost small" data-a="logout">Salir</button></div></header>
+<nav>${tabs.map(t=>`<button class="${t===tab?'on':''}" data-a="tab" data-t="${t}">${TABS[t]}${badge(t)}</button>`).join('')}</nav>`}
+
+function vCliente(full){
+  const mis=S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.anulado&&!p.cobrado);
+  const totMesa=mis.reduce((a,p)=>a+p.total,0);
+  const cats=[...new Set(S.platos.map(p=>p.cat))];
+  const ci=Object.entries(C.cart).filter(([,c])=>c>0);
+  const n=ci.reduce((a,[,c])=>a+c,0),tot=ci.reduce((a,[id,c])=>a+plato(id).precio*c,0);
+  return`<div class="cli ${full?'full':''}">
+<div class="cli-h"><div><small>Bienvenido a</small><h1>${esc(S.negocio)}</h1></div><span class="mesa">Mesa ${C.mesa}</span></div>
+${mis.length?`<div class="card mis"><h3>Tus pedidos</h3>${mis.map(p=>`<div class="row"><span>#${p.num} · ${p.items.map(i=>i.cant+'× '+esc(i.nombre)).join(', ')}</span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span></div>`).join('')}
+<div class="row"><b>Total de la mesa</b><b>${fmt(totMesa)}</b></div>
+<div class="btns">${mis.some(p=>p.pideCuenta)?'<span class="chip ok">Cuenta pedida ✓ — ya viene el mozo</span>':'<button data-a="pedirCuenta">🧾 Pedir la cuenta</button>'}<button class="mp" data-a="pagarMP">Pagar con Mercado Pago</button></div></div>`:''}
+${cats.map(cat=>`<h2 class="cat">${esc(cat)}</h2>`+S.platos.filter(p=>p.cat===cat).map(p=>{const d=disp(p),c=C.cart[p.id]||0;
+  return`<div class="dish ${d<=0?'off':''}"><div><b>${esc(p.nombre)}</b><small>${esc(p.desc)}</small><span class="price">${fmt(p.precio)}</span></div>
+<div class="qty">${d<=0?'<span class="chip bad">Agotado</span>':`${c?`<button data-a="menos" data-id="${p.id}">−</button><b>${c}</b>`:''}<button data-a="mas" data-id="${p.id}" ${c>=d?'disabled':''}>+</button>`}</div></div>`}).join('')).join('')}
+${n?`<div class="cartbar"><span>${n} ${n>1?'ítems':'ítem'} · <b>${fmt(tot)}</b></span><button class="primary" data-a="verCarrito">Enviar pedido →</button></div>`:''}
+${full?`<p class="staff"><a href="#" data-a="salirCliente">Acceso del personal</a></p>`:''}
+</div>`;
+}
+
+function vMenu(){return`<div class="ptitle"><div><h1>Vista cliente</h1><small>Así ve la carta quien escanea el QR. Los pedidos van directo a cocina y la venta queda registrada en caja.</small></div>
+<label style="width:160px;margin:0">Simular mesa<select data-set="mesaSim">${Array.from({length:S.mesas},(_,i)=>`<option ${C.mesa===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label></div>${vCliente(false)}`}
+
+function tk(p){
+  const lab={nuevo:'Empezar ▶',preparando:'Marcar listo ✓',listo:p.origen==='mesa'?'Entregado en la mesa':'Salió el delivery 🛵'}[p.estado];
+  return`<div class="ticket ${p.origen}"><div class="th"><b>#${p.num}</b>${p.origen==='mesa'?`<span class="chip st-nuevo">Mesa ${p.mesa}</span>`:'<span class="chip ok">WhatsApp</span>'}<span class="time" data-ts="${p.ts}">${hace(p.ts)}</span></div>
+<ul>${p.items.map(i=>`<li><b>${i.cant}×</b> ${esc(i.nombre)}</li>`).join('')}</ul>
+${p.nota?`<p class="nota">📝 ${esc(p.nota)}</p>`:''}${p.origen==='whatsapp'?`<p class="dir">🛵 ${esc(p.cliente)} — ${esc(p.direccion)}</p>`:''}
+<button class="${p.estado==='listo'?'':'primary'}" data-a="avanzar" data-id="${p.id}">${lab}</button></div>`}
+function vCocina(){
+  const act=S.pedidos.filter(p=>!p.anulado);
+  const cols=[['nuevo','Nuevos'],['preparando','En preparación'],['listo','Listos para salir']];
+  return`<div class="ptitle"><div><h1>Cocina</h1><small>Los pedidos de las mesas (QR) y de WhatsApp llegan solos. Azul = salón · Verde = delivery.</small></div></div>
+<div class="grid3">${cols.map(([e,t])=>{const l=act.filter(p=>p.estado===e);return`<div class="col"><h2>${t}<span class="chip">${l.length}</span></h2>${l.map(tk).join('')||'<div class="empty">Sin pedidos</div>'}</div>`}).join('')}</div>`;
+}
+
+function vCaja(){
+  const g=grupos(),c=calc(),dueno=rol==='dueno';
+  const cob=S.pedidos.filter(p=>p.cobrado&&!p.anulado).sort((a,b)=>b.tsCobro-a.tsCobro);
+  return`<div class="ptitle"><div><h1>Caja</h1><small>Cada pedido ya entra registrado como venta. Acá se cobra y se elige el medio de pago.</small></div></div>
+<div class="grid2"><div>
+<section class="card"><h2>Por cobrar</h2>${g.length?g.map(x=>`<div class="grp ${x.cuenta?'alerta':''}"><div class="row"><b>${esc(x.nombre)}</b><span>${x.cuenta?'<span class="chip warn">Pidió la cuenta</span> ':''}${x.medioDecl?`<span class="chip">Avisó: ${MEDIO[x.medioDecl]}</span> `:''}<b>${fmt(x.total)}</b></span></div>
+<small>${x.peds.map(p=>`#${p.num}: ${p.items.map(i=>i.cant+'× '+esc(i.nombre)).join(', ')}${p.envio?' + envío':''}`).join(' · ')}</small>
+<div class="btns">${Object.keys(MEDIO).map(m=>`<button class="small" data-a="cobrar" data-g="${x.key}" data-m="${m}">${MEDIO[m]}</button>`).join('')}${dueno?`<button class="small ghost bad" data-a="anularGrupo" data-g="${x.key}">Anular</button>`:''}</div></div>`).join(''):'<p class="muted">No hay cuentas abiertas.</p>'}</section>
+<section class="card"><h2>Cobrados hoy</h2>${cob.length?`<div class="tablewrap"><table><thead><tr><th>#</th><th>Origen</th><th>Hora</th><th>Medio</th><th class="n">Importe</th>${dueno?'<th></th>':''}</tr></thead><tbody>
+${cob.map(p=>`<tr><td>${p.num}</td><td>${p.origen==='mesa'?'Mesa '+p.mesa:'Delivery'}</td><td>${hm(p.tsCobro)}</td><td>${MEDIO[p.medio]}</td><td class="n">${fmt(p.total)}</td>${dueno?`<td><button class="link" data-a="anular" data-id="${p.id}">anular</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<p class="muted">Todavía no hay cobros.</p>'}</section>
+</div><div>
+${dueno?`<section class="card saldo"><h2>Saldo de caja <span class="chip">solo titular</span></h2>
+<div class="row"><span>Apertura (cambio)</span><span>${fmt(S.apertura)} <button class="link" data-a="editApertura">editar</button></span></div>
+<div class="row"><span>+ Cobros en efectivo</span><span>${fmt(c.porMedio.efectivo)}</span></div>
+<div class="row"><span>− Egresos / pagos</span><span>${fmt(c.egresos)}</span></div>
+<div class="row big"><b>Debería haber en el cajón</b><b>${fmt(c.saldo)}</b></div>
+${S.arqueo?`<div class="row"><span>Contado por ${esc(S.arqueo.por)} (${hm(S.arqueo.ts)})</span><span>${fmt(S.arqueo.monto)}</span></div>
+<div class="row"><b>Diferencia</b><b class="${S.arqueo.monto-c.saldo<0?'badt':'ok'}">${fmt(S.arqueo.monto-c.saldo)}</b></div>`:'<p class="muted" style="margin:8px 0 0">La cajera todavía no cargó el arqueo.</p>'}</section>`
+:`<section class="card lock">🔒<div><b>Saldo de caja oculto</b><small>El total y el saldo final de caja solo los ve el titular del negocio.</small></div></section>`}
+<section class="card"><h2>Arqueo de cierre</h2><small style="margin-bottom:10px">${dueno?'La cajera lo carga a ciegas: cuenta el efectivo sin saber cuánto debería haber.':'Contá el efectivo del cajón y cargalo. No vas a ver cuánto debería haber: eso lo controla el titular.'}</small>
+<form data-f="arqueo" class="inline"><label>Efectivo contado<input name="monto" inputmode="decimal" required></label><button class="primary">Guardar</button></form>
+${S.arqueo?`<p class="ok" style="margin:8px 0 0">✓ Arqueo cargado a las ${hm(S.arqueo.ts)}${dueno?'':' (podés corregirlo)'}</p>`:''}</section>
+<section class="card"><h2>Egresos de caja</h2>
+<form data-f="egreso" class="inline"><label>Concepto<input name="concepto" placeholder="Ej: pago verdulería" required></label><label style="max-width:120px">Monto<input name="monto" inputmode="decimal" required></label><button>Registrar</button></form>
+${S.egresos.map(e=>`<div class="row"><span>${esc(e.concepto)} <small style="display:inline">${hm(e.ts)} · ${esc(e.por)}</small></span><span>${fmt(e.monto)}</span></div>`).join('')}</section>
+</div></div>`;
+}
+
+function vStock(){
+  const dueno=rol==='dueno',bajos=S.insumos.filter(i=>i.stock<=i.min),tv=S.insumos.reduce((a,i)=>a+i.stock*i.costo,0);
+  return`<div class="ptitle"><div><h1>Stock y merma</h1><small>Cada plato vendido descuenta automáticamente los insumos de su receta.</small></div></div>
+${bajos.length?`<div class="card alerts" style="border-color:var(--warn)"><h2>⚠️ Reponer</h2>${bajos.map(i=>`<span class="chip warn">${esc(i.nombre)}: ${num(i.stock)} ${i.u}</span>`).join('')}</div>`:''}
+<div class="grid2"><div>
+<section class="card"><h2>Mercadería</h2><div class="tablewrap"><table><thead><tr><th>Insumo</th><th class="n">Stock</th><th class="n">Mínimo</th><th class="n">Costo</th><th class="n">Valor</th>${dueno?'<th></th>':''}</tr></thead><tbody>
+${S.insumos.map(i=>`<tr class="${i.stock<=i.min?'low':''}"><td>${esc(i.nombre)}</td><td class="n"><b>${num(i.stock)}</b> ${i.u}</td><td class="n">${num(i.min)} ${i.u}</td><td class="n">${fmt(i.costo)}/${i.u}</td><td class="n">${fmt(i.stock*i.costo)}</td>${dueno?`<td><button class="small" data-a="ingreso" data-id="${i.id}">+ Ingreso</button></td>`:''}</tr>`).join('')}
+</tbody><tfoot><tr><td colspan="4">Total mercadería en stock</td><td class="n">${fmt(tv)}</td>${dueno?'<td></td>':''}</tr></tfoot></table></div></section>
+</div><div>
+<section class="card"><h2>Platos que se pueden hacer</h2><div class="tablewrap"><table><thead><tr><th>Plato</th>${dueno?'<th class="n">Costo</th><th class="n">Margen</th>':''}<th class="n">Quedan</th></tr></thead><tbody>
+${S.platos.map(p=>{const d=disp(p),cr=costoReceta(p);return`<tr><td><details><summary>${esc(p.nombre)}</summary><ul>${Object.entries(p.receta).map(([i,c])=>`<li>${num(c)} ${insumo(i).u} ${esc(insumo(i).nombre)}</li>`).join('')}</ul></details></td>${dueno?`<td class="n">${fmt(cr)}</td><td class="n">${Math.round((1-cr/p.precio)*100)}%</td>`:''}<td class="n"><span class="chip ${d===0?'bad':d<10?'warn':'ok'}">${d}</span></td></tr>`}).join('')}
+</tbody></table></div></section>
+<section class="card"><h2>Registrar merma</h2>
+<form data-f="merma"><label>Insumo<select name="ins">${S.insumos.map(i=>`<option value="${i.id}">${esc(i.nombre)} (${i.u})</option>`).join('')}</select></label>
+<div class="inline"><label>Cantidad<input name="cant" inputmode="decimal" required></label><label>Motivo<select name="motivo"><option>Vencido</option><option>Se cayó / se rompió</option><option>Error de cocina</option><option>Devolución de cliente</option><option>Consumo del personal</option><option>Otro</option></select></label><button class="primary">Registrar</button></div></form>
+${S.mermas.length?`<div style="margin-top:12px">${S.mermas.map(m=>`<div class="row"><span>${num(m.cant)} ${insumo(m.ins).u} ${esc(insumo(m.ins).nombre)} <small style="display:inline">· ${esc(m.motivo)} · ${hm(m.ts)}</small></span>${dueno?`<span>${fmt(m.valor)}</span>`:''}</div>`).join('')}</div>`:''}
+</section></div></div>`;
+}
+
+function resumenTxt(c){
+  return`📊 Cierre ${S.negocio} — ${S.dia}
+Ventas: ${fmt(c.ventas)} (${c.tickets} pedidos)
+· Efectivo ${fmt(c.porMedio.efectivo)} · Mercado Pago ${fmt(c.porMedio.mp)} · Tarjeta ${fmt(c.porMedio.tarjeta)} · Transferencia ${fmt(c.porMedio.transferencia)}
+· Salón (QR) ${fmt(c.porOrigen.mesa)} · Delivery WhatsApp ${fmt(c.porOrigen.whatsapp)}
+Pendiente de cobro: ${fmt(c.pendiente)}
+Saldo de caja (efectivo): ${fmt(c.saldo)}${S.arqueo?` · Contado: ${fmt(S.arqueo.monto)} · Diferencia: ${fmt(S.arqueo.monto-c.saldo)}`:''}
+Mercadería vendida (costo): ${fmt(c.costoVendido)}
+Merma: ${fmt(c.costoMerma)}
+Stock restante (valorizado): ${fmt(c.stockValor)}
+Ganancia bruta: ${fmt(c.ganancia)}
+Platos: ${Object.entries(c.platos).map(([n,q])=>q+'× '+n).join(', ')||'—'}
+${c.bajos.length?'⚠️ Reponer: '+c.bajos.map(i=>i.nombre).join(', '):''}`.trim();
+}
+function vCierre(){
+  const c=calc();
+  const kp=(t,v,cl)=>`<div class="kpi ${cl||''}"><small>${t}</small><b>${v}</b></div>`;
+  return`<div class="ptitle"><div><h1>Cierre del día</h1><small>${S.dia} · solo visible para el titular</small></div>
+<div class="btns" style="margin:0"><button data-a="copiar">📋 Copiar resumen</button><button class="primary" data-a="cerrarDia">Cerrar el día</button></div></div>
+<div class="kpis">${kp('Total de ventas',fmt(c.ventas),'hi')}${kp('Saldo en caja (efectivo)',fmt(c.saldo),'acc')}${kp('Pendiente de cobro',fmt(c.pendiente))}${kp('Mercadería vendida (costo)',fmt(c.costoVendido))}${kp('Merma',fmt(c.costoMerma))}${kp('Stock restante',fmt(c.stockValor))}${kp('Ganancia bruta',fmt(c.ganancia))}</div>
+<div class="grid3">
+<section class="card"><h2>Ventas por medio de pago</h2>${Object.entries(MEDIO).map(([k,n])=>`<div class="row"><span>${n}</span><b>${fmt(c.porMedio[k])}</b></div>`).join('')}<div class="row"><span>Sin cobrar</span><b>${fmt(c.pendiente)}</b></div></section>
+<section class="card"><h2>Ventas por canal</h2><div class="row"><span>Salón (QR en mesa)</span><b>${fmt(c.porOrigen.mesa)}</b></div><div class="row"><span>Delivery WhatsApp</span><b>${fmt(c.porOrigen.whatsapp)}</b></div><div class="row"><span>Pedidos</span><b>${c.tickets}</b></div><div class="row"><span>Ticket promedio</span><b>${fmt(c.tickets?c.ventas/c.tickets:0)}</b></div></section>
+<section class="card"><h2>Caja</h2><div class="row"><span>Apertura</span><b>${fmt(S.apertura)}</b></div><div class="row"><span>+ Efectivo cobrado</span><b>${fmt(c.porMedio.efectivo)}</b></div><div class="row"><span>− Egresos</span><b>${fmt(c.egresos)}</b></div><div class="row"><span>Saldo esperado</span><b>${fmt(c.saldo)}</b></div>
+${S.arqueo?`<div class="row"><span>Contado (arqueo)</span><b>${fmt(S.arqueo.monto)}</b></div><div class="row"><span>Diferencia</span><b class="${S.arqueo.monto-c.saldo<0?'badt':'ok'}">${fmt(S.arqueo.monto-c.saldo)}</b></div>`:'<p class="muted">Falta el arqueo de la cajera.</p>'}</section>
+</div>
+<div class="grid2">
+<section class="card"><h2>Mercadería vendida y stock restante</h2><div class="tablewrap"><table><thead><tr><th>Insumo</th><th class="n">Vendido</th><th class="n">Merma</th><th class="n">Queda</th><th class="n">Valor que queda</th></tr></thead><tbody>
+${S.insumos.map(i=>`<tr class="${i.stock<=i.min?'low':''}"><td>${esc(i.nombre)}</td><td class="n">${c.consumo[i.id]?num(c.consumo[i.id])+' '+i.u:'—'}</td><td class="n">${c.merma[i.id]?num(c.merma[i.id].cant)+' '+i.u:'—'}</td><td class="n"><b>${num(i.stock)}</b> ${i.u}</td><td class="n">${fmt(i.stock*i.costo)}</td></tr>`).join('')}
+</tbody><tfoot><tr><td>Totales ($)</td><td class="n">${fmt(c.costoVendido)}</td><td class="n">${fmt(c.costoMerma)}</td><td></td><td class="n">${fmt(c.stockValor)}</td></tr></tfoot></table></div></section>
+<div><section class="card"><h2>Platos vendidos</h2>${Object.entries(c.platos).sort((a,b)=>b[1]-a[1]).map(([n,q])=>`<div class="row"><span>${esc(n)}</span><b>${q}</b></div>`).join('')||'<p class="muted">Sin ventas todavía.</p>'}</section>
+<section class="card"><h2>Detalle de merma</h2>${S.mermas.map(m=>`<div class="row"><span>${num(m.cant)} ${insumo(m.ins).u} ${esc(insumo(m.ins).nombre)} <small style="display:inline">· ${esc(m.motivo)}</small></span><b>${fmt(m.valor)}</b></div>`).join('')||'<p class="muted">Sin merma registrada.</p>'}</section>
+${S.cierres.length?`<section class="card"><h2>Días anteriores</h2>${S.cierres.map(x=>`<div class="row"><span>${x.dia}</span><span>Ventas <b>${fmt(x.ventas)}</b> · Caja ${fmt(x.saldo)} · Merma ${fmt(x.merma)}</span></div>`).join('')}</section>`:''}
+</div></div>`;
+}
+
+const QUICK=['Hola','2 hamburguesas y 1 coca','Lucía, Córdoba 1520','1','SI','estado'];
+function fmtWa(t){return esc(t).replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+function vWhatsapp(){
+  const peds=S.pedidos.filter(p=>p.origen==='whatsapp'&&!p.anulado).slice().reverse();
+  return`<div class="ptitle"><div><h1>Pedidos por WhatsApp</h1><small>El asistente responde solo, toma el pedido y lo manda a cocina para delivery.</small></div><button class="ghost small" data-a="waReset">Nueva conversación</button></div>
+<div class="wa-wrap"><div class="phone"><div class="wa-h"><span class="av">🍔</span><div><b>${esc(S.negocio)}</b><small>Asistente automático · en línea</small></div></div>
+<div class="wa-body" id="wab"><div class="msg sys">Simulá ser un cliente: escribí como si fuera el WhatsApp del local.</div>
+${S.wa.msgs.map(m=>`<div class="msg ${m.from}"><div>${fmtWa(m.t)}</div><small>${hm(m.ts)}</small></div>`).join('')}${typing?'<div class="msg bot"><i>escribiendo…</i></div>':''}</div>
+<div class="wachips">${QUICK.map(q=>`<button data-a="waQuick" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+<form class="wa-in" data-f="wa"><input id="wain" name="t" placeholder="Escribí un mensaje" autocomplete="off"><button aria-label="Enviar">➤</button></form></div>
+<div><section class="card"><h2>Cómo funciona</h2><ol class="steps"><li>El cliente escribe al WhatsApp del local y recibe la carta con precios.</li><li>Pide en lenguaje natural (“2 milas y una birra”). El asistente arma el pedido y controla el stock.</li><li>Pide nombre, dirección y forma de pago, y confirma el total con envío (${fmt(S.envio)}).</li><li>El pedido aparece en <b>Cocina</b> en verde y la venta queda en <b>Caja</b>.</li><li>Cuando cocina lo marca en preparación o despachado, el cliente recibe el aviso.</li></ol></section>
+<section class="card"><h2>Pedidos de WhatsApp de hoy</h2>${peds.map(p=>`<div class="row"><span>#${p.num} · ${esc(p.cliente)} — ${p.items.map(i=>i.cant+'× '+esc(i.nombre)).join(', ')}</span><span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span> <b>${fmt(p.total)}</b></span></div>`).join('')||'<p class="muted">Todavía no hay pedidos por WhatsApp.</p>'}</section></div></div>`;
+}
+
+function vMesas(){
+  const base=S.baseUrl||location.href.split('#')[0];
+  return`<div class="ptitle"><div><h1>QR de las mesas</h1><small>Cada QR abre la carta de su mesa. Imprimilos y pegalos en cada mesa.</small></div></div>
+<section class="card"><div class="inline"><label>Link de la app<input data-set="baseUrl" value="${esc(base)}"></label><label style="max-width:140px">Cantidad de mesas<input data-set="mesas" type="number" min="1" max="60" value="${S.mesas}"></label></div>
+<div class="qrgrid">${Array.from({length:S.mesas},(_,i)=>i+1).map(n=>`<div class="qr"><b>Mesa ${n}</b><div class="qrc" data-qr="${esc(base+'#mesa-'+n)}"></div><small>Escaneá para pedir</small><button class="small" data-a="abrirMesa" data-n="${n}">Abrir carta</button></div>`).join('')}</div></section>
+<div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label><label>Costo de envío a domicilio<input data-set="envio" inputmode="decimal" value="${S.envio}"></label></section>
+<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section></div>`;
+}
+const V={cierre:vCierre,caja:vCaja,cocina:vCocina,stock:vStock,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
+
+function render(){
+  const app=$('#app');
+  if(clienteMode){app.innerHTML=vCliente(true);return}
+  if(!rol||!ROLES[rol]){rol=null;app.innerHTML=vLogin();return}
+  const tabs=ROLES[rol].tabs;if(!tabs.includes(tab))tab=tabs[0];
+  app.innerHTML=header()+`<main>${V[tab]()}</main>`;
+  if(tab==='mesas')document.querySelectorAll('[data-qr]').forEach(el=>{
+    if(window.QRCode){try{new QRCode(el,{text:el.dataset.qr,width:240,height:240,correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='QR no disponible'}}else el.textContent='QR no disponible sin conexión';
+  });
+  const wb=$('#wab');if(wb)wb.scrollTop=wb.scrollHeight;
+}
+function busy(){const a=document.activeElement;return a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.id!=='wain'}
+
+/* ---------- asistente de WhatsApp ---------- */
+const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+function parsear(t){
+  const out={};
+  norm(t).split(/,|\by\b|\be\b|\n|\+|;/).forEach(seg=>{
+    seg=seg.trim();if(!seg)return;
+    const p=S.platos.find(p=>p.alias.some(a=>seg.includes(a)));if(!p)return;
+    let q=1;const m=seg.match(/(\d+)/);
+    if(m)q=+m[1];else{for(const w in NUMS)if(new RegExp('\\b'+w+'\\b').test(seg)){q=NUMS[w];break}}
+    out[p.id]=(out[p.id]||0)+q;
+  });
+  return Object.entries(out).map(([id,cant])=>({id,cant}));
+}
+function cartaTxt(){const cats=[...new Set(S.platos.map(p=>p.cat))];return'📋 *Nuestra carta*\n'+cats.map(c=>`\n*${c}*\n`+S.platos.filter(p=>p.cat===c).map(p=>`• ${p.nombre} — ${fmt(p.precio)}${disp(p)<=0?' (agotado)':''}`).join('\n')).join('\n')+`\n\n🛵 Envío: ${fmt(S.envio)}`}
+function resumenItems(items){const sub=items.reduce((a,i)=>a+plato(i.id).precio*i.cant,0);return items.map(i=>`• ${i.cant}× ${plato(i.id).nombre} — ${fmt(plato(i.id).precio*i.cant)}`).join('\n')+`\n• Envío — ${fmt(S.envio)}\n*Total: ${fmt(sub+S.envio)}*`}
+function pasoResumen(items){
+  const agot=items.filter(i=>disp(plato(i.id))<i.cant);
+  if(agot.length){S.wa.step='pedido';return[`Uy, de ${agot.map(i=>plato(i.id).nombre).join(' y ')} no nos queda suficiente hoy 😕 (${agot.map(i=>'quedan '+disp(plato(i.id))).join(', ')}). ¿Querés cambiar algo?`]}
+  S.wa.draft={items};S.wa.step='datos';
+  return['Perfecto, te anoto:\n'+resumenItems(items),'¿A nombre de quién y a qué dirección lo mandamos? (por ejemplo: *Juan, San Martín 1234*)'];
+}
+function bot(txt){
+  const t=norm(txt),wa=S.wa;
+  if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
+  if(/^estado\b|como va mi pedido|donde esta mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
+  if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
+  if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
+    const it=parsear(t);if(it.length)return pasoResumen(it);
+    wa.step='pedido';return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*'];
+  }
+  if(wa.step==='pedido'){const it=parsear(t);if(!it.length)return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'];return pasoResumen(it)}
+  if(wa.step==='datos'){
+    if(t.length<5)return['Pasame nombre y dirección completa, por favor 🙏'];
+    const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():'Cliente';wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
+    wa.step='pago';return[`Genial, ${wa.draft.cliente}. ¿Cómo vas a pagar?\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago`];
+  }
+  if(wa.step==='pago'){
+    const m=/^1|efect/.test(t)?'efectivo':/^2|transf/.test(t)?'transferencia':/^3|mercado|^mp/.test(t)?'mp':null;
+    if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago.'];
+    wa.draft.medio=m;wa.step='confirmar';
+    return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.items)}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?'\nAlias: LAESQUINA.BAR':''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
+  }
+  if(wa.step==='confirmar'){
+    if(/^(si|dale|ok|confirmo|de una)/.test(t)){
+      const d=wa.draft,r=crearPedido({origen:'whatsapp',cliente:d.cliente,direccion:d.direccion,items:d.items,medio:d.medio});
+      if(r.error){wa.step='pedido';return['Uy, justo se nos acabó algo: '+r.error+'. ¿Querés pedir otra cosa?']}
+      wa.ultimo=r.id;wa.step='inicio';wa.draft={};
+      return[`✅ ¡Pedido *#${r.num}* confirmado y enviado a la cocina!\nDemora estimada: 35 a 45 min.\nEscribí *estado* cuando quieras saber cómo va.`];
+    }
+    if(/^no\b/.test(t)){wa.step='inicio';wa.draft={};return['Listo, no lo confirmo. Si querés empezar de nuevo escribí *menú*.']}
+    return['Respondé *SI* para confirmar o *cancelar*.'];
+  }
+  wa.step='inicio';return bot(txt);
+}
+function waSend(txt){
+  if(!txt.trim()||typing)return;
+  S.wa.msgs.push({from:'user',t:txt,ts:Date.now()});typing=true;save();render();
+  setTimeout(()=>{
+    const r=bot(txt);typing=false;r.forEach(t=>S.wa.msgs.push({from:'bot',t,ts:Date.now()}));save();render();
+    const i=$('#wain');if(i)i.focus();
+  },700);
+}
+
+/* ---------- acciones ---------- */
+const A={
+  closeOv(b,e){if(e.target===b)closeModal()},
+  close(){closeModal()},
+  tab(b){tab=b.dataset.t;render();scrollTo(0,0)},
+  logout(){rol=null;try{sessionStorage.removeItem('comanda-rol')}catch(e){}render()},
+  abrirMesa(b){location.hash='mesa-'+b.dataset.n},
+  salirCliente(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);clienteMode=null;render()},
+  mas(b){const p=plato(b.dataset.id);if((C.cart[p.id]||0)<disp(p))C.cart[p.id]=(C.cart[p.id]||0)+1;render()},
+  menos(b){const id=b.dataset.id;C.cart[id]=Math.max(0,(C.cart[id]||0)-1);render()},
+  verCarrito(){
+    const ci=Object.entries(C.cart).filter(([,c])=>c>0),tot=ci.reduce((a,[id,c])=>a+plato(id).precio*c,0);
+    modal(`<h2>Tu pedido · Mesa ${C.mesa}</h2>${ci.map(([id,c])=>`<div class="row"><span>${c}× ${esc(plato(id).nombre)}</span><b>${fmt(plato(id).precio*c)}</b></div>`).join('')}
+<div class="row big"><b>Total</b><b>${fmt(tot)}</b></div><label>¿Alguna aclaración para la cocina?<textarea id="nota" placeholder="Ej: hamburguesa sin tomate"></textarea></label>
+<div class="btns"><button class="ghost" data-a="close">Seguir mirando</button><button class="primary" data-a="enviarPedido">Enviar a cocina</button></div>`);
+  },
+  enviarPedido(){
+    const items=Object.entries(C.cart).filter(([,c])=>c>0).map(([id,cant])=>({id,cant}));
+    const r=crearPedido({origen:'mesa',mesa:C.mesa,items,nota:($('#nota')||{}).value||''});
+    if(r.error){toast(r.error,1);return}
+    C.cart={};closeModal();render();toast(`Pedido #${r.num} enviado a cocina ✓`);
+  },
+  pedirCuenta(){S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.cobrado&&!p.anulado).forEach(p=>p.pideCuenta=true);save();render();toast('Avisamos a la caja 🧾')},
+  pagarMP(){
+    const mis=S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.cobrado&&!p.anulado),t=mis.reduce((a,p)=>a+p.total,0);
+    modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted">En la versión real acá se abre el checkout de Mercado Pago y el pago se acredita solo. En esta demo podés simular el pago aprobado.</p><div class="btns"><button class="ghost" data-a="close">Volver</button><button class="mp" data-a="mpOk">Simular pago aprobado</button></div>`);
+  },
+  mpOk(){cobrar(S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.cobrado&&!p.anulado),'mp');closeModal();render();toast('¡Pago aprobado! Gracias 🙌')},
+  avanzar(b){const p=S.pedidos.find(p=>p.id===b.dataset.id);if(p){avanzar(p);render()}},
+  cobrar(b){const ps=pedidosDeGrupo(b.dataset.g);cobrar(ps,b.dataset.m);render();toast(`Cobrado con ${MEDIO[b.dataset.m]} ✓`)},
+  anularGrupo(b){modal(`<h2>¿Anular la cuenta?</h2><p class="muted">Se anulan los pedidos, se quita la venta y la mercadería vuelve al stock.</p><div class="btns"><button class="ghost" data-a="close">No</button><button class="primary" data-a="anularOk" data-g="${b.dataset.g}">Sí, anular</button></div>`)},
+  anularOk(b){pedidosDeGrupo(b.dataset.g).forEach(anular);save();closeModal();render();toast('Cuenta anulada, stock devuelto')},
+  anular(b){modal(`<h2>¿Anular este cobro?</h2><p class="muted">Se quita la venta y la mercadería vuelve al stock.</p><div class="btns"><button class="ghost" data-a="close">No</button><button class="primary" data-a="anularUno" data-id="${b.dataset.id}">Sí, anular</button></div>`)},
+  anularUno(b){const p=S.pedidos.find(p=>p.id===b.dataset.id);if(p)anular(p);save();closeModal();render()},
+  editApertura(){modal(`<h2>Apertura de caja</h2><form data-f="apertura"><label>Efectivo inicial (cambio)<input name="monto" inputmode="decimal" value="${S.apertura}" required></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
+  ingreso(b){const i=insumo(b.dataset.id);modal(`<h2>Ingreso de mercadería</h2><p class="muted">${esc(i.nombre)} · stock actual ${num(i.stock)} ${i.u}</p><form data-f="ingreso"><input type="hidden" name="id" value="${i.id}"><label>Cantidad que entra (${i.u})<input name="cant" inputmode="decimal" required></label><label>Costo por ${i.u}<input name="costo" inputmode="decimal" value="${i.costo}"></label><label>Stock mínimo (${i.u})<input name="min" inputmode="decimal" value="${i.min}"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
+  copiar(){const t=resumenTxt(calc());const show=()=>modal(`<h2>Resumen del día</h2><textarea style="min-height:260px">${esc(t)}</textarea><div class="btns"><button data-a="close">Cerrar</button></div>`);
+    try{navigator.clipboard.writeText(t).then(()=>toast('Resumen copiado ✓ — pegalo en WhatsApp'),show)}catch(e){show()}},
+  cerrarDia(){const c=calc();modal(`<h2>¿Cerrar el día?</h2><p class="muted">Se guarda el resumen (${fmt(c.ventas)} en ventas) y se empieza un día nuevo. El stock se mantiene.</p>${c.pendiente?`<p class="badt">Atención: hay ${fmt(c.pendiente)} sin cobrar.</p>`:''}${S.arqueo?'':'<p class="badt">La cajera todavía no cargó el arqueo.</p>'}<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cerrarOk">Cerrar el día</button></div>`)},
+  cerrarOk(){const c=calc();S.cierres.unshift({dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c)});
+    S.pedidos=S.pedidos.filter(p=>!p.anulado&&!p.cobrado);S.mermas=[];S.egresos=[];S.arqueo=null;S.apertura=20000;S.dia=hoy();save();closeModal();render();toast('Día cerrado ✓')},
+  waQuick(b){waSend(b.dataset.q)},
+  waReset(){S.wa={msgs:[],step:'inicio',draft:{},ultimo:null};save();render()},
+  demoVentas(){demoVentas();toast('Ventas de ejemplo cargadas');tab='cierre';render()},
+  reset(){modal(`<h2>¿Reiniciar la demo?</h2><p class="muted">Se borran ventas, stock y ajustes y se vuelve al estado inicial.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="resetOk">Reiniciar</button></div>`)},
+  resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
+};
+const F={
+  login(d){if(ROLES[d.rol]&&ROLES[d.rol].pin===d.pin){rol=d.rol;try{sessionStorage.setItem('comanda-rol',rol)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
+  wa(d,f){const t=d.t;f.reset();waSend(t)},
+  arqueo(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);S.arqueo={monto:m,ts:Date.now(),por:ROLES[rol].nombre};save();render();toast('Arqueo guardado ✓')},
+  egreso(d){const m=pnum(d.monto);if(!(m>0))return toast('Monto inválido',1);S.egresos.push({concepto:d.concepto,monto:m,ts:Date.now(),por:ROLES[rol].nombre});save();render();toast('Egreso registrado')},
+  merma(d){const e=registrarMerma(d.ins,pnum(d.cant),d.motivo);if(e)return toast(e,1);render();toast('Merma registrada')},
+  apertura(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);S.apertura=m;save();closeModal();render()},
+  ingreso(d){const i=insumo(d.id),q=pnum(d.cant);if(!(q>0))return toast('Cantidad inválida',1);i.stock=r3(i.stock+q);if(pnum(d.costo)>0)i.costo=pnum(d.costo);if(pnum(d.min)>=0)i.min=pnum(d.min);save();closeModal();render();toast('Stock actualizado')}
+};
+function demoVentas(){
+  const combos=[[['hamb',2],['gaseosa',2]],[['mila',1],['pinta',2]],[['pizza',1],['pinta',3]],[['cesar',1],['gaseosa',1]],[['hamb',1],['papas',1],['pinta',1]],[['mila',2],['gaseosa',2]],[['pizza',2],['gaseosa',3]],[['hamb',3],['papas',1],['pinta',3]],[['mila',1],['cesar',1],['pinta',2]],[['pizza',1],['papas',1],['gaseosa',2]]];
+  const medios=['efectivo','mp','tarjeta','efectivo','transferencia','mp','efectivo','tarjeta','efectivo','mp'];
+  const nombres=['Martina','Diego','Sofía','Pablo'];
+  combos.forEach((c,i)=>{
+    const w=i%3===2,p=crearPedido({origen:w?'whatsapp':'mesa',mesa:(i%6)+1,cliente:w?nombres[i%4]:'',direccion:w?'Bv. Oroño '+(800+i*45):'',items:c.map(([id,cant])=>({id,cant})),medio:w?medios[i]:null});
+    if(p.error)return;p.ts=Date.now()-(150-i*14)*60000;
+    if(i<8){p.estado=w?'enviado':'entregado';p.cobrado=true;p.medio=medios[i];p.tsCobro=p.ts+40*60000}else p.estado=i===8?'preparando':'nuevo';
+  });
+  registrarMerma('tomate',.4,'Vencido');registrarMerma('cerveza',1.5,'Se cayó / se rompió');registrarMerma('carne',.18,'Error de cocina');
+  S.egresos.push({concepto:'Pago verdulería',monto:12000,ts:Date.now()-3600000,por:'Cajera'});save();
+}
+
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b,e)});
+document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f||!F[f])return;e.preventDefault();F[f](Object.fromEntries(new FormData(e.target)),e.target)});
+document.addEventListener('change',e=>{const k=e.target.dataset.set;if(!k)return;const v=e.target.value;
+  if(k==='mesaSim'){C.mesa=+v;C.cart={}}
+  else if(k==='mesas')S.mesas=Math.max(1,Math.min(60,parseInt(v)||1));
+  else if(k==='envio')S.envio=Math.max(0,pnum(v)||0);
+  else S[k]=v.trim();
+  save();render();
+});
+function route(){const m=location.hash.match(/^#mesa-(\d+)$/);clienteMode=m?+m[1]:null;if(clienteMode&&C.mesa!==clienteMode){C.mesa=clienteMode;C.cart={}}render()}
+window.addEventListener('hashchange',route);
+window.addEventListener('storage',e=>{if(e.key!==K||!e.newValue)return;try{S=JSON.parse(e.newValue)}catch(x){return}if(!busy()&&!$('#modal').innerHTML)render()});
+setInterval(()=>document.querySelectorAll('[data-ts]').forEach(el=>el.textContent=hace(+el.dataset.ts)),20000);
+route();
+</script>
+</body>
+</html>
