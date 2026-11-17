@@ -11,6 +11,9 @@ Software para bares y restaurantes — por Roman Web. (Antes "Comanda".)
 - **Carta y recetas**: ficha técnica, costo, margen y precio sugerido.
 - **Clientes**: se arma solo con los pedidos de WhatsApp; el bot ofrece "lo de siempre".
 - **Cierre y reportes**: ventas, caja, merma, mercadería vendida, stock restante, ventas por hora, ingeniería de menú y control de movimientos (auditoría).
+- **Mostrador / para llevar**: pedido con nombre, pantalla de retiro para un televisor (`#pantalla`).
+- **Reservas**: por día, con mesa asignada (se ve en el salón), choque de horarios, recordatorio para WhatsApp.
+- **Impresión** (térmica 80 mm): comanda por estación, precuenta, ticket y cierre; impresión automática por equipo.
 - **Roles**: el saldo de caja solo lo ve el dueño; la cajera hace el arqueo a ciegas.
 
 PIN de prueba: Dueño `1234` · Cajera `0000` · Mozo `2222` · Cocina `1111`.
