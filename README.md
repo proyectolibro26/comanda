@@ -1,6 +1,6 @@
-# Comanda
+# ta-ca — tu local, encendido
 
-App para bares y restaurantes — por Roman Web.
+Software para bares y restaurantes — por Roman Web. (Antes "Comanda".)
 
 - **QR por mesa**: el cliente pide, personaliza (sin tomate, extra queso), llama al mozo, pide la cuenta o paga con Mercado Pago.
 - **Salón**: plano de mesas en vivo (libre, ocupada, pidió la cuenta, llama al mozo) y delivery en curso.
