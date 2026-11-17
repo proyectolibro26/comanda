@@ -16,3 +16,12 @@ Software para bares y restaurantes — por Roman Web. (Antes "Comanda".)
 PIN de prueba: Dueño `1234` · Cajera `0000` · Mozo `2222` · Cocina `1111`.
 
 Sitio estático (`index.html`). En la demo los datos se guardan en el navegador; para uso real hace falta backend compartido, WhatsApp Business Cloud API, Mercado Pago y facturación ARCA.
+
+## Nube (varios equipos en vivo)
+
+- `supabase.sql`: crea la tabla y las funciones. Se pega en Supabase › SQL Editor y se corre.
+- En `index.html`, `const NUBE={url,key}` lleva la URL del proyecto y la clave pública (anon).
+- Cada local tiene un código. El dueño lo crea desde **QR y ajustes › Nube**; los demás equipos lo cargan en la entrada. Los QR de las mesas lo llevan adentro (`?l=código`).
+- Los equipos del personal sincronizan el estado completo con control de versión y fusión de cambios (stock y numeración nunca se pisan). Sin internet siguen andando y sincronizan al volver.
+- El celular del cliente nunca baja la caja, costos ni clientes: solo ve la carta, el stock y su mesa (`taca_carta`), y pide por `taca_cliente`, que descuenta stock y numera en el servidor.
+- Para probar sin Supabase: abrir con `?mock=1` (servidor de prueba dentro del navegador).
