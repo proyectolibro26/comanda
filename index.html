@@ -252,13 +252,13 @@ function seed(){return{
     {id:'gaseosa',nombre:'Gaseosa 500 ml',cat:'Bebidas',area:'barra',precio:2500,desc:'Cola, lima-limón o naranja',alias:['gaseosa','coca','sprite','fanta','bebida'],activo:true,receta:{gaseosa:1},mods:[]},
     {id:'pinta',nombre:'Pinta de cerveza',cat:'Bebidas',area:'barra',precio:4500,desc:'Rubia o roja, 500 ml',alias:['cerveza','pinta','birra'],activo:true,receta:{cerveza:.5},mods:[]}
   ],
-  pedidos:[],cobros:[],mermas:[],egresos:[],arqueo:null,cierres:[],audit:[],llamados:[],clientes:{},reservas:[],
+  pedidos:[],cobros:[],mermas:[],egresos:[],arqueo:null,cierres:[],audit:[],llamados:[],clientes:{},reservas:[],turnos:[],turno:null,
   wa:{msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'}
 }}
 
 let S=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.insumos&&s.cobros)return completar(s)}catch(e){}return seed()}
-function completar(s){s.reservas=s.reservas||[];return s}
+function completar(s){s.reservas=s.reservas||[];s.turnos=s.turnos||[];if(s.turno===undefined)s.turno=null;return s}
 function saveLocal(){if(cloudClient())return;if(typeof LID!=='undefined'&&LID&&SY.base)return persistSync();try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function save(){if(cloudClient())return;saveLocal();if(NB&&LID){SY.pend=true;clearTimeout(SY.t);SY.t=setTimeout(push,250)}}
 let rol=null;try{rol=sessionStorage.getItem('comanda-rol')}catch(e){}
@@ -514,7 +514,7 @@ function grupos(){
 }
 function pedidosDeGrupo(k){return abiertos().filter(p=>k[0]==='m'?p.origen==='mesa'&&p.mesa==k.slice(1):p.origen===(k[0]==='p'?'mostrador':'whatsapp')&&p.num==k.slice(1))}
 function registrarCobro(peds,o){
-  const c={id:uid(),ts:Date.now(),por:o.por||yo(),grupo:o.nombre,pedidos:peds.map(p=>p.id),subtotal:o.subtotal,descPct:o.descPct||0,descuento:o.descuento||0,propina:o.propina||0,total:o.total,pagos:o.pagos,anulado:false};
+  const c={id:uid(),ts:Date.now(),turno:S.turno?S.turno.id:null,por:o.por||yo(),grupo:o.nombre,pedidos:peds.map(p=>p.id),subtotal:o.subtotal,descPct:o.descPct||0,descuento:o.descuento||0,propina:o.propina||0,total:o.total,pagos:o.pagos,anulado:false};
   peds.forEach(p=>{p.cobrado=true;p.cobroId=c.id;p.pideCuenta=false});
   S.cobros.push(c);
   if(c.descuento>0)audit('Descuento',`${c.grupo}: ${c.descPct}%`,c.descuento);
@@ -655,9 +655,7 @@ ${dueno?`<section class="card saldo"><h2>Saldo de caja <span class="chip">solo t
 ${S.arqueo?`<div class="row"><span>Contado por ${esc(S.arqueo.por)} (${hm(S.arqueo.ts)})</span><span>${fmt(S.arqueo.monto)}</span></div>
 <div class="row"><b>Diferencia</b><b class="${S.arqueo.monto-c.saldo<0?'badt':'ok'}">${fmt(S.arqueo.monto-c.saldo)}</b></div>`:'<p class="muted" style="margin:8px 0 0">La cajera todavía no cargó el arqueo.</p>'}</section>`
 :`<section class="card lock">🔒<div><b>Saldo de caja oculto</b><small>El total y el saldo final de caja solo los ve el titular del negocio.</small></div></section>`}
-<section class="card"><h2>Arqueo de cierre</h2><small style="margin-bottom:10px">${dueno?'La cajera lo carga a ciegas: cuenta el efectivo sin saber cuánto debería haber.':'Contá el efectivo del cajón y cargalo. No vas a ver cuánto debería haber: eso lo controla el titular.'}</small>
-<form data-f="arqueo" class="inline"><label>Efectivo contado<input name="monto" inputmode="decimal" required></label><button class="primary">Guardar</button></form>
-${S.arqueo?`<p class="ok" style="margin:8px 0 0">✓ Arqueo cargado a las ${hm(S.arqueo.ts)}</p>`:''}</section>
+${vTurno(dueno)}
 <section class="card"><h2>Egresos de caja</h2>
 <form data-f="egreso" class="inline"><label>Concepto<input name="concepto" placeholder="Ej: pago verdulería" required></label><label style="max-width:120px">Monto<input name="monto" inputmode="decimal" required></label><button>Registrar</button></form>
 ${S.egresos.map(e=>`<div class="row"><span>${esc(e.concepto)} <small style="display:inline">${hm(e.ts)} · ${esc(e.por)}</small></span><span>${fmt(e.monto)}</span></div>`).join('')}</section>
@@ -819,6 +817,77 @@ function vImpresora(){const m=ls('taca-autoprint')||'off';return`<section class=
 <p class="muted" style="font-size:13px;margin:0 0 10px">Funciona con cualquier impresora térmica de 80 mm puesta como predeterminada. Para que imprima sin preguntar, abrí Chrome con la opción <b>--kiosk-printing</b>.</p>
 <div class="btns"><button data-a="pruebaImpresion">Imprimir prueba</button><a href="#pantalla" style="align-self:center;font-size:14px;color:var(--accd)">Abrir pantalla de retiro (para un televisor) →</a></div></section>`}
 
+
+/* reservas por WhatsApp */
+const DIAS=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+function leerReserva(t,r){
+  const hoyD=new Date();hoyD.setHours(0,0,0,0);const mas=n=>{const d=new Date(hoyD);d.setDate(d.getDate()+n);return fechaISO(d)};
+  if(/pasado manana/.test(t))r.fecha=mas(2);else if(/\bmanana\b/.test(t))r.fecha=mas(1);else if(/\bhoy\b|esta noche/.test(t))r.fecha=mas(0);
+  else{const i=DIAS.findIndex(d=>new RegExp('\\b'+d+'\\b').test(t));if(i>=0)r.fecha=mas((i-hoyD.getDay()+7)%7);
+    const m=t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);if(m){let y=m[3]?+m[3]:hoyD.getFullYear();if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!m[3]&&d<hoyD)d.setFullYear(y+1);r.fecha=fechaISO(d)}}
+  const sin=t.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g,' ');
+  const h=sin.match(/a las? (\d{1,2})(?:[:.](\d{2}))?/)||sin.match(/\b(\d{1,2})[:.](\d{2})\b/)||sin.match(/\b(\d{1,2})\s*(?:hs|h|horas)\b/);
+  if(h){let H=+h[1];const M=h[2]?+h[2]:0;if(H>=1&&H<=11&&!/manana|mediodia/.test(t.slice(h.index)))H+=12;if(H<=23&&M<=59)r.hora=String(H).padStart(2,'0')+':'+String(M).padStart(2,'0')}
+  const p=sin.match(/para (\d{1,2})\b/)||sin.match(/\b(\d{1,2})\s*(?:personas|pers|comensales)\b/)||sin.match(/somos (\d{1,2})\b/);
+  if(p)r.personas=+p[1];else{const w=sin.match(/(?:para|somos) (una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/);if(w)r.personas=NUMS[w[1]]}
+  return r;
+}
+function pasoReserva(txt){
+  const wa=S.wa,r=leerReserva(norm(txt),wa.draft.res||{}),cl=cliente();wa.draft.res=r;
+  if(wa.step==='res_nombre'){r.nombre=txt.trim().slice(0,40)}
+  const falta=[!r.fecha&&'el día',!r.hora&&'la hora',!r.personas&&'cuántas personas'].filter(Boolean);
+  if(falta.length){wa.step='res';return[`¡Dale! Pasame ${falta.join(', ').replace(/, ([^,]*)$/,' y $1')} 🙂\nPor ejemplo: *mañana a las 21:30 para 4*`]}
+  if(r.fecha<fechaISO()||(r.fecha===fechaISO()&&r.hora<new Date().toTimeString().slice(0,5))){delete r.hora;wa.step='res';return['Esa hora ya pasó 😅 ¿Para qué otro horario?']}
+  if(r.personas>20){wa.step='res';return['Para grupos de más de 20 personas escribinos y lo armamos especialmente 🙌']}
+  const t=x=>{const[a,b]=x.split(':').map(Number);return a*60+b};
+  if(S.reservas.filter(x=>x.fecha===r.fecha&&x.estado==='confirmada'&&Math.abs(t(x.hora)-t(r.hora))<90).length>=Math.ceil(S.mesas*.6)){delete r.hora;wa.step='res';return[`Uh, a esa hora estamos completos 😕 ¿Te sirve un poco antes o más tarde?`]}
+  if(!r.nombre){const prev=S.reservas.filter(x=>x.tel===wa.tel).pop();if(cl)r.nombre=cl.nombre;else if(prev)r.nombre=prev.nombre;else{wa.step='res_nombre';return['¿A nombre de quién la anoto?']}}
+  wa.step='res_ok';
+  return[`📅 *Tu reserva*\n${fechaLinda(r.fecha).replace(/^./,c=>c.toUpperCase())} a las *${r.hora}*\n${r.personas} persona${r.personas>1?'s':''} · a nombre de *${r.nombre}*\n\nRespondé *SI* para confirmar.`];
+}
+function botReserva(t,txt){
+  const wa=S.wa;
+  if(/cancel\w* (la |mi )?reserva/.test(t)){
+    const r=S.reservas.filter(x=>x.tel===wa.tel&&x.estado==='confirmada'&&x.fecha>=fechaISO()).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora))[0];
+    if(!r)return['No encontré reservas tuyas a confirmar 🤔'];
+    r.estado='cancelada';audit('Reserva cancelada',`${r.nombre} · ${r.fecha} ${r.hora} (por WhatsApp)`);if(wa.step.startsWith('res'))wa.step='inicio';
+    return[`Listo, cancelé tu reserva del ${fechaLinda(r.fecha)} a las ${r.hora}. ¡Gracias por avisar! 🙏`];
+  }
+  if(wa.step==='res_ok'){
+    if(/^(si|dale|ok|confirmo|de una)/.test(t)){const r=wa.draft.res;
+      S.reservas.push({id:uid(),nombre:r.nombre,tel:wa.tel,personas:r.personas,fecha:r.fecha,hora:r.hora,mesa:null,nota:'Pidió por WhatsApp',estado:'confirmada',ts:Date.now(),por:'WhatsApp'});
+      wa.step='inicio';wa.draft={};
+      return[`✅ ¡Reserva confirmada! Te esperamos.\nSi no podés venir, escribí *cancelar reserva* así liberamos la mesa.`]}
+    if(/^no\b|cancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, no la anoto. Si querés otro horario escribí *reservar*.']}
+    return pasoReserva(txt);
+  }
+  if(wa.step.startsWith('res')){if(/^(cancel|salir|chau)/.test(t)){wa.step='inicio';wa.draft={};return['Listo 👍']}return pasoReserva(txt)}
+  if(/reserv/.test(t)){wa.step='res';wa.draft={res:{}};const r=pasoReserva(txt);return r}
+  return null;
+}
+
+/* turnos de caja */
+function calcTurno(t){const cobs=S.cobros.filter(c=>!c.anulado&&c.turno===t.id),ef=cobs.reduce((a,c)=>a+(c.pagos.efectivo||0),0),eg=S.egresos.filter(e=>e.turno===t.id).reduce((a,e)=>a+e.monto,0);
+  return{n:cobs.length,ef,eg,ventas:cobs.reduce((a,c)=>a+c.total+c.propina,0),esperado:t.apertura+ef-eg}}
+function sugApertura(){const u=S.turnos[S.turnos.length-1];return u?u.contado:S.apertura}
+function vTurno(dueno){
+  let h='';
+  if(!S.turno)h=`<section class="card"><h2>Turno de caja</h2><p class="muted" style="margin-top:0">No hay ningún turno abierto. Abrilo antes de cobrar: así cada cajera rinde lo suyo.</p>
+<form data-f="abrirTurno" class="inline"><label>Efectivo con el que arranca el cajón<input name="monto" inputmode="decimal" value="${sugApertura()}" required></label><button class="primary">Abrir mi turno</button></form></section>`;
+  else{const x=calcTurno(S.turno);h=`<section class="card"><h2>Turno de caja <span class="chip ok">abierto</span></h2><div class="row"><span><b>${esc(S.turno.cajera)}</b></span><span>desde las ${hm(S.turno.inicio)}</span></div><div class="row"><span>Cobros en este turno</span><b>${x.n}</b></div>
+${dueno?`<div class="row"><span>Arrancó con</span><b>${fmt(S.turno.apertura)}</b></div><div class="row"><span>Efectivo que debería haber</span><b>${fmt(x.esperado)}</b></div>`:''}
+<div class="btns"><button class="primary" data-a="cerrarTurno">Cerrar turno y contar la caja</button></div></section>`}
+  if(S.turnos.length)h+=`<section class="card"><h2>Turnos cerrados hoy</h2>${S.turnos.map(t=>dueno?`<div class="row"><span><b>${esc(t.cajera)}</b><small>${hm(t.inicio)} a ${hm(t.fin)} · ${t.n} cobros · ${fmt(t.ventas)}</small></span><span style="text-align:right"><small>Esperado ${fmt(t.esperado)} · contó ${fmt(t.contado)}</small><b class="${t.diferencia<0?'badt':'ok'}">${t.diferencia===0?'Justo ✓':(t.diferencia>0?'Sobran ':'Faltan ')+fmt(Math.abs(t.diferencia))}</b></span></div>`
+    :`<div class="row"><span>${esc(t.cajera)} · ${hm(t.inicio)} a ${hm(t.fin)}</span><span class="chip ok">Cerrado ✓</span></div>`).join('')}</section>`;
+  return h;
+}
+function cerrarTurnoCon(m){
+  const x=calcTurno(S.turno),t=Object.assign(S.turno,{fin:Date.now(),contado:m,esperado:x.esperado,diferencia:Math.round(m-x.esperado),n:x.n,ventas:x.ventas});
+  S.turnos.push(t);S.turno=null;S.arqueo={monto:m,ts:Date.now(),por:t.cajera};
+  audit('Cierre de turno',`${t.cajera} contó el efectivo`,m);if(t.diferencia)audit(t.diferencia<0?'Faltante de caja':'Sobrante de caja',`Turno de ${t.cajera}`,Math.abs(t.diferencia));
+  return t;
+}
+
 function vClientes(){
   const l=Object.values(S.clientes).sort((a,b)=>b.gastado-a.gastado);
   return`<div class="ptitle"><div><h1>Clientes</h1><small>Se arma solo con cada pedido por WhatsApp: nombre, dirección, qué pide y cuánto gastó. El bot los saluda por el nombre y les ofrece "lo de siempre".</small></div></div>
@@ -835,6 +904,7 @@ Ventas: ${fmt(c.ventas)} (${c.tickets} pedidos)${c.descuentos?` · descuentos ${
 Propinas: ${fmt(c.propinas)}
 Pendiente de cobro: ${fmt(c.pendiente)}
 Saldo de caja (efectivo): ${fmt(c.saldo)}${S.arqueo?` · Contado: ${fmt(S.arqueo.monto)} · Diferencia: ${fmt(S.arqueo.monto-c.saldo)}`:''}
+${S.turnos.map(t=>`Turno ${t.cajera} (${hm(t.inicio)}-${hm(t.fin)}): ${t.diferencia===0?'justo':(t.diferencia>0?'sobran ':'faltan ')+fmt(Math.abs(t.diferencia))}`).join('\n')}
 Mercadería vendida (costo): ${fmt(c.costoVendido)}
 Merma: ${fmt(c.costoMerma)}
 Stock restante (valorizado): ${fmt(c.stockValor)}
@@ -853,7 +923,7 @@ function vCierre(){
 <section class="card"><h2>Ventas por medio de pago</h2>${Object.entries(MEDIO).map(([k,n])=>`<div class="row"><span>${n}</span><b>${fmt(c.porMedio[k])}</b></div>`).join('')}<div class="row"><span>Sin cobrar</span><b>${fmt(c.pendiente)}</b></div>${c.descuentos?`<div class="row"><span>Descuentos dados</span><b>−${fmt(c.descuentos)}</b></div>`:''}</section>
 <section class="card"><h2>Ventas por canal</h2><div class="row"><span>Salón · QR del cliente</span><b>${fmt(c.porCanal.QR)}</b></div><div class="row"><span>Salón · mozo</span><b>${fmt(c.porCanal.Mozo)}</b></div><div class="row"><span>Mostrador / para llevar</span><b>${fmt(c.porCanal.Mostrador)}</b></div><div class="row"><span>Delivery WhatsApp</span><b>${fmt(c.porCanal.WhatsApp)}</b></div><div class="row"><span>Pedidos</span><b>${c.tickets}</b></div><div class="row"><span>Ticket promedio</span><b>${fmt(c.tickets?c.ventas/c.tickets:0)}</b></div></section>
 <section class="card"><h2>Caja</h2><div class="row"><span>Apertura</span><b>${fmt(S.apertura)}</b></div><div class="row"><span>+ Efectivo cobrado</span><b>${fmt(c.porMedio.efectivo)}</b></div><div class="row"><span>− Egresos</span><b>${fmt(c.egresos)}</b></div><div class="row"><span>Saldo esperado</span><b>${fmt(c.saldo)}</b></div>
-${S.arqueo?`<div class="row"><span>Contado (arqueo)</span><b>${fmt(S.arqueo.monto)}</b></div><div class="row"><span>Diferencia</span><b class="${S.arqueo.monto-c.saldo<0?'badt':'ok'}">${fmt(S.arqueo.monto-c.saldo)}</b></div>`:'<p class="muted">Falta el arqueo de la cajera.</p>'}</section>
+${S.arqueo?`<div class="row"><span>Contado (arqueo)</span><b>${fmt(S.arqueo.monto)}</b></div><div class="row"><span>Diferencia</span><b class="${S.arqueo.monto-c.saldo<0?'badt':'ok'}">${fmt(S.arqueo.monto-c.saldo)}</b></div>`:'<p class="muted">Todavía no se contó la caja.</p>'}${S.turnos.map(t=>`<div class="row"><span>Turno ${esc(t.cajera)} <small style="display:inline">${hm(t.inicio)}–${hm(t.fin)}</small></span><b class="${t.diferencia<0?'badt':'ok'}">${t.diferencia===0?'justo':(t.diferencia>0?'+':'−')+fmt(Math.abs(t.diferencia))}</b></div>`).join('')}</section>
 </div>
 <div class="grid2">
 <section class="card"><h2>Ventas por hora</h2>${hs.length?`<div class="bars">${Array.from({length:hmax-hmin+1},(_,i)=>hmin+i).map(h=>`<div class="bar">${c.porHora[h]?`<b>${Math.round(c.porHora[h]/1000)}k</b>`:''}<i style="height:${(c.porHora[h]||0)/mx*100}%"></i>${h}h</div>`).join('')}</div>`:'<p class="muted">Sin ventas todavía.</p>'}</section>
@@ -870,18 +940,18 @@ ${S.cierres.length?`<section class="card"><h2>Días anteriores</h2>${S.cierres.s
 }
 
 /* whatsapp */
-const QUICK=['Hola','2 hamburguesas sin tomate y 1 coca','Lucía, Córdoba 1520','1','SI','estado','lo de siempre'];
+const QUICK=['Hola','2 hamburguesas sin tomate y 1 coca','Lucía, Córdoba 1520','1','SI','estado','lo de siempre','quiero reservar','mañana a las 21:30 para 4','cancelar reserva'];
 function fmtWa(t){return esc(t).replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
 function vWhatsapp(){
   const peds=S.pedidos.filter(p=>p.origen==='whatsapp'&&!p.anulado).slice().reverse();
-  return`<div class="ptitle"><div><h1>Pedidos por WhatsApp</h1><small>El asistente responde solo, toma el pedido con aclaraciones, controla el stock y lo manda a cocina para delivery.</small></div><button class="ghost small" data-a="waReset">Nueva conversación</button></div>
+  return`<div class="ptitle"><div><h1>Pedidos y reservas por WhatsApp</h1><small>El asistente responde solo, toma el pedido con aclaraciones, controla el stock y lo manda a cocina para delivery.</small></div><button class="ghost small" data-a="waReset">Nueva conversación</button></div>
 <div class="wa-wrap"><div class="phone"><div class="wa-h"><span class="av">🍔</span><div><b>${esc(S.negocio)}</b><small>Asistente automático · en línea</small></div></div>
 <div class="wa-tel">Simulás ser el cliente del número <input data-set="waTel" value="${esc(S.wa.tel)}"></div>
 <div class="wa-body" id="wab"><div class="msg sys">Escribí como si fueras un cliente. Cambiá el número de arriba para simular otro cliente.</div>
 ${S.wa.msgs.map(m=>`<div class="msg ${m.from}"><div>${fmtWa(m.t)}</div><small>${hm(m.ts)}</small></div>`).join('')}${typing?'<div class="msg bot"><i>escribiendo…</i></div>':''}</div>
 <div class="wachips">${QUICK.map(q=>`<button data-a="waQuick" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
 <form class="wa-in" data-f="wa"><input id="wain" name="t" placeholder="Escribí un mensaje" autocomplete="off"><button aria-label="Enviar">➤</button></form></div>
-<div><section class="card"><h2>Cómo funciona</h2><ol class="steps"><li>El cliente escribe al WhatsApp del local y recibe la carta con precios.</li><li>Pide como habla (“2 milas y una birra, una sin huevo”). El bot arma el pedido, guarda las aclaraciones y controla el stock.</li><li>Si ya pidió antes, lo saluda por el nombre y le ofrece <b>lo de siempre</b> con su dirección guardada.</li><li>Confirma el total con envío (${fmt(S.envio)}) y la forma de pago.</li><li>El pedido aparece en <b>Cocina</b> en verde, la venta en <b>Caja</b> y el cliente en <b>Clientes</b>.</li><li>Cuando cocina lo marca en preparación o despachado, el cliente recibe el aviso.</li></ol></section>
+<div><section class="card"><h2>Cómo funciona</h2><ol class="steps"><li>El cliente escribe al WhatsApp del local y recibe la carta con precios.</li><li>Pide como habla (“2 milas y una birra, una sin huevo”). El bot arma el pedido, guarda las aclaraciones y controla el stock.</li><li>Si ya pidió antes, lo saluda por el nombre y le ofrece <b>lo de siempre</b> con su dirección guardada.</li><li>Confirma el total con envío (${fmt(S.envio)}) y la forma de pago.</li><li>El pedido aparece en <b>Cocina</b> en verde, la venta en <b>Caja</b> y el cliente en <b>Clientes</b>.</li><li>Cuando cocina lo marca en preparación o despachado, el cliente recibe el aviso.</li><li>También toma <b>reservas</b> (“mañana a las 21:30 para 4”): controla que no esté lleno y la reserva aparece en <b>Reservas</b>. El cliente la cancela escribiendo <i>cancelar reserva</i>.</li></ol></section>
 <section class="card"><h2>Pedidos de WhatsApp de hoy</h2>${peds.map(p=>`<div class="row"><span>#${p.num} · ${esc(p.cliente)} — ${p.items.map(itemTxt).join(', ')}</span><span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span> <b>${fmt(p.total)}</b></span></div>`).join('')||'<p class="muted">Todavía no hay pedidos por WhatsApp.</p>'}</section></div></div>`;
 }
 
@@ -901,7 +971,7 @@ const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,
 function render(){
   const app=$('#app');
   if(pantallaMode){app.innerHTML=vPantalla();return}
-  if(!S.reservas&&!cloudClient())S.reservas=[];
+  if(!cloudClient()&&(!S.reservas||!S.turnos))completar(S);
   if(clienteMode){if(cloudClient()&&!cartaOk){app.innerHTML=`<div class="login"><div class="card">${LOGO}<p class="tagline">${cartaError?esc(cartaError):'Cargando la carta…'}</p></div></div>`;return}app.innerHTML=vCliente('cliente');return}
   if(!rol||!ROLES[rol]){rol=null;app.innerHTML=vLogin();return}
   const tabs=ROLES[rol].tabs;if(!tabs.includes(tab))tab=tabs[0];
@@ -944,6 +1014,7 @@ function pasoResumen(lines,nota){
 }
 function bot(txt){
   const t=norm(txt),wa=S.wa,cl=cliente();
+  const rv=botReserva(t,txt);if(rv)return rv;
   if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
   if(/^estado\b|como va mi pedido|donde esta mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
   if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
@@ -952,7 +1023,7 @@ function bot(txt){
     const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
     wa.step='pedido';
     if(cl&&cl.ultItems)return[`¡Hola ${cl.nombre}! 👋 Qué bueno verte de nuevo.\n¿Te mando *lo de siempre*? (${cl.ultItems.map(l=>l.cant+'× '+(plato(l.id)||{}).nombre).join(', ')})\nO escribí *menú* para ver la carta.`];
-    return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*'];
+    return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery o te anoto una reserva.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*\nPara reservar mesa escribí *reservar*.'];
   }
   if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'];return pasoResumen(r.lines,r.nota)}
   if(wa.step==='datos'){
@@ -1053,7 +1124,8 @@ const A={
   tomarMesa(b){C.mesa=+b.dataset.n;C.cart=[];S.llamados=S.llamados.filter(l=>l.mesa!==C.mesa);save();closeModal();tab='tomar';render();scrollTo(0,0)},
   kArea(b){kArea=b.dataset.k;render()},
   avanzar(b){const p=S.pedidos.find(p=>p.id===b.dataset.id);if(p){avanzar(p);render()}},
-  cobrar(b){CB=null;cobroModal(b.dataset.g)},
+  cobrar(b){if(!S.turno){closeModal();tab='caja';render();return toast('Primero abrí el turno de caja',1)}CB=null;cobroModal(b.dataset.g)},
+  cerrarTurno(){modal(`<h2>Cerrar turno</h2><p class="muted" style="margin-top:0">Contá todo el efectivo del cajón (billetes y monedas) y cargalo.${rol==='dueno'?'':' No vas a ver cuánto debería haber: eso lo controla el titular.'}</p><form data-f="cerrarTurno"><label>Efectivo contado<input name="monto" inputmode="decimal" required autocomplete="off"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Cerrar turno</button></div></form>`)},
   cbProp(b){CB.prop=+b.dataset.p;cobroModal(CB.key)},
   cbTodo(b){const x=cbCalc();Object.keys(CB.pagos).forEach(m=>CB.pagos[m]='');CB.pagos[b.dataset.m]=String(x.aPagar);cobroModal(CB.key)},
   cbOk(){
@@ -1102,9 +1174,9 @@ const A={
     else{p={id:uid(),nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre).split(' ')[0]],activo:true,receta,mods};S.platos.push(p);audit('Plato nuevo',p.nombre,precio)}
     save();closeModal();render();toast('Plato guardado ✓')},
   copiar(){copiar(resumenTxt(calc()),'Resumen copiado ✓ — pegalo en WhatsApp')},
-  cerrarDia(){const c=calc();modal(`<h2>¿Cerrar el día?</h2><p class="muted">Se guarda el resumen (${fmt(c.ventas)} en ventas) y se empieza un día nuevo. El stock y las cuentas abiertas se mantienen.</p>${c.pendiente?`<p class="badt">Atención: hay ${fmt(c.pendiente)} sin cobrar.</p>`:''}${S.arqueo?'':'<p class="badt">La cajera todavía no cargó el arqueo.</p>'}<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cerrarOk">Cerrar el día</button></div>`)},
-  cerrarOk(){const c=calc();S.cierres.push({id:uid(),ts:Date.now(),dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c)});
-    S.pedidos=S.pedidos.filter(p=>!p.anulado&&!p.cobrado);S.cobros=[];S.mermas=[];S.egresos=[];S.audit=[];S.arqueo=null;S.apertura=20000;S.dia=hoy();save();closeModal();render();toast('Día cerrado ✓')},
+  cerrarDia(){const c=calc();modal(`<h2>¿Cerrar el día?</h2><p class="muted">Se guarda el resumen (${fmt(c.ventas)} en ventas) y se empieza un día nuevo. El stock y las cuentas abiertas se mantienen.</p>${c.pendiente?`<p class="badt">Atención: hay ${fmt(c.pendiente)} sin cobrar.</p>`:''}${S.turno?'<p class="badt">Hay un turno de caja abierto: cerralo primero.</p>':S.arqueo?'':'<p class="badt">Todavía no se contó la caja.</p>'}<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cerrarOk">Cerrar el día</button></div>`)},
+  cerrarOk(){if(S.turno){closeModal();return toast('Antes cerrá el turno de caja abierto',1)}const c=calc();S.cierres.push({id:uid(),ts:Date.now(),dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c)});
+    S.pedidos=S.pedidos.filter(p=>!p.anulado&&!p.cobrado);S.cobros=[];S.mermas=[];S.egresos=[];S.audit=[];S.turnos=[];S.arqueo=null;S.apertura=20000;S.dia=hoy();save();closeModal();render();toast('Día cerrado ✓')},
   waQuick(b){waSend(b.dataset.q)},
   waReset(){S.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:S.wa.tel};save();render()},
   demoVentas(){demoVentas();toast('Ventas de ejemplo cargadas');tab='cierre';render()},
@@ -1131,14 +1203,16 @@ const F={
     rFecha=d.fecha;save();render();toast('Reserva guardada ✓')},
   login(d){if(ROLES[d.rol]&&ROLES[d.rol].pin===d.pin){rol=d.rol;try{sessionStorage.setItem('comanda-rol',rol)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
   wa(d,f){const t=d.t;f.reset();waSend(t)},
+  abrirTurno(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);if(!S.turnos.length&&!S.cobros.length)S.apertura=m;S.turno={id:uid(),cajera:yo(),apertura:m,inicio:Date.now()};audit('Apertura de turno',yo(),m);save();render();toast('Turno abierto ✓')},
+  cerrarTurno(d){const m=pnum(d.monto);if(!(m>=0)||String(d.monto).trim()==='')return toast('Cargá el efectivo contado',1);const t=cerrarTurnoCon(m);save();closeModal();render();toast(rol==='dueno'&&t.diferencia?`Turno cerrado · ${t.diferencia>0?'sobran':'faltan'} ${fmt(Math.abs(t.diferencia))}`:'Turno cerrado ✓')},
   arqueo(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);S.arqueo={monto:m,ts:Date.now(),por:yo()};audit('Arqueo','Efectivo contado',m);save();render();toast('Arqueo guardado ✓')},
-  egreso(d){const m=pnum(d.monto);if(!(m>0))return toast('Monto inválido',1);S.egresos.push({id:uid(),concepto:d.concepto,monto:m,ts:Date.now(),por:yo()});audit('Egreso',d.concepto,m);save();render();toast('Egreso registrado')},
+  egreso(d){const m=pnum(d.monto);if(!(m>0))return toast('Monto inválido',1);S.egresos.push({id:uid(),turno:S.turno?S.turno.id:null,concepto:d.concepto,monto:m,ts:Date.now(),por:yo()});audit('Egreso',d.concepto,m);save();render();toast('Egreso registrado')},
   merma(d){const e=registrarMerma(d.ins,pdec(d.cant),d.motivo);if(e)return toast(e,1);render();toast('Merma registrada')},
   apertura(d){const m=pnum(d.monto);S.apertura=m;audit('Apertura de caja','Cambio inicial',m);save();closeModal();render()},
   ingreso(d){const i=insumo(d.id),q=pdec(d.cant);if(!(q>0))return toast('Cantidad inválida',1);const costo=pnum(d.costo)>0?pnum(d.costo):i.costo;
     i.stock=r3(i.stock+q);i.costo=costo;i.min=pdec(d.min);i.prov=d.prov;
     audit('Compra',`${num(q)} ${i.u} ${i.nombre} · ${(prov(d.prov)||{}).nombre||''}`,q*costo);
-    if(d.caja)S.egresos.push({id:uid(),concepto:`Compra ${i.nombre} (${(prov(d.prov)||{}).nombre||''})`,monto:Math.round(q*costo),ts:Date.now(),por:yo()});
+    if(d.caja)S.egresos.push({id:uid(),turno:S.turno?S.turno.id:null,concepto:`Compra ${i.nombre} (${(prov(d.prov)||{}).nombre||''})`,monto:Math.round(q*costo),ts:Date.now(),por:yo()});
     save();closeModal();render();toast('Stock actualizado')},
   insumo(d){if(!d.nombre.trim())return;let id=norm(d.nombre).replace(/[^a-z0-9]+/g,'-');if(insumo(id))id+='-'+uid().slice(0,3);
     S.insumos.push({id,nombre:d.nombre.trim(),u:d.u,stock:pdec(d.stock),costo:pnum(d.costo),min:pdec(d.min),prov:d.prov});save();closeModal();render();toast('Insumo creado')}
@@ -1148,6 +1222,7 @@ function demoVentas(){
   const combos=[[L('hamb',2,['st']),L('gaseosa',2)],[L('mila',1,['nap']),L('pinta',2)],[L('pizza',1),L('pinta',3)],[L('cesar',1),L('gaseosa',1)],[L('hamb',1,['xp']),L('papas',1),L('pinta',1)],[L('mila',2),L('gaseosa',2)],[L('pizza',2),L('gaseosa',3)],[L('hamb',3),L('papas',1,['pc']),L('pinta',3)],[L('mila',1),L('cesar',1),L('pinta',2)],[L('pizza',1),L('papas',1),L('gaseosa',2)],[L('hamb',2),L('pinta',2)],[L('mila',1,['hf']),L('gaseosa',1)]];
   const medios=['efectivo','mp','tarjeta','efectivo','transferencia','mp','efectivo','tarjeta','efectivo','mp','efectivo','tarjeta'];
   const clientes=[['Martina','341 555-0111','Bv. Oroño 845'],['Diego','341 555-0112','Mitre 1290'],['Sofía','341 555-0113','Pellegrini 2010'],['Pablo','341 555-0114','Salta 1580']];
+  if(!S.turno){S.turno={id:uid(),cajera:'Ana',apertura:S.apertura,inicio:Date.now()-5*3600000}}
   combos.forEach((c,i)=>{
     const w=i%3===2,cl=clientes[(i/3|0)%4];
     const p=crearPedido({origen:w?'whatsapp':'mesa',por:w?'WhatsApp':i%2?'QR':'Mozo',mesa:(i%6)+1,cliente:w?cl[0]:'',tel:w?cl[1]:'',direccion:w?cl[2]:'',lines:c,medio:w?medios[i]:null});
@@ -1157,6 +1232,7 @@ function demoVentas(){
       const desc=i===4?10:0,total=Math.round(p.total*(1-desc/100)),prop=w?0:Math.round(total*(i%2?.1:0));
       const pagos={efectivo:0,mp:0,tarjeta:0,transferencia:0};if(i===6){pagos.efectivo=Math.round((total+prop)/2);pagos.tarjeta=total+prop-pagos.efectivo}else pagos[medios[i]]=total+prop;
       const cb=registrarCobro([p],{nombre:w?'Delivery #'+p.num+' · '+cl[0]:'Mesa '+p.mesa,por:'Cajera',subtotal:p.total,descPct:desc,descuento:p.total-total,propina:prop,total,pagos});cb.ts=p.ts+45*60000;
+      if(i===4&&S.turno&&S.turno.cajera==='Ana'){const t=cerrarTurnoCon(calcTurno(S.turno).esperado-500);t.fin=Date.now()-2*3600000;S.turno={id:uid(),cajera:'Cajera',apertura:t.contado,inicio:t.fin}}
     }else p.estado=i===9?'listo':i===10?'preparando':'nuevo';
   });
   [['Juli','listo',[L('hamb',1),L('papas',1)]],['Nico','preparando',[L('pizza',1)]],['Caro','nuevo',[L('mila',1),L('gaseosa',1)]]].forEach(([n,e,l])=>{const p=crearPedido({origen:'mostrador',por:'Cajera',cliente:n,lines:l});if(!p.error){p.estado=e;p.ts=Date.now()-(e==='listo'?18:e==='preparando'?9:2)*60000}});
@@ -1164,7 +1240,7 @@ function demoVentas(){
   const m3=S.pedidos.find(p=>!p.cobrado&&p.mesa===4&&p.origen==='mesa');if(m3)m3.pideCuenta=true;
   S.llamados.push({id:uid(),mesa:5,ts:Date.now()-3*60000});
   registrarMerma('tomate',.4,'Vencido');registrarMerma('cerveza',1.5,'Se cayó / se rompió');registrarMerma('carne',.18,'Error de cocina');
-  S.egresos.push({id:uid(),concepto:'Pago verdulería',monto:12000,ts:Date.now()-3600000,por:'Cajera'});audit('Egreso','Pago verdulería',12000);save();
+  S.egresos.push({id:uid(),turno:S.turno?S.turno.id:null,concepto:'Pago verdulería',monto:12000,ts:Date.now()-3600000,por:'Cajera'});audit('Egreso','Pago verdulería',12000);save();
 }
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b,e)});

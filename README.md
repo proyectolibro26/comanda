@@ -14,6 +14,8 @@ Software para bares y restaurantes — por Roman Web. (Antes "Comanda".)
 - **Mostrador / para llevar**: pedido con nombre, pantalla de retiro para un televisor (`#pantalla`).
 - **Reservas**: por día, con mesa asignada (se ve en el salón), choque de horarios, recordatorio para WhatsApp.
 - **Impresión** (térmica 80 mm): comanda por estación, precuenta, ticket y cierre; impresión automática por equipo.
+- **Reservas por WhatsApp**: el bot entiende día, hora y personas, controla que no esté lleno y deja cancelar.
+- **Turnos de caja**: cada cajera abre su turno y lo cierra contando a ciegas; el dueño ve esperado, contado y faltante/sobrante por turno.
 - **Roles**: el saldo de caja solo lo ve el dueño; la cajera hace el arqueo a ciegas.
 
 PIN de prueba: Dueño `1234` · Cajera `0000` · Mozo `2222` · Cocina `1111`.
