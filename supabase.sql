@@ -171,15 +171,46 @@ begin
 end $$;
 
 -- Panel de Roman Web: todos los locales (solo cuentas en taca_admins).
+alter table public.taca_locales add column if not exists pagado_hasta timestamptz;
+alter table public.taca_locales add column if not exists nota text;
+
+create or replace function public.taca_es_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and exists (select 1 from taca_admins where user_id = auth.uid());
+$$;
+
 create or replace function public.taca_admin_locales()
 returns jsonb language sql stable security definer set search_path = public as $$
-  select case when exists (select 1 from taca_admins where user_id = auth.uid()) then
-    (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', l.nombre, 'plan', l.plan, 'prueba_hasta', l.prueba_hasta,
+  select case when taca_es_admin() then
+    (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', coalesce(l.nombre, l.data->>'negocio'),
+       'tipo', l.data->>'tipo', 'plan', l.plan, 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
        'creado', l.creado, 'actualizado', l.updated_at,
+       'pedidos', coalesce(jsonb_array_length(l.data->'pedidos'), 0),
+       'equipo', coalesce(jsonb_array_length(l.data->'equipo'), 0),
+       'ventas', (select coalesce(sum((c->>'total')::numeric), 0) from jsonb_array_elements(coalesce(l.data->'cobros', '[]'::jsonb)) c
+                  where coalesce((c->>'anulado')::boolean, false) = false),
        'duenos', (select coalesce(jsonb_agg(m.email), '[]'::jsonb) from taca_miembros m where m.local_id = l.id and m.rol = 'dueno'))
        order by l.creado desc), '[]'::jsonb) from taca_locales l)
   else null end;
 $$;
+
+-- Cambiar el plan de un local: 'activo' suma días pagos, 'prueba' extiende la prueba, 'suspendido' lo frena.
+create or replace function public.taca_admin_plan(p_id text, p_plan text, p_dias integer, p_nota text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not taca_es_admin() then return jsonb_build_object('ok', false, 'error', 'Solo Roman Web'); end if;
+  if p_plan not in ('prueba', 'activo', 'suspendido') then return jsonb_build_object('ok', false, 'error', 'Plan inválido'); end if;
+  update taca_locales set
+    plan = p_plan,
+    prueba_hasta = case when p_plan = 'prueba' and coalesce(p_dias, 0) > 0
+                        then greatest(coalesce(prueba_hasta, now()), now()) + make_interval(days => p_dias) else prueba_hasta end,
+    pagado_hasta = case when p_plan = 'activo' and coalesce(p_dias, 0) > 0
+                        then greatest(coalesce(pagado_hasta, now()), now()) + make_interval(days => p_dias) else pagado_hasta end,
+    nota = coalesce(p_nota, nota)
+  where id = p_id;
+  if not found then return jsonb_build_object('ok', false, 'error', 'No existe ese local'); end if;
+  return jsonb_build_object('ok', true);
+end $$;
 
 -- Limpieza: locales de prueba sin dueño.
 delete from public.taca_locales l where l.id like 'prueba-taca-%' and not exists (select 1 from public.taca_miembros m where m.local_id = l.id);
@@ -187,4 +218,5 @@ delete from public.taca_locales l where l.id like 'prueba-taca-%' and not exists
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function public.taca_carta(text, integer), public.taca_cliente(text, text, integer, jsonb, jsonb) to anon, authenticated;
 grant execute on function public.taca_es_miembro(text), public.taca_mis_locales(), public.taca_crear_local(text, jsonb),
-  public.taca_leer(text), public.taca_version(text), public.taca_guardar(text, jsonb, integer), public.taca_admin_locales() to authenticated;
+  public.taca_leer(text), public.taca_version(text), public.taca_guardar(text, jsonb, integer), public.taca_admin_locales(),
+  public.taca_es_admin(), public.taca_admin_plan(text, text, integer, text) to authenticated;

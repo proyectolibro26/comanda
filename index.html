@@ -410,6 +410,9 @@ function supaNube(sb){
       onCambio(cb){sb.auth.onAuthStateChange((ev,s)=>setTimeout(()=>cb(ev,s?s.user:null)))}
     },
     misLocales:()=>rpc('taca_mis_locales'),
+    esAdmin:()=>rpc('taca_es_admin'),
+    adminLocales:()=>rpc('taca_admin_locales'),
+    adminPlan:(id,plan,dias,nota)=>rpc('taca_admin_plan',{p_id:id,p_plan:plan,p_dias:dias||0,p_nota:nota??null}),
     crearLocal:(n,d)=>rpc('taca_crear_local',{p_nombre:n,p_data:d}),
     leer:id=>rpc('taca_leer',{p_id:id}),
     version:id=>rpc('taca_version',{p_id:id}),
@@ -437,15 +440,21 @@ function mockNube(){
       recuperar:()=>later(()=>true),nuevaClave:()=>later(()=>true),
       onCambio(cb){cbs.push(cb)}
     },
+    esAdmin:()=>later(()=>{const u=ses();return !!(u&&JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))}),
+    adminLocales:()=>later(()=>{const u=ses();if(!u||!JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))return null;const us=users(),em=id=>(Object.entries(us).find(([,x])=>x.id===id)||[''])[0];
+      return Object.entries(get()).map(([id,r])=>({id,nombre:r.data.negocio,tipo:r.data.tipo,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,nota:r.nota||null,creado:r.creado||r.prueba_hasta,actualizado:r.actualizado||null,
+        pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
+    adminPlan:(id,plan,dias,nota)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'No existe ese local'};const mas=(f)=>new Date(Math.max(Date.now(),f?+new Date(f):0)+(dias||0)*864e5).toISOString();
+      r.plan=plan;if(plan==='prueba'&&dias>0)r.prueba_hasta=mas(r.prueba_hasta);if(plan==='activo'&&dias>0)r.pagado_hasta=mas(r.pagado_hasta);if(nota!=null)r.nota=nota;put(db);return{ok:true}}),
     misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:'prueba',prueba_hasta:r.prueba_hasta}))}),
     crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
-      db[id]={data:d,version:1,miembros:[u.id],prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
+      db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
     leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:'prueba',prueba_hasta:r.prueba_hasta}:null}),
     version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
       if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
       if(r.version!==v)return{ok:false,data:r.data,version:r.version};
-      r.data=d;r.version++;put(db);return{ok:true,version:r.version}}),
+      r.data=d;r.version++;r.actualizado=new Date().toISOString();put(db);return{ok:true,version:r.version}}),
     carta:(id,m)=>later(()=>{const r=get()[id];if(!r)return null;const d=r.data;
       return{version:r.version,negocio:d.negocio,mesas:d.mesas,platos:d.platos,insumos:d.insumos.map(i=>({id:i.id,stock:i.stock})),
         pedidos:d.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===m&&!p.cobrado&&!p.anulado),llamados:(d.llamados||[]).filter(l=>l.mesa===m)}}),
@@ -494,10 +503,12 @@ async function arrancarCuentas(){
     const antes=AUTH.user&&AUTH.user.id;AUTH.user=u;
     if(u&&u.id!==antes){AUTH.locales=null;despuesDeEntrar()}else if(!u&&antes){salirTodo(false)}
     renderSafe()});
-  if(AUTH.user){if(LID)conectar();else despuesDeEntrar()}
+  if(AUTH.user){verAdmin();if(LID)conectar();else despuesDeEntrar()}
   render();
 }
+function verAdmin(){if(NB&&NB.esAdmin&&AUTH.user)NB.esAdmin().then(a=>{if(!!a!==!!AUTH.admin){AUTH.admin=!!a;renderSafe()}}).catch(()=>{})}
 async function despuesDeEntrar(){
+  verAdmin();
   if(LID){conectar();return}
   try{AUTH.locales=await NB.misLocales()}catch(e){AUTH.locales=[];toast(errMsg(e),1)}
   const pend=ls('taca-pendiente');
@@ -541,8 +552,46 @@ function vLocales(){
 ${l.length?`<h2 style="text-align:left;margin-top:18px">Elegí el local</h2>${l.map(x=>{const d=x.plan==='prueba'?Math.ceil((new Date(x.prueba_hasta)-Date.now())/864e5):null;
   return`<button class="mesa-c" style="width:100%;min-height:0;margin-bottom:8px" data-a="elegirLocal" data-id="${esc(x.id)}"><b>${esc(x.nombre)}</b><small>${x.rol==='dueno'?'Dueño':esc(x.rol)}${d!==null?` · ${d>0?'prueba: quedan '+d+' días':'prueba vencida'}`:''}</small></button>`}).join('')}`:'<p class="muted" style="margin-top:16px">Todavía no tenés ningún local en ta-ca.</p>'}
 <form data-f="nuevoLocal" class="inline" style="margin-top:10px;text-align:left"><label>${l.length?'Sumar otro local':'Creá tu local'}<input name="nombre" placeholder="Nombre del local" required></label><button class="primary">Crear</button></form>
-<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
+${AUTH.admin?'<p style="margin-top:14px"><button data-a="admAbrir">🛠 Panel Roman Web</button></p>':''}<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
 }
+/* ---------- panel de Roman Web (solo admins) ---------- */
+const ADM={lista:null,f:'todos',q:'',cargando:false};
+function estadoLocal(x){const dd=t=>Math.ceil((new Date(t)-Date.now())/864e5);
+  if(x.plan==='suspendido')return{k:'susp',t:'Suspendido',c:'bad'};
+  if(x.plan==='activo'){const d=x.pagado_hasta?dd(x.pagado_hasta):0;return d>0?{k:d<=5?'porvencer':'activo',t:`Pagó · quedan ${d} días`,c:d<=5?'warn':'ok',pago:1}:{k:'vencido',t:'Pago vencido',c:'bad',pago:1}}
+  const d=x.prueba_hasta?dd(x.prueba_hasta):0;return d>0?{k:d<=3?'porvencer':'prueba',t:`Prueba · quedan ${d} día${d>1?'s':''}`,c:d<=3?'warn':'blue'}:{k:'vencido',t:'Prueba vencida',c:'bad'};
+}
+function haceDias(t){if(!t)return'—';const m=(Date.now()-new Date(t))/6e4;return m<60?'hace '+Math.max(1,Math.round(m))+' min':m<1440?'hace '+Math.round(m/60)+' h':'hace '+Math.round(m/1440)+' días'}
+const fecha=t=>t?new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+async function cargarAdmin(){ADM.cargando=true;render();try{ADM.lista=await NB.adminLocales();if(ADM.lista===null){AUTH.panel=false;AUTH.admin=false;toast('Tu cuenta no es administradora',1)}}catch(e){toast(errMsg(e),1)}ADM.cargando=false;render()}
+function vAdmin(){
+  const L=(ADM.lista||[]).map(x=>Object.assign({},x,{e:estadoLocal(x)}));
+  const cuenta=k=>L.filter(x=>k==='prueba'?['prueba','porvencer'].includes(x.e.k)&&!x.e.pago:k==='activo'?x.e.pago&&x.e.k!=='vencido':x.e.k===k).length;
+  const FIL=[['todos','Todos',L.length],['prueba','En prueba',cuenta('prueba')],['porvencer','Por vencer',cuenta('porvencer')],['vencido','Vencidos',cuenta('vencido')],['activo','Pagando',cuenta('activo')],['susp','Suspendidos',cuenta('susp')]];
+  const q=norm(ADM.q||'');
+  const vis=L.filter(x=>(ADM.f==='todos'||(ADM.f==='prueba'?['prueba','porvencer'].includes(x.e.k)&&!x.e.pago:ADM.f==='activo'?x.e.pago&&x.e.k!=='vencido':x.e.k===ADM.f))&&(!q||norm([x.nombre,x.tipo,(x.duenos||[]).join(' '),x.nota].join(' ')).includes(q)));
+  const nuevos7=L.filter(x=>Date.now()-new Date(x.creado)<7*864e5).length, activos7=L.filter(x=>x.actualizado&&Date.now()-new Date(x.actualizado)<7*864e5).length;
+  const fila=x=>{const mail=(x.duenos||[])[0]||'';const asunto=encodeURIComponent('Tu local en ta-ca');
+    return`<tr><td><b>${esc(x.nombre||x.id)}</b><small>${esc(x.tipo||'')}${x.nota?` · 📝 ${esc(x.nota)}`:''}</small></td>
+<td>${mail?`<a style="color:var(--accd)" href="mailto:${esc(mail)}?subject=${asunto}">${esc(mail)}</a>`:'—'}${(x.duenos||[]).length>1?`<small>+${x.duenos.length-1} más</small>`:''}</td>
+<td><span class="chip ${x.e.c}">${x.e.t}</span></td><td>${fecha(x.creado)}</td><td>${haceDias(x.actualizado)}</td>
+<td style="text-align:right">${x.pedidos||0}<small>${x.equipo||0} en el equipo</small></td><td style="text-align:right">${fmt(+x.ventas||0)}</td>
+<td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
+  return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">${LOGO}<h1 style="margin:0;font-size:20px">Panel Roman Web</h1><span style="flex:1"></span>
+<button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
+${ADM.lista===null?`<p class="muted">${ADM.cargando?'Cargando locales…':'Sin datos.'}</p>`:`
+<div class="kpis"><div class="kpi hi"><small>Locales</small><b>${L.length}</b></div><div class="kpi acc"><small>Pagando</small><b>${cuenta('activo')}</b></div>
+<div class="kpi"><small>En prueba</small><b>${cuenta('prueba')}</b></div><div class="kpi"><small>Por vencer</small><b>${cuenta('porvencer')}</b></div>
+<div class="kpi"><small>Altas últimos 7 días</small><b>${nuevos7}</b></div><div class="kpi"><small>Usaron ta-ca esta semana</small><b>${activos7}</b></div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">${FIL.map(([k,t,n])=>`<button class="small ${ADM.f===k?'primary':''}" data-a="admFiltro" data-f="${k}">${t} · ${n}</button>`).join('')}
+<input id="admq" placeholder="Buscar local, email o nota" value="${esc(ADM.q||'')}" oninput="ADM.q=this.value;admFiltrarDom()" style="max-width:260px;margin:0 0 0 auto"></div>
+<section class="card" style="padding:0;overflow:auto"><table id="admtabla"><thead><tr><th>Local</th><th>Dueño</th><th>Estado</th><th>Alta</th><th>Último uso</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Ventas</th><th></th></tr></thead>
+<tbody>${vis.map(fila).join('')||'<tr><td colspan="8" class="muted" style="padding:18px">No hay locales con ese filtro.</td></tr>'}</tbody></table></section>
+<p class="muted" style="font-size:13px">“Cobré” suma días pagos desde hoy o desde que vence lo ya pagado. “+ prueba” extiende la prueba gratis. Ventas = lo cobrado en el sistema de cada local.</p>`}</div>`;
+}
+async function admGuardar(id,plan,dias,nota){try{const r=await NB.adminPlan(id,plan,dias,nota);if(r&&r.ok===false)return toast(r.error||'No se pudo guardar',1);closeModal();toast('Guardado ✓');await cargarAdmin()}catch(e){toast(errMsg(e),1)}}
+function admFiltrarDom(){const a=document.activeElement,pos=a&&a.id==='admq'?a.selectionStart:null;render();if(pos!==null){const i=$('#admq');if(i){i.focus();i.setSelectionRange(pos,pos)}}}
 function vCargando(t){return`<div class="login"><div class="card">${LOGO}<p class="tagline">${t}</p></div></div>`}
 
 /* asistente de primeros pasos */
@@ -580,7 +629,7 @@ function vCuenta(){
 <div class="row"><span>Cuenta</span><b>${esc(AUTH.user?AUTH.user.email:'')}</b></div><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div>
 ${d!==null?`<div class="row"><span>Plan</span><b class="${d<=3?'badt':''}">${d>0?`Prueba gratis · quedan ${d} días`:'Prueba vencida'}</b></div>`:''}
 <p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo: abrí ta-ca en ese equipo, entrá con este email y contraseña y elegí el local. Después cada persona usa su PIN.</p>
-<div class="btns"><button data-a="cambiarLocal">Cambiar de local</button><button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
+<div class="btns"><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
 
 const C={mesa:1,cart:[]};
@@ -1130,6 +1179,7 @@ function render(){
     if(AUTH.cargando)return app.innerHTML=vCargando('Abriendo ta-ca…');
     if(AUTH.recuperando)return app.innerHTML=vInicio();
     if(!AUTH.user)return app.innerHTML=vInicio();
+    if(AUTH.panel&&AUTH.admin)return app.innerHTML=vAdmin();
     if(!LID)return app.innerHTML=vLocales();
     if(!SY.base)return app.innerHTML=vCargando('Abriendo tu local…');
     if(!S.setup)return app.innerHTML=vBienvenida();
@@ -1358,7 +1408,23 @@ const A={
   salirDemo(){ls('taca-modo',null);try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}location.hash='';location.reload()},
   elegirLocal(b){elegirLocal(b.dataset.id)},
   cambiarLocal(){LID='';ls('taca-local',null);ls(K+'-sync',null);rol=null;personaId=null;SY.base=null;AUTH.locales=null;closeModal();render();NB.misLocales().then(l=>{AUTH.locales=l;render()}).catch(e=>{AUTH.locales=[];toast(errMsg(e),1);render()})},
-  cerrarSesion(){salirTodo(true)},
+  cerrarSesion(){AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
+  admAbrir(){AUTH.panel=true;closeModal();cargarAdmin()},
+  admCerrar(){AUTH.panel=false;render()},
+  admRecargar(){cargarAdmin()},
+  admFiltro(b){ADM.f=b.dataset.f;render()},
+  admPlan(b){const x=(ADM.lista||[]).find(l=>l.id===b.dataset.id);if(!x)return;const act=b.dataset.p==='activo';
+    modal(`<h2>${act?'Registrar pago':'Extender la prueba'} · ${esc(x.nombre)}</h2><p class="muted" style="margin-top:0">${act?'Suma días pagos desde hoy, o desde que vence lo que ya pagó.':'Suma días de prueba gratis desde hoy, o desde que vence la prueba actual.'}</p>
+<form data-f="admPlan"><input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="plan" value="${act?'activo':'prueba'}">
+<label>Días<select name="dias">${(act?[30,90,180,365]:[7,14,30]).map(d=>`<option value="${d}">${d} días${d===30&&act?' (1 mes)':d===365?' (1 año)':''}</option>`).join('')}</select></label>
+<label>Nota (opcional)<input name="nota" value="${esc(x.nota||'')}" placeholder="${act?'ej: pagó por Mercado Pago 18/11':'ej: lo llamé, pide más tiempo'}"></label>
+<div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
+  admMas(b){const x=(ADM.lista||[]).find(l=>l.id===b.dataset.id);if(!x)return;
+    modal(`<h2>${esc(x.nombre)}</h2><p class="muted" style="margin-top:0">Código del local: <b>${esc(x.id)}</b> · ${(x.duenos||[]).map(esc).join(', ')||'sin dueño'}</p>
+<form data-f="admPlan"><input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="plan" value="${esc(x.plan||'prueba')}"><input type="hidden" name="dias" value="0">
+<label>Nota interna<input name="nota" value="${esc(x.nota||'')}" placeholder="ej: lo llamé el martes, le interesa el plan anual"></label><div class="btns"><button class="primary">Guardar nota</button></div></form>
+<div class="btns" style="margin-top:14px">${x.plan==='suspendido'?`<button data-a="admSusp" data-id="${esc(x.id)}" data-p="${x.pagado_hasta&&new Date(x.pagado_hasta)>Date.now()?'activo':'prueba'}">Reactivar</button>`:`<button class="ghost bad" data-a="admSusp" data-id="${esc(x.id)}" data-p="suspendido">Suspender</button>`}<button type="button" class="ghost" data-a="close">Cerrar</button></div>`)},
+  async admSusp(b){const p=b.dataset.p;if(p==='suspendido'&&!confirm('¿Suspender este local? Por ahora queda marcado en el panel.'))return;await admGuardar(b.dataset.id,p,0,null)},
   wPaso(b){W.paso=+b.dataset.p;render()},
   wCarta(b){if(b.dataset.c==='ejemplo'){const c=cartaEjemplo();S.insumos=c.insumos;S.platos=c.platos;S.proveedores=c.proveedores}else{S.insumos=[];S.platos=[];S.proveedores=[]}W.carta=b.dataset.c;W.paso=4;save();render()},
   wQuitar(b){W.equipo.splice(+b.dataset.i,1);render()},
@@ -1373,6 +1439,7 @@ const A={
   resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
 };
 const F={
+  async admPlan(d){await admGuardar(d.id,d.plan,+d.dias||0,d.nota.trim())},
   reserva(d,f){const m=d.mesa?+d.mesa:null,per=parseInt(d.personas)||0;if(!d.nombre.trim()||per<1)return toast('Completá nombre y personas',1);
     if(m&&choque(d.fecha,d.hora,m))return toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);
     S.reservas.push({id:uid(),nombre:d.nombre.trim(),tel:d.tel.trim(),personas:per,fecha:d.fecha,hora:d.hora,mesa:m,nota:d.nota.trim(),estado:'confirmada',ts:Date.now(),por:yo()});
