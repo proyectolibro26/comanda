@@ -270,8 +270,10 @@ let tab=null,clienteMode=null,typing=false,kArea='todas',CB=null,E=null,pendingM
 // Supabase del servicio ta-ca. La clave pública (anon) es pública por diseño: la seguridad está en las funciones SQL.
 const NUBE={url:'https://ktoicklowsblqmerqqdo.supabase.co',key:'sb_publishable_h_306P5TZJWcBUHXiZgo-A_P_rKMqjk'};
 const QS=new URLSearchParams(location.search);
+function QS_PRE(k){try{return new URLSearchParams(location.search).get(k)}catch(e){return null}}
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
 let LID=ls('taca-local')||'';           // local al que está conectado este equipo del personal
+if(QS_PRE('demo')==='1')ls('taca-modo','demo');else if(QS_PRE('crear')==='1')ls('taca-modo',null);
 if(ls('taca-modo')==='demo')LID='';
 const CLID=QS.get('l')||'';            // local del QR (celular del cliente)
 const NB=crearNube();
@@ -481,6 +483,7 @@ function mockNube(){
 
 /* ---------- cuentas: registro, locales y primeros pasos ---------- */
 const AUTH={user:null,cargando:true,locales:null,aviso:'',vista:'entrar',recuperando:/type=recovery/.test(location.hash+location.search),ocupado:false};
+if(QS_PRE('crear')==='1')AUTH.vista='crear';
 let personaId=null;try{personaId=sessionStorage.getItem('taca-persona')}catch(e){}
 let W=null; // asistente de primeros pasos
 function modoDemo(){return !NB||ls('taca-modo')==='demo'}
