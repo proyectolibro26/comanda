@@ -343,10 +343,11 @@ async function pull(){
   try{const r=await NB.leer(LID);estadoNube('ok');if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
   catch(e){estadoNube('off')}
 }
-function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
+function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
+  if(SY.esperaPago&&SY.info.plan==='activo'&&SY.info.estado==='ok'&&(SY.info.pagado_hasta||'')!==SY.esperaPago.antes){SY.esperaPago=null;toast('¡Pago confirmado! Gracias por elegir ta-ca 🔥');renderSafe()}
   if(antes&&antes!==SY.info.estado){if(antes==='bloqueado')toast('¡Tu local está activo otra vez! 🔥');renderSafe();if(SY.info.estado!=='bloqueado')push()}}
 async function refrescarInfo(){try{const r=await NB.leer(LID);if(!r)return;ponerInfo(r);if(r.version>SY.ver)fusionar(r.data,r.version)}catch(e){}}
-async function revisar(){if(!enNube())return;if(SY.info&&Date.now()-(SY.infoTs||0)>(SY.info.estado==='bloqueado'?15e3:3e5))refrescarInfo();try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
+async function revisar(){if(!enNube())return;if(SY.esperaPago&&Date.now()-SY.esperaPago.ts>3e5)SY.esperaPago=null;if(SY.info&&Date.now()-(SY.infoTs||0)>(SY.esperaPago?4e3:SY.info.estado==='bloqueado'?15e3:3e5))refrescarInfo();try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
 async function conectar(){
   try{
     if(!enNube())return;
@@ -415,10 +416,13 @@ function supaNube(sb){
       async salir(){await sb.auth.signOut()},
       async recuperar(e){const{error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});if(error)throw error},
       async nuevaClave(p){const{error}=await sb.auth.updateUser({password:p});if(error)throw error},
+      async token(){const{data}=await sb.auth.getSession();return data.session?data.session.access_token:''},
       onCambio(cb){sb.auth.onAuthStateChange((ev,s)=>setTimeout(()=>cb(ev,s?s.user:null)))}
     },
     misLocales:()=>rpc('taca_mis_locales'),
     esAdmin:()=>rpc('taca_es_admin'),
+    async suscribir(local,plan,periodo,email){const t=await this.auth.token();const r=await fetch('/api/suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,plan,periodo,email})});
+      const j=await r.json().catch(()=>({}));if(!r.ok||!j.url)throw new Error(j.error||'No se pudo iniciar el pago');return j},
     adminLocales:()=>rpc('taca_admin_locales'),
     adminPlan:(id,plan,dias,nota)=>rpc('taca_admin_plan',{p_id:id,p_plan:plan,p_dias:dias||0,p_nota:nota??null}),
     crearLocal:(n,d)=>rpc('taca_crear_local',{p_nombre:n,p_data:d}),
@@ -452,12 +456,14 @@ function mockNube(){
     adminLocales:()=>later(()=>{const u=ses();if(!u||!JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))return null;const us=users(),em=id=>(Object.entries(us).find(([,x])=>x.id===id)||[''])[0];
       return Object.entries(get()).map(([id,r])=>({id,nombre:r.data.negocio,tipo:r.data.tipo,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,nota:r.nota||null,creado:r.creado||r.prueba_hasta,actualizado:r.actualizado||null,
         pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
+    suscribir:(local,plan,periodo)=>later(()=>{const db=get(),r=db[local];if(!r)throw new Error('No existe ese local');ls('taca-mock-pagoPend',JSON.stringify({local,plan,periodo}));return{url:location.pathname+'?mock=1&pago=ok'}}),
+    _acreditar:()=>later(()=>{const p=JSON.parse(ls('taca-mock-pagoPend')||'null');if(!p)return;const db=get(),r=db[p.local];r.plan='activo';r.abono=p.plan;r.mp_estado='authorized';r.pagado_hasta=new Date(Math.max(Date.now(),r.pagado_hasta?+new Date(r.pagado_hasta):0)+(p.periodo==='anual'?365:30)*864e5).toISOString();put(db);ls('taca-mock-pagoPend',null)}),
     adminPlan:(id,plan,dias,nota)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'No existe ese local'};const mas=(f)=>new Date(Math.max(Date.now(),f?+new Date(f):0)+(dias||0)*864e5).toISOString();
       r.plan=plan;if(plan==='prueba'&&dias>0)r.prueba_hasta=mas(r.prueba_hasta);if(plan==='activo'&&dias>0)r.pagado_hasta=mas(r.pagado_hasta);if(nota!=null)r.nota=nota;put(db);return{ok:true}}),
     misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}))}),
     crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
       db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
-    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
+    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
     version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
       if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
@@ -514,11 +520,16 @@ const PLANES=[
 const CONTACTO_PAGO={email:'lucastavano2020@gmail.com',whatsapp:''};
 function linkPago(plan){const pl=PLANES.find(x=>x.id===plan)||PLANES[0];const txt=`Hola Roman Web, quiero el plan ${pl.nombre} de ta-ca (${fmt(pl.precio)}/mes) para mi local "${S.negocio||''}" (código ${LID}).`;
   return CONTACTO_PAGO.whatsapp?`https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent(txt)}`:`mailto:${CONTACTO_PAGO.email}?subject=${encodeURIComponent('Quiero contratar ta-ca')}&body=${encodeURIComponent(txt)}`}
-function vPlanes(){return`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;text-align:left">${PLANES.map(pl=>`<div class="card" style="margin:0;text-align:left;${pl.destacado?'border:2px solid var(--acc)':''}">
+let PER='mensual';
+function puedePagar(){return !!(enNube()&&LID&&AUTH.user&&NB&&NB.suscribir&&(!rol||rol==='dueno'))}
+function vPlanes(){const mpOk=puedePagar(),an=PER==='anual';
+  return`${mpOk?`<div class="btns" style="justify-content:center;margin:0 0 12px"><button class="small ${an?'':'primary'}" data-a="perPlan" data-p="mensual">Mensual</button><button class="small ${an?'primary':''}" data-a="perPlan" data-p="anual">Anual · 2 meses gratis</button></div>`:''}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;text-align:left">${PLANES.map(pl=>`<div class="card" style="margin:0;text-align:left;${pl.destacado?'border:2px solid var(--acc)':''}">
 <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">${pl.nombre}</h3>${pl.destacado?'<span class="chip warn">Recomendado</span>':''}</div>
-<p style="margin:6px 0 2px"><b style="font-size:26px">${fmt(pl.precio)}</b> <span class="muted">/ mes</span></p><p class="muted" style="margin:0 0 8px;font-size:13px">${pl.bajada} Pagando el año, 2 meses gratis.</p>
+<p style="margin:6px 0 2px"><b style="font-size:26px">${fmt(an&&mpOk?pl.precio*10/12:pl.precio)}</b> <span class="muted">/ mes</span></p>${an&&mpOk?`<p class="muted" style="margin:0;font-size:13px">${fmt(pl.precio*10)} por año</p>`:''}<p class="muted" style="margin:0 0 8px;font-size:13px">${pl.bajada} Pagando el año, 2 meses gratis.</p>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.5">${pl.items.map(i=>`<li>${i}</li>`).join('')}</ul>
-<a class="btn ${pl.destacado?'primary':''}" style="display:block;text-align:center;text-decoration:none" href="${linkPago(pl.id)}" target="_blank" rel="noopener">Quiero el plan ${pl.nombre}</a></div>`).join('')}</div>
+${mpOk?`<button class="${pl.destacado?'primary':''}" style="width:100%" data-a="pagarMP" data-plan="${pl.id}">Pagar con Mercado Pago</button><p style="margin:6px 0 0;font-size:12px;text-align:center"><a href="${linkPago(pl.id)}" target="_blank" rel="noopener">Prefiero pagar por transferencia</a></p>`
+  :`<a class="btn ${pl.destacado?'primary':''}" style="display:block;text-align:center;text-decoration:none" href="${linkPago(pl.id)}" target="_blank" rel="noopener">Quiero el plan ${pl.nombre}</a>`}</div>`).join('')}</div>
 <p class="muted" style="font-size:12px;margin-top:10px">Precios finales en pesos. Sin permanencia: si un mes no pagás, tus datos quedan guardados.</p>`}
 function vBloqueado(){const p=infoPlan()||{},esDueno=!rol||rol==='dueno';
   const motivo=p.plan==='suspendido'?'El local está suspendido.':p.plan==='activo'?'Venció el abono de ta-ca.':'Terminó la prueba gratis de 14 días.';
@@ -532,6 +543,9 @@ function chipPrueba(){if(rol!=='dueno')return'';const p=infoPlan();if(p&&p.est==
   const d=diasPrueba();if(d===null)return'';if(d>0)return`<button class="chip ${d<=3?'warn':''}" data-a="verPlanes">Prueba: ${d} día${d>1?'s':''}</button>`;return d<=0?'<span class="chip bad">Prueba vencida</span>':`<span class="chip ${d<=3?'warn':''}">Prueba: ${d} día${d>1?'s':''}</span>`}
 
 async function arrancarCuentas(){
+  try{const ep=JSON.parse(ls('taca-espera-pago')||'null');if(ep||QS_PRE('pago')==='ok'){SY.esperaPago={ts:Date.now(),antes:ep?ep.antes:''};SY.infoTs=0;ls('taca-espera-pago',null);
+    if(QS_PRE('pago')){history.replaceState(null,'',location.pathname+(QS_PRE('mock')?'?mock=1':''));setTimeout(()=>toast('Estamos confirmando tu pago con Mercado Pago… puede tardar unos minutos.'),800)}
+    if(NB&&NB._acreditar)setTimeout(()=>NB._acreditar(),1200)}}catch(e){}
   if(modoDemo()||cloudClient()){AUTH.cargando=false;return}
   try{AUTH.user=await NB.auth.sesion()}catch(e){AUTH.user=null}
   AUTH.cargando=false;
@@ -610,7 +624,7 @@ function vAdmin(){
   const fila=x=>{const mail=(x.duenos||[])[0]||'';const asunto=encodeURIComponent('Tu local en ta-ca');
     return`<tr><td><b>${esc(x.nombre||x.id)}</b><small>${esc(x.tipo||'')}${x.nota?` · 📝 ${esc(x.nota)}`:''}</small></td>
 <td>${mail?`<a style="color:var(--accd)" href="mailto:${esc(mail)}?subject=${asunto}">${esc(mail)}</a>`:'—'}${(x.duenos||[]).length>1?`<small>+${x.duenos.length-1} más</small>`:''}</td>
-<td><span class="chip ${x.e.c}">${x.e.t}</span></td><td>${fecha(x.creado)}</td><td>${haceDias(x.actualizado)}</td>
+<td><span class="chip ${x.e.c}">${x.e.t}</span>${x.abono||x.mp_estado?`<small>${x.abono?'Plan '+esc(x.abono):''}${x.mp_estado?' · MP '+({authorized:'activo',pending:'pendiente',paused:'pausado',cancelled:'de baja'}[x.mp_estado]||esc(x.mp_estado)):''}</small>`:''}</td><td>${fecha(x.creado)}</td><td>${haceDias(x.actualizado)}</td>
 <td style="text-align:right">${x.pedidos||0}<small>${x.equipo||0} en el equipo</small></td><td style="text-align:right">${fmt(+x.ventas||0)}</td>
 <td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
   return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
@@ -663,8 +677,8 @@ function vCuenta(){
   const d=diasPrueba();
   return`<section class="card"><h2>☁️ Cuenta ${chipNube()}</h2>
 <div class="row"><span>Cuenta</span><b>${esc(AUTH.user?AUTH.user.email:'')}</b></div><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div>
-${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`Abono al día · hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
-  return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div><div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
+${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`${SY.info.abono?'Plan '+(PLANES.find(x=>x.id===SY.info.abono)||{nombre:SY.info.abono}).nombre+' · ':''}al día hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
+  return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div>${SY.info.mp_estado?`<div class="row"><span>Mercado Pago</span><b>${{authorized:'Débito automático activo ✓',pending:'Esperando que cargues la tarjeta',paused:'Pausado',cancelled:'Dado de baja'}[SY.info.mp_estado]||esc(SY.info.mp_estado)}</b></div>`:''}<div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
 <p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo: abrí ta-ca en ese equipo, entrá con este email y contraseña y elegí el local. Después cada persona usa su PIN.</p>
 <div class="btns"><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
@@ -1446,6 +1460,12 @@ const A={
   salirDemo(){ls('taca-modo',null);try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}location.hash='';location.reload()},
   elegirLocal(b){elegirLocal(b.dataset.id)},
   cambiarLocal(){LID='';ls('taca-local',null);ls(K+'-sync',null);rol=null;personaId=null;SY.base=null;AUTH.locales=null;closeModal();render();NB.misLocales().then(l=>{AUTH.locales=l;render()}).catch(e=>{AUTH.locales=[];toast(errMsg(e),1);render()})},
+  perPlan(b){PER=b.dataset.p;if($('#modal').innerHTML)A.verPlanes();else render()},
+  pagarMP(b){const pl=PLANES.find(x=>x.id===b.dataset.plan);if(!pl)return;const tot=PER==='anual'?pl.precio*10:pl.precio;
+    modal(`<h2>Plan ${pl.nombre} · ${PER==='anual'?'anual':'mensual'}</h2><p class="muted" style="margin-top:0">Vas a pagar <b>${fmt(tot)}</b> ${PER==='anual'?'por año':'por mes'} con débito automático en Mercado Pago. Podés darlo de baja cuando quieras desde tu cuenta de Mercado Pago.</p>
+<form data-f="pagarMP"><input type="hidden" name="plan" value="${pl.id}"><label>Email de tu cuenta de Mercado Pago<input name="email" type="email" value="${esc(AUTH.user?AUTH.user.email:'')}" required autocomplete="email"></label>
+<p class="muted" style="font-size:12px;margin:4px 0 0">Tiene que ser el mismo email con el que entrás a Mercado Pago para pagar.</p>
+<div class="btns"><button type="button" class="ghost" data-a="verPlanes">← Volver</button><button class="primary">Ir a Mercado Pago →</button></div></form>`)},
   verPlanes(){modal(`<h2>Planes de ta-ca</h2>${vPlanes()}<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`,true)},
   async yaPague(b){b.disabled=true;b.textContent='Revisando…';await refrescarInfo();if(bloqueado()){toast('Todavía figura sin pagar. Si ya pagaste, en un rato se activa.',1);render()}},
   cerrarSesion(){AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
@@ -1479,6 +1499,9 @@ const A={
   resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
 };
 const F={
+  async pagarMP(d,f){const btn=f.querySelector('button.primary');btn.disabled=true;btn.textContent='Abriendo Mercado Pago…';
+    try{const r=await NB.suscribir(LID,d.plan,PER,d.email.trim());ls('taca-espera-pago',JSON.stringify({ts:Date.now(),antes:(SY.info&&SY.info.pagado_hasta)||''}));location.href=r.url}
+    catch(e){btn.disabled=false;btn.textContent='Ir a Mercado Pago →';toast(errMsg(e),1)}},
   async admPlan(d){await admGuardar(d.id,d.plan,+d.dias||0,d.nota.trim())},
   reserva(d,f){const m=d.mesa?+d.mesa:null,per=parseInt(d.personas)||0;if(!d.nombre.trim()||per<1)return toast('Completá nombre y personas',1);
     if(m&&choque(d.fecha,d.hora,m))return toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);

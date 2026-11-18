@@ -26,6 +26,22 @@ create table if not exists public.taca_miembros (
 create table if not exists public.taca_admins (user_id uuid primary key references auth.users(id) on delete cascade);
 alter table public.taca_locales add column if not exists pagado_hasta timestamptz;
 alter table public.taca_locales add column if not exists nota text;
+alter table public.taca_locales add column if not exists abono text;            -- 'local' o 'encendido'
+alter table public.taca_locales add column if not exists mp_suscripcion text;   -- id de la suscripción de Mercado Pago
+alter table public.taca_locales add column if not exists mp_estado text;        -- pending, authorized, paused, cancelled
+
+-- Pagos del abono que llegan de Mercado Pago (uno por cobro, nunca se cuenta dos veces).
+create table if not exists public.taca_pagos (
+  id        text primary key,
+  local_id  text not null references public.taca_locales(id) on delete cascade,
+  abono     text,
+  meses     integer not null,
+  monto     numeric,
+  creado    timestamptz not null default now(),
+  detalle   jsonb
+);
+alter table public.taca_pagos enable row level security;
+revoke all on public.taca_pagos from anon, authenticated;
 
 -- Estado del abono: 'ok', 'gracia' (venció hace menos de 3 días, sigue andando) o 'bloqueado' (solo lectura).
 create or replace function public.taca_estado_plan(p_plan text, p_prueba timestamptz, p_pagado timestamptz)
@@ -84,7 +100,8 @@ end $$;
 create or replace function public.taca_leer(p_id text)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object('data', data, 'version', version, 'plan', plan, 'prueba_hasta', prueba_hasta,
-         'pagado_hasta', pagado_hasta, 'estado', taca_estado_plan(plan, prueba_hasta, pagado_hasta))
+         'pagado_hasta', pagado_hasta, 'estado', taca_estado_plan(plan, prueba_hasta, pagado_hasta),
+         'abono', abono, 'mp_estado', mp_estado)
   from taca_locales where id = p_id and taca_es_miembro(p_id);
 $$;
 
@@ -205,7 +222,8 @@ create or replace function public.taca_admin_locales()
 returns jsonb language sql stable security definer set search_path = public as $$
   select case when taca_es_admin() then
     (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', coalesce(l.nombre, l.data->>'negocio'),
-       'tipo', l.data->>'tipo', 'plan', l.plan, 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
+       'tipo', l.data->>'tipo', 'plan', l.plan, 'abono', l.abono, 'mp_estado', l.mp_estado,
+       'pagos', (select count(*) from taca_pagos p where p.local_id = l.id), 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
        'creado', l.creado, 'actualizado', l.updated_at,
        'pedidos', coalesce(jsonb_array_length(l.data->'pedidos'), 0),
        'equipo', coalesce(jsonb_array_length(l.data->'equipo'), 0),
@@ -237,7 +255,33 @@ end $$;
 -- Limpieza: locales de prueba sin dueño.
 delete from public.taca_locales l where l.id like 'prueba-taca-%' and not exists (select 1 from public.taca_miembros m where m.local_id = l.id);
 
+-- Solo el servidor (api/ en Vercel, con la clave secreta) registra pagos de Mercado Pago.
+create or replace function public.taca_pago_registrar(p_pago text, p_local text, p_abono text, p_meses integer,
+                                                      p_monto numeric, p_suscripcion text, p_detalle jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if p_meses is null or p_meses < 1 or p_meses > 24 then return jsonb_build_object('ok', false, 'error', 'meses inválido'); end if;
+  if not exists (select 1 from taca_locales where id = p_local) then return jsonb_build_object('ok', false, 'error', 'No existe ese local'); end if;
+  insert into taca_pagos(id, local_id, abono, meses, monto, detalle) values (p_pago, p_local, p_abono, p_meses, p_monto, p_detalle)
+  on conflict (id) do nothing;
+  if not found then return jsonb_build_object('ok', true, 'repetido', true); end if;
+  update taca_locales set plan = 'activo', abono = coalesce(p_abono, abono),
+    mp_suscripcion = coalesce(p_suscripcion, mp_suscripcion), mp_estado = 'authorized',
+    pagado_hasta = greatest(coalesce(pagado_hasta, now()), now()) + make_interval(months => p_meses)
+  where id = p_local;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.taca_suscripcion_guardar(p_local text, p_suscripcion text, p_estado text, p_abono text)
+returns jsonb language sql security definer set search_path = public as $$
+  update taca_locales set mp_suscripcion = p_suscripcion, mp_estado = p_estado, abono = coalesce(p_abono, abono)
+  where id = p_local and (mp_suscripcion is null or mp_suscripcion = p_suscripcion or p_estado in ('pending', 'authorized'))
+  returning jsonb_build_object('ok', true);
+$$;
+
 revoke execute on all functions in schema public from public, anon, authenticated;
+grant execute on function public.taca_pago_registrar(text, text, text, integer, numeric, text, jsonb),
+  public.taca_suscripcion_guardar(text, text, text, text) to service_role;
 grant execute on function public.taca_carta(text, integer), public.taca_cliente(text, text, integer, jsonb, jsonb) to anon, authenticated;
 grant execute on function public.taca_es_miembro(text), public.taca_mis_locales(), public.taca_crear_local(text, jsonb),
   public.taca_leer(text), public.taca_version(text), public.taca_guardar(text, jsonb, integer), public.taca_admin_locales(),
