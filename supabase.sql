@@ -335,3 +335,31 @@ grant usage on schema public to service_role;
 grant select, insert, update on public.taca_locales, public.taca_miembros, public.taca_pagos, public.taca_wa to service_role;
 grant select on public.taca_admins to service_role;
 grant execute on function public.taca_estado_plan(text, timestamptz, timestamptz) to service_role;
+
+-- Cobro en la mesa con Mercado Pago: la cuenta de MP de cada local (conectada por OAuth) y los cobros iniciados desde el QR.
+-- Solo las lee y escribe el servidor (api/ en Vercel). Nadie más tiene acceso.
+create table if not exists public.taca_mp_cuentas (
+  local_id      text primary key references public.taca_locales(id) on delete cascade,
+  mp_user_id    text,
+  access_token  text not null,
+  refresh_token text,
+  expira        timestamptz,
+  conectado     timestamptz not null default now(),
+  por           uuid
+);
+alter table public.taca_mp_cuentas enable row level security;
+revoke all on public.taca_mp_cuentas from anon, authenticated;
+
+create table if not exists public.taca_mp_mesa (
+  id        text primary key,
+  local_id  text not null references public.taca_locales(id) on delete cascade,
+  mesa      integer not null,
+  pedidos   jsonb not null,
+  total     numeric not null,
+  estado    text not null default 'pendiente',
+  pago_id   text,
+  creado    timestamptz not null default now()
+);
+alter table public.taca_mp_mesa enable row level security;
+revoke all on public.taca_mp_mesa from anon, authenticated;
+grant select, insert, update, delete on public.taca_mp_cuentas, public.taca_mp_mesa to service_role;
