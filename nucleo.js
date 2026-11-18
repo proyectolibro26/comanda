@@ -123,9 +123,10 @@ function pasoResumen(lines,nota){
 const NO_PRODUCTO=['algo','mas','pedido','carta','menu','nada','eso','esto','otra','otro','no','si','hambre','delivery','envio','reserva','mesa','lugar','abierto'];
 function noEntiendo(t){
   const wa=S.wa;wa._ne=true;wa.noEnt=(wa.noEnt||0)+1;
-  const m=t.match(/\b(?:quiero|queria|quisiera|dame|mandame|traeme|hay|tienen|tenes|venden|hacen|sale|salen)\s+(?:un|una|unos|unas|el|la|los|las|de)?\s*([a-zñ]{3,}(?:\s+(?!en\b|la\b|de\b|para\b)[a-zñ]{3,})?)/);
+  const m=t.match(/\b(?:quiero|queria|quisiera|dame|mandame|traeme|hay|tienen|tenes|venden|hacen|sale|salen)\s+(?:un|una|unos|unas|el|la|los|las|de)?\s*([a-zñ]{3,}(?:\s+(?!en\b|la\b|de\b|para\b|quiero\b)[a-zñ]{3,})?)/)
+    ||t.match(/\b(?:un|una|unos|unas|\d+)\s+([a-zñ]{3,})\b/);
   const nombres=activos().map(p=>p.nombre).join(', ');
-  if(m&&!NO_PRODUCTO.includes(m[1].split(' ')[0])){wa.consulta=m[1].replace(/s$/,'');wa.noEnt=0;return[`No tenemos *${wa.consulta}* en la carta 😕\nLo que hay: ${nombres}.\n¿Te tienta algo de eso?`]}
+  if(m&&!NO_PRODUCTO.includes(m[1].split(' ')[0])){wa.consulta=m[1];wa.noEnt=0;return[`No tenemos *${wa.consulta}* en la carta 😕\nLo que hay: ${nombres}.\n¿Te tienta algo de eso?`]}
   if(wa.consulta&&/(hay|tienen|tenes)\b.*\??$|^(si o no|y\??|entonces)\b/.test(t))return[`No, *${wa.consulta}* no tenemos 😕 Lo que hay: ${nombres}.`];
   const ayuda=wa.noEnt>=2?'\nSi preferís, escribí *persona* y te responde alguien del local.':'';
   return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'+ayuda];
@@ -143,7 +144,7 @@ function botCore(txt){
   if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
   if(wa.ultimo&&/^estado\b|^(como|que tal) (va|viene)\b|(como va|como viene|donde esta|que paso con|y) mi pedido|cuanto (falta|tarda|demora)|ya (sale|salio|viene|esta)\b|^y\s?\?*$/.test(t)||/^estado\b|(como va|como viene|donde esta) mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
   if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
-  if(/lo de siempre|lo mismo|repetir/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
+  if(/lo de siempre|lo mismo|repetir/.test(t)&&!/\bno\b|\bnada\b|\botra cosa\b/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
   // un saludo siempre arranca de cero (no seguir un pedido viejo a medio hacer)
   if(/^(hola|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal)\b/.test(t)&&t.split(' ').length<=4&&wa.step!=='inicio'){wa.step='inicio';wa.draft={}}
   // sumar cosas al último pedido (si todavía no salió)
