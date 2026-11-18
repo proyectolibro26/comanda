@@ -807,7 +807,7 @@ function vCliente(modo){
 ${mozo?'':`<div class="cli-acts">${llamo?'<button disabled>🙋 Ya avisamos al mozo</button>':'<button data-a="llamarMozo">🙋 Llamar al mozo</button>'}</div>`}
 ${mis.length?`<div class="card mis"><h3>${mozo?'Pedidos de la mesa':'Tus pedidos'}</h3>${mis.map(p=>`<div class="row"><span>#${p.num} · ${p.items.map(itemTxt).join(', ')}</span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span></div>`).join('')}
 <div class="row"><b>Total de la mesa</b><b>${fmt(totMesa)}</b></div>
-${mozo?'':`<div class="btns">${mis.some(p=>p.pideCuenta)?'<span class="chip ok">Cuenta pedida ✓ — ya viene el mozo</span>':'<button data-a="pedirCuenta">🧾 Pedir la cuenta</button>'}<button class="mp" data-a="pagarMP">Pagar con Mercado Pago</button></div>`}</div>`:''}
+${mozo?'':`<div class="btns">${mis.some(p=>p.pideCuenta)?'<span class="chip ok">Cuenta pedida ✓ — ya viene el mozo</span>':'<button data-a="pedirCuenta">🧾 Pedir la cuenta</button>'}<button class="mp" data-a="pagarMesa">Pagar con Mercado Pago</button></div>`}</div>`:''}
 ${cats.map(cat=>`<h2 class="cat">${esc(cat)}</h2>`+ps.filter(p=>p.cat===cat).map(p=>{const d=disp(p),c=enCarro(p.id);
   return`<div class="dish ${d<=0?'off':''}"><div><b>${esc(p.nombre)}</b><small>${esc(p.desc)}${p.mods.length?' · se puede personalizar':''}</small><span class="price">${fmt(p.precio)}</span>
 ${mozo&&d>0?` <span class="chip ${d<10?'warn':'ok'}">quedan ${d}</span>`:''}${!mozo&&d>0&&d<=3?' <span class="chip warn">¡Últimas!</span>':''}</div>
@@ -1255,11 +1255,12 @@ const A={
   },
   async llamarMozo(){if(cloudClient())return accionCliente('llamar','Avisamos al mozo 🙋');if(!S.llamados.some(l=>l.mesa===C.mesa))S.llamados.push({id:uid(),mesa:C.mesa,ts:Date.now()});save();render();toast('Avisamos al mozo 🙋')},
   async pedirCuenta(){if(cloudClient())return accionCliente('cuenta','Avisamos a la caja 🧾');abiertos().filter(p=>p.origen==='mesa'&&p.mesa===C.mesa).forEach(p=>p.pideCuenta=true);save();render();toast('Avisamos a la caja 🧾')},
-  pagarMP(){
-    if(cloudClient())return modal(`<h2>Pagar con Mercado Pago</h2><p class="muted">Muy pronto vas a poder pagar desde acá. Por ahora tocá <b>Pedir la cuenta</b> y te la traemos a la mesa.</p><div class="btns"><button class="primary" data-a="close">Entendido</button></div>`);
-    const t=abiertos().filter(p=>p.origen==='mesa'&&p.mesa===C.mesa).reduce((a,p)=>a+p.total,0);
+  pagarMesa(){
+    const t=S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.anulado&&!p.cobrado).reduce((a,p)=>a+p.total,0),pidio=S.pedidos.some(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.cobrado&&p.pideCuenta);
+    if(cloudClient())return modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted">El pago con Mercado Pago desde el celular todavía no está activo en este local. Pedí la cuenta y el mozo te acerca el QR de Mercado Pago o el posnet para pagar en la mesa.</p><div class="btns"><button class="ghost" data-a="close">Volver</button>${pidio?'<span class="chip ok">Cuenta pedida ✓</span>':'<button class="primary" data-a="cuentaYCerrar">🧾 Pedir la cuenta</button>'}</div>`);
     modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted">En la versión real acá se abre el checkout de Mercado Pago y el pago se acredita solo en caja. En esta demo podés simular el pago aprobado.</p><div class="btns"><button class="ghost" data-a="close">Volver</button><button class="mp" data-a="mpOk">Simular pago aprobado</button></div>`);
   },
+  async cuentaYCerrar(){closeModal();await A.pedirCuenta()},
   mpOk(){const ps=abiertos().filter(p=>p.origen==='mesa'&&p.mesa===C.mesa),t=ps.reduce((a,p)=>a+p.total,0);
     registrarCobro(ps,{nombre:'Mesa '+C.mesa,por:'Cliente (QR)',subtotal:t,total:t,pagos:{efectivo:0,mp:t,tarjeta:0,transferencia:0}});closeModal();render();toast('¡Pago aprobado! Gracias 🙌')},
   verMesa(b){mesaModal(+b.dataset.n)},
