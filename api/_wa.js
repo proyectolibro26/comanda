@@ -23,7 +23,7 @@ function correrBot(data, tel, texto, nombrePerfil) {
   if (nombrePerfil && !conv.nombre) conv.nombre = nombrePerfil;
   if (nombrePerfil && S.clientes[tel] && S.clientes[tel].nombre === 'Cliente') S.clientes[tel].nombre = nombrePerfil; // nombre real del perfil de WhatsApp
   if (conv.ts && Date.now() - conv.ts > 3 * 3600e3) { conv.step = 'inicio'; conv.draft = {}; } // conversación vieja sin terminar: empezar de nuevo
-  S.wa = { tel, step: conv.step || 'inicio', draft: conv.draft || {}, msgs: [], ultimo: conv.ultimo || null, perfil: conv.nombre || nombrePerfil || '' };
+  S.wa = { tel, step: conv.step || 'inicio', draft: conv.draft || {}, msgs: [], ultimo: conv.ultimo || null, perfil: conv.nombre || nombrePerfil || '', humano: conv.humano || null, noEnt: conv.noEnt || 0, consulta: conv.consulta || null };
   const ctx = {
     S, console, Date, Math, JSON, Object, Array, String, Number, RegExp, Intl,
     save() {},
@@ -36,6 +36,7 @@ function correrBot(data, tel, texto, nombrePerfil) {
   conv.msgs = (conv.msgs || []).concat([{ from: 'user', t: texto, ts: ahora }], respuestas.map(t => ({ from: 'bot', t, ts: ahora })))
     .slice(-40);
   conv.step = S.wa.step; conv.draft = S.wa.draft; conv.ultimo = S.wa.ultimo; conv.ts = ahora;
+  conv.humano = S.wa.humano || null; conv.noEnt = S.wa.noEnt || 0; conv.consulta = S.wa.consulta || null;
   S.waConv[tel] = conv;
   S.waUlt = S.waUlt || {}; S.waUlt[tel] = ahora; // último mensaje del cliente (ventana de 24 h de WhatsApp)
   delete S.wa; // el simulador de la app usa su propio S.wa; no se pisa

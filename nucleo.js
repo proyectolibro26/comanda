@@ -119,7 +119,25 @@ function pasoResumen(lines,nota){
   else{S.wa.step='datos';out.push('¿A nombre de quién y a qué dirección lo mandamos? (por ejemplo: *Juan, San Martín 1234*)')}
   return out;
 }
+// respuestas cuando no entiende: productos que no están en la carta, preguntas y pase a una persona
+const NO_PRODUCTO=['algo','mas','pedido','carta','menu','nada','eso','esto','otra','otro','no','si','hambre','delivery','envio','reserva','mesa','lugar','abierto'];
+function noEntiendo(t){
+  const wa=S.wa;wa._ne=true;wa.noEnt=(wa.noEnt||0)+1;
+  const m=t.match(/\b(?:quiero|queria|quisiera|dame|mandame|traeme|hay|tienen|tenes|venden|hacen|sale|salen)\s+(?:un|una|unos|unas|el|la|los|las|de)?\s*([a-zñ]{3,}(?:\s+(?!en\b|la\b|de\b|para\b)[a-zñ]{3,})?)/);
+  const nombres=activos().map(p=>p.nombre).join(', ');
+  if(m&&!NO_PRODUCTO.includes(m[1].split(' ')[0])){wa.consulta=m[1].replace(/s$/,'');wa.noEnt=0;return[`No tenemos *${wa.consulta}* en la carta 😕\nLo que hay: ${nombres}.\n¿Te tienta algo de eso?`]}
+  if(wa.consulta&&/(hay|tienen|tenes)\b.*\??$|^(si o no|y\??|entonces)\b/.test(t))return[`No, *${wa.consulta}* no tenemos 😕 Lo que hay: ${nombres}.`];
+  const ayuda=wa.noEnt>=2?'\nSi preferís, escribí *persona* y te responde alguien del local.':'';
+  return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'+ayuda];
+}
 function bot(txt){
+  const t0=norm(txt),w0=S.wa;w0._ne=false;
+  if(/^(persona|humano|alguien|una persona|atencion|hablar con (alguien|una persona|el local|un humano))\b/.test(t0)){w0.humano=Date.now();w0.noEnt=0;return['Listo 🙌 Le aviso al local y te responden por acá en un ratito.']}
+  if(w0.humano&&Date.now()-w0.humano<30*60e3&&!/^(menu|carta|asistente|bot)\b/.test(t0))return[];
+  w0.humano=null;
+  const r=botCore(txt);if(!w0._ne)w0.noEnt=0;return r;
+}
+function botCore(txt){
   const t=norm(txt),wa=S.wa,cl=cliente();
   const rv=botReserva(t,txt);if(rv)return rv;
   if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
@@ -155,12 +173,12 @@ Total a pagar: *${fmt(ult.total+r.total)}*.`];
   if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
     const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
     const saludo=/^(hola|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal|hey|ey)\b/.test(t);
-    if(!saludo&&(wa.ultimo||(cl&&cl.ult&&Date.now()-cl.ult<864e5))){wa.step='pedido';return['No te entendí 🙈. Decime qué querés pedir (por ejemplo *2 hamburguesas*), escribí *menú* para ver la carta o *estado* para saber cómo va tu pedido.']}
+    if(!saludo&&(wa.ultimo||(cl&&cl.ult&&Date.now()-cl.ult<864e5))){wa.step='pedido';return noEntiendo(t)}
     wa.step='pedido';
     if(cl&&cl.ultItems)return[`¡Hola ${cl.nombre}! 👋 Qué bueno verte de nuevo.\n¿Te mando *lo de siempre*? (${cl.ultItems.map(l=>l.cant+'× '+(plato(l.id)||{}).nombre).join(', ')})\nO escribí *menú* para ver la carta.`];
     return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery o te anoto una reserva.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*\nPara reservar mesa escribí *reservar*.'];
   }
-  if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'];return pasoResumen(r.lines,r.nota)}
+  if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return noEntiendo(t);return pasoResumen(r.lines,r.nota)}
   if(wa.step==='datos'){
     if(t.length<5)return['Pasame nombre y dirección completa, por favor 🙏'];
     const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():(wa.perfil||'Cliente');wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
