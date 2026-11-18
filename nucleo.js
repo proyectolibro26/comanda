@@ -88,6 +88,8 @@ function botReserva(t,txt){
 }
 /* ---------- asistente de WhatsApp ---------- */
 const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+function lev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
+function parecido(seg,a){if(a.length<4)return false;return seg.split(/\s+/).some(w=>w.length>=4&&(lev(w,a)<=(a.length>=6?2:1)||(w.length>a.length&&lev(w.slice(0,a.length),a)<=1)))}
 function parsear(t){
   const out={},notas=[];
   const cant='\\d+|una?|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez';
@@ -95,7 +97,8 @@ function parsear(t){
   norm(t).split(/,|\by\b|\be\b|\n|\+|;/).flatMap(x=>x.split(new RegExp('\\s+(?=(?:'+cant+')\\s)'))).forEach(seg=>{
     seg=seg.trim();if(!seg)return;
     const ac=seg.match(/\b(sin|con|extra|bien|jugosa?|a punto)\b.*$/);
-    const p=activos().find(p=>(p.alias||[]).some(a=>seg.includes(a)))||activos().find(p=>!(p.alias||[]).length&&palabras(p).some(w=>seg.includes(w)));
+    const p=activos().find(p=>(p.alias||[]).some(a=>seg.includes(a)))||activos().find(p=>!(p.alias||[]).length&&palabras(p).some(w=>seg.includes(w)))
+      ||activos().find(p=>(p.alias||[]).concat(palabras(p)).some(a=>parecido(seg,a)));
     if(!p){if(ac&&/^(una?|la|el)?\s*(sin|con|extra|bien)/.test(seg))notas.push(seg.replace(/^(una?|la|el)\s+/,''));return}
     let q=1;const m=seg.match(/(\d+)/);
     if(m)q=+m[1];else{for(const w in NUMS)if(new RegExp('\\b'+w+'\\b').test(seg)){q=NUMS[w];break}}
@@ -128,6 +131,9 @@ function bot(txt){
   // sumar cosas al último pedido (si todavía no salió)
   const ult=wa.ultimo&&S.pedidos.find(p=>p.id===wa.ultimo);
   const totalJunto=()=>ult?S.pedidos.filter(p=>(p.id===ult.id||p.agregaA===ult.id)&&!p.anulado).reduce((a,p)=>a+p.total,0):0;
+  const ofrecerSuma=r=>{const sub=r.lines.reduce((a,l)=>a+lineInfo(l).precio*l.cant,0);wa.step='agregar';wa.draft={lines:r.lines,nota:r.nota};
+    return[`Te sumo al pedido *#${ult.num}*:\n${r.lines.map(l=>{const x=lineInfo(l);return`• ${l.cant}× ${x.p.nombre} — ${fmt(x.precio*l.cant)}`}).join('\n')}\nSin envío extra: sale todo junto.\nTotal a pagar: *${fmt(totalJunto()+sub)}*\n\nRespondé *SI* para sumarlo o *NO* si es un pedido aparte.`]};
+  if(wa.step==='agregar'&&ult&&!wa.draft.lines){const r=parsear(t);if(r.lines.length)return ofrecerSuma(r);if(!/^(no|nada|cancel)/.test(t))return['No te entendí qué sumar 🙈. Decime por ejemplo: *1 cerveza* o *2 papas*. O escribí *nada* si no querés agregar.'];wa.step='inicio';wa.draft={};return['Dale, dejamos el pedido como estaba 👍']}
   if(wa.step==='agregar'){
     if(/^(si|dale|ok|sumalo|de una|agregalo)/.test(t)&&ult&&wa.draft.lines){
       const r=crearPedido({origen:'whatsapp',por:'WhatsApp',cliente:ult.cliente,direccion:ult.direccion,tel:wa.tel,lines:wa.draft.lines,medio:ult.medio,nota:`➕ Va con el pedido #${ult.num}${wa.draft.nota?' · '+wa.draft.nota:''}`});
@@ -142,15 +148,14 @@ Total a pagar: *${fmt(ult.total+r.total)}*.`];
     wa.step='inicio';wa.draft={};
   }
   if(wa.step==='inicio'&&ult&&!ult.anulado&&['nuevo','preparando'].includes(ult.estado)&&Date.now()-ult.ts<90*60e3){
-    const r=parsear(t);
-    if(r.lines.length&&(/agreg|sumal|suma|tambien|ademas|me olvide|falto|otra|y una?\b/.test(t)||Date.now()-ult.ts<30*60e3)){
-      const sub=r.lines.reduce((a,l)=>a+lineInfo(l).precio*l.cant,0);
-      wa.step='agregar';wa.draft={lines:r.lines,nota:r.nota};
-      return[`Te sumo al pedido *#${ult.num}*:\n${r.lines.map(l=>{const x=lineInfo(l);return`• ${l.cant}× ${x.p.nombre} — ${fmt(x.precio*l.cant)}`}).join('\n')}\nSin envío extra: sale todo junto.\nTotal a pagar: *${fmt(totalJunto()+sub)}*\n\nRespondé *SI* para sumarlo o *NO* si es un pedido aparte.`];
-    }
+    const r=parsear(t),quiereSumar=/agreg|sumal|suma\b|sumame|tambien|ademas|me olvide|falto|otra cosa|y una?\b/.test(t);
+    if(r.lines.length&&(quiereSumar||Date.now()-ult.ts<30*60e3))return ofrecerSuma(r);
+    if(quiereSumar){wa.step='agregar';wa.draft={};return[`¿Qué querés que le sume a tu pedido *#${ult.num}*? Decime por ejemplo: *1 cerveza*.`]}
   }
   if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
     const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
+    const saludo=/^(hola|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal|hey|ey)\b/.test(t);
+    if(!saludo&&(wa.ultimo||(cl&&cl.ult&&Date.now()-cl.ult<864e5))){wa.step='pedido';return['No te entendí 🙈. Decime qué querés pedir (por ejemplo *2 hamburguesas*), escribí *menú* para ver la carta o *estado* para saber cómo va tu pedido.']}
     wa.step='pedido';
     if(cl&&cl.ultItems)return[`¡Hola ${cl.nombre}! 👋 Qué bueno verte de nuevo.\n¿Te mando *lo de siempre*? (${cl.ultItems.map(l=>l.cant+'× '+(plato(l.id)||{}).nombre).join(', ')})\nO escribí *menú* para ver la carta.`];
     return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery o te anoto una reserva.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*\nPara reservar mesa escribí *reservar*.'];
