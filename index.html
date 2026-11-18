@@ -201,6 +201,7 @@ details ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
 <div id="app"></div>
 <div id="modal"></div>
 <div id="toast"></div>
+<script src="nucleo.js"></script>
 <script>
 const K='comanda-demo-v2';
 const LOGO='<span class="tc" role="img" aria-label="ta-ca">ta<i></i>ca</span>';
@@ -211,8 +212,6 @@ const ROLES={
   cocina:{pin:'1111',nombre:'Cocina',tabs:['cocina','stock']}
 };
 const TABS={reservas:'📅 Reservas',cierre:'📊 Cierre y reportes',salon:'🪑 Salón',caja:'💵 Caja',tomar:'📝 Tomar pedido',cocina:'👨‍🍳 Cocina y barra',stock:'📦 Stock y compras',carta:'🍽 Carta y recetas',clientes:'👥 Clientes',whatsapp:'💬 WhatsApp',mesas:'⚙️ Ajustes, equipo y QR',menu:'📱 Vista cliente'};
-const ESTADO={nuevo:'Recibido',preparando:'En preparación',listo:'Listo',entregado:'Entregado',enviado:'En camino'};
-const MEDIO={efectivo:'💵 Efectivo',mp:'Mercado Pago',tarjeta:'💳 Tarjeta',transferencia:'🏦 Transferencia'};
 const AREA={cocina:'🍳 Cocina',barra:'🍺 Barra'};
 
 function hoy(){return new Date().toLocaleDateString('es-AR')}
@@ -343,7 +342,7 @@ async function pull(){
   try{const r=await NB.leer(LID);estadoNube('ok');if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
   catch(e){estadoNube('off')}
 }
-function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
+function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.whatsapp||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
   if(SY.esperaPago&&SY.info.plan==='activo'&&SY.info.estado==='ok'&&(SY.info.pagado_hasta||'')!==SY.esperaPago.antes){SY.esperaPago=null;toast('¡Pago confirmado! Gracias por elegir ta-ca 🔥');renderSafe()}
   if(antes&&antes!==SY.info.estado){if(antes==='bloqueado')toast('¡Tu local está activo otra vez! 🔥');renderSafe();if(SY.info.estado!=='bloqueado')push()}}
 async function refrescarInfo(){try{const r=await NB.leer(LID);if(!r)return;ponerInfo(r);if(r.version>SY.ver)fusionar(r.data,r.version)}catch(e){}}
@@ -421,6 +420,9 @@ function supaNube(sb){
     },
     misLocales:()=>rpc('taca_mis_locales'),
     esAdmin:()=>rpc('taca_es_admin'),
+    adminWa:(local,phoneId,numero)=>rpc('taca_admin_wa',{p_local:local,p_phone_id:phoneId,p_numero:numero}),
+    async waEnviar(local,tel,texto){const t=await this.auth.token();const r=await fetch('/api/wa-enviar',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,tel,texto})});
+      const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo enviar');return j},
     async suscribir(local,plan,periodo,email){const t=await this.auth.token();const r=await fetch('/api/suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,plan,periodo,email})});
       const j=await r.json().catch(()=>({}));if(!r.ok||!j.url)throw new Error(j.error||'No se pudo iniciar el pago');return j},
     adminLocales:()=>rpc('taca_admin_locales'),
@@ -455,15 +457,17 @@ function mockNube(){
     esAdmin:()=>later(()=>{const u=ses();return !!(u&&JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))}),
     adminLocales:()=>later(()=>{const u=ses();if(!u||!JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))return null;const us=users(),em=id=>(Object.entries(us).find(([,x])=>x.id===id)||[''])[0];
       return Object.entries(get()).map(([id,r])=>({id,nombre:r.data.negocio,tipo:r.data.tipo,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,nota:r.nota||null,creado:r.creado||r.prueba_hasta,actualizado:r.actualizado||null,
-        pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
+        whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
     suscribir:(local,plan,periodo)=>later(()=>{const db=get(),r=db[local];if(!r)throw new Error('No existe ese local');ls('taca-mock-pagoPend',JSON.stringify({local,plan,periodo}));return{url:location.pathname+'?mock=1&pago=ok'}}),
+    adminWa:(local,phoneId,numero)=>later(()=>{const db=get(),r=db[local];if(!r)return{ok:false,error:'No existe ese local'};if(phoneId){r.wa={phoneId,numero}}else delete r.wa;put(db);return{ok:true}}),
+    waEnviar:(local,tel,texto)=>later(()=>{const l=JSON.parse(ls('taca-mock-wa-enviados')||'[]');l.push({local,tel,texto});ls('taca-mock-wa-enviados',JSON.stringify(l));return{ok:true}}),
     _acreditar:()=>later(()=>{const p=JSON.parse(ls('taca-mock-pagoPend')||'null');if(!p)return;const db=get(),r=db[p.local];r.plan='activo';r.abono=p.plan;r.mp_estado='authorized';r.pagado_hasta=new Date(Math.max(Date.now(),r.pagado_hasta?+new Date(r.pagado_hasta):0)+(p.periodo==='anual'?365:30)*864e5).toISOString();put(db);ls('taca-mock-pagoPend',null)}),
     adminPlan:(id,plan,dias,nota)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'No existe ese local'};const mas=(f)=>new Date(Math.max(Date.now(),f?+new Date(f):0)+(dias||0)*864e5).toISOString();
       r.plan=plan;if(plan==='prueba'&&dias>0)r.prueba_hasta=mas(r.prueba_hasta);if(plan==='activo'&&dias>0)r.pagado_hasta=mas(r.pagado_hasta);if(nota!=null)r.nota=nota;put(db);return{ok:true}}),
     misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}))}),
     crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
       db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
-    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
+    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
     version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
       if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
@@ -624,7 +628,7 @@ function vAdmin(){
   const fila=x=>{const mail=(x.duenos||[])[0]||'';const asunto=encodeURIComponent('Tu local en ta-ca');
     return`<tr><td><b>${esc(x.nombre||x.id)}</b><small>${esc(x.tipo||'')}${x.nota?` · 📝 ${esc(x.nota)}`:''}</small></td>
 <td>${mail?`<a style="color:var(--accd)" href="mailto:${esc(mail)}?subject=${asunto}">${esc(mail)}</a>`:'—'}${(x.duenos||[]).length>1?`<small>+${x.duenos.length-1} más</small>`:''}</td>
-<td><span class="chip ${x.e.c}">${x.e.t}</span>${x.abono||x.mp_estado?`<small>${x.abono?'Plan '+esc(x.abono):''}${x.mp_estado?' · MP '+({authorized:'activo',pending:'pendiente',paused:'pausado',cancelled:'de baja'}[x.mp_estado]||esc(x.mp_estado)):''}</small>`:''}</td><td>${fecha(x.creado)}</td><td>${haceDias(x.actualizado)}</td>
+<td><span class="chip ${x.e.c}">${x.e.t}</span>${x.abono||x.mp_estado?`<small>${x.abono?'Plan '+esc(x.abono):''}${x.mp_estado?' · MP '+({authorized:'activo',pending:'pendiente',paused:'pausado',cancelled:'de baja'}[x.mp_estado]||esc(x.mp_estado)):''}</small>`:''}</td><td>${fecha(x.creado)}${x.whatsapp?`<small>📲 ${esc(x.whatsapp)}</small>`:''}</td><td>${haceDias(x.actualizado)}</td>
 <td style="text-align:right">${x.pedidos||0}<small>${x.equipo||0} en el equipo</small></td><td style="text-align:right">${fmt(+x.ventas||0)}</td>
 <td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
   return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
@@ -688,22 +692,14 @@ const C={mesa:1,cart:[]};
 /* ---------- utilidades ---------- */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-const fmt=n=>(n<0?'−$':'$')+Math.round(Math.abs(n)).toLocaleString('es-AR');
 const num=n=>(+n).toLocaleString('es-AR',{maximumFractionDigits:3});
-const r3=x=>Math.round(x*1000)/1000;
 const pnum=x=>{const v=parseFloat(String(x??'').replace(/\./g,'').replace(',','.'));return isNaN(v)?0:v};
 const pdec=x=>{const v=parseFloat(String(x??'').replace(',','.'));return isNaN(v)?0:v};
 const hm=ts=>new Date(ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
 const mins=ts=>Math.floor((Date.now()-ts)/60000);
 const hace=ts=>{const m=mins(ts);return m<1?'recién':m+' min'};
-const uid=()=>Math.random().toString(36).slice(2,9);
-const plato=id=>S.platos.find(p=>p.id===id);
-const insumo=id=>S.insumos.find(i=>i.id===id);
 const prov=id=>S.proveedores.find(p=>p.id===id);
 const yo=()=>{const p=rol&&persona();return p?p.nombre:rol?ROLES[rol].nombre:'Cliente'};
-const activos=()=>S.platos.filter(p=>p.activo!==false);
-const disp=p=>{const e=Object.entries(p.receta);if(!e.length)return 999;return Math.max(0,Math.floor(Math.min(...e.map(([i,c])=>insumo(i)?insumo(i).stock/c:0))+1e-6))};
 const costoReceta=r=>Object.entries(r).reduce((a,[i,c])=>a+c*(insumo(i)?insumo(i).costo:0),0);
 function audit(accion,detalle,monto){S.audit.push({id:uid(),ts:Date.now(),por:yo(),accion,detalle,monto:monto??null})}
 function toast(t,err){const d=document.createElement('div');d.className='t'+(err?' err':'');d.textContent=t;$('#toast').appendChild(d);setTimeout(()=>d.remove(),3200)}
@@ -713,32 +709,10 @@ function copiar(t,ok){const show=()=>modal(`<h2>Copiá el texto</h2><textarea st
   try{navigator.clipboard.writeText(t).then(()=>toast(ok||'Copiado ✓'),show)}catch(e){show()}}
 
 /* ---------- líneas con modificadores ---------- */
-function lineInfo(l){
-  const p=plato(l.id),mods=(l.mods||[]).map(m=>p.mods.find(x=>x.id===m)).filter(Boolean);
-  const receta={...p.receta};
-  mods.forEach(m=>{if(m.tipo==='quita')delete receta[m.ins];else receta[m.ins]=r3((receta[m.ins]||0)+m.cant)});
-  return{p,mods,receta,precio:p.precio+mods.reduce((a,m)=>a+(+m.precio||0),0)};
-}
-function needFor(lines){const need={};lines.forEach(l=>{const{receta}=lineInfo(l);Object.entries(receta).forEach(([i,c])=>need[i]=r3((need[i]||0)+c*l.cant))});return need}
-function faltante(lines){for(const [ins,c] of Object.entries(needFor(lines))){const i=insumo(ins);if(!i||i.stock<c-1e-9)return i?i:{nombre:ins}}return null}
 const lineKey=(id,mods)=>id+'|'+[...mods].sort().join(',');
 const itemTxt=i=>`${i.cant}× ${esc(i.nombre)}${i.mods&&i.mods.length?' ('+esc(i.mods.join(', '))+')':''}`;
 
 /* ---------- lógica del negocio ---------- */
-function armarPedido(o){
-  const f=faltante(o.lines);
-  if(f){const pl=o.lines.map(l=>lineInfo(l)).find(x=>x.receta[f.id]);return{error:`No alcanza el stock para ${pl?pl.p.nombre:'el pedido'} (falta ${f.nombre})`}}
-  const need=needFor(o.lines);
-  const items=o.lines.map(l=>{const x=lineInfo(l);return{id:x.p.id,nombre:x.p.nombre,precio:x.precio,cant:l.cant,mods:x.mods.map(m=>m.nombre),modIds:l.mods||[],area:x.p.area||'cocina'}});
-  const subtotal=items.reduce((a,i)=>a+i.precio*i.cant,0),envio=o.origen==='whatsapp'?S.envio:0;
-  return{need,ped:{origen:o.origen,por:o.por||'',mesa:o.mesa||null,cliente:o.cliente||'',tel:o.tel||'',direccion:o.direccion||'',items,subtotal,envio,total:subtotal+envio,estado:'nuevo',medio:o.medio||null,cobrado:false,pideCuenta:false,consumo:need,anulado:false,nota:o.nota||''}};
-}
-function crearPedido(o){
-  const a=armarPedido(o);if(a.error)return a;
-  for(const [ins,c] of Object.entries(a.need)){const i=insumo(ins);i.stock=r3(i.stock-c)}
-  const ped=Object.assign({id:uid(),num:S.nextNum++,ts:Date.now()},a.ped);
-  S.pedidos.push(ped);save();return ped;
-}
 function anular(p){if(p.anulado)return;for(const [ins,c] of Object.entries(p.consumo)){const i=insumo(ins);if(i)i.stock=r3(i.stock+c)}p.anulado=true}
 function siguiente(p){return{nuevo:'preparando',preparando:'listo',listo:p.origen==='whatsapp'?'enviado':'entregado'}[p.estado]}
 function avanzar(p){
@@ -746,6 +720,9 @@ function avanzar(p){
   if(p.origen==='whatsapp'&&p.tel===S.wa.tel){
     const t={preparando:`👨‍🍳 Tu pedido *#${p.num}* ya está en preparación.`,listo:`✅ Tu pedido *#${p.num}* está listo, lo estamos por despachar.`,enviado:`🛵 ¡Tu pedido *#${p.num}* salió para ${p.direccion}! Total a pagar: *${fmt(p.total)}*.`}[p.estado];
     if(t)S.wa.msgs.push({from:'bot',t,ts:Date.now()});
+  }else if(p.origen==='whatsapp'&&p.tel&&S.waConv&&S.waConv[p.tel]&&waReal()){
+    const t={preparando:`👨‍🍳 Tu pedido *#${p.num}* ya está en preparación.`,enviado:`🛵 ¡Tu pedido *#${p.num}* salió para ${p.direccion}! Total a pagar: *${fmt(p.total)}*.`,entregado:`✅ ¡Gracias por tu pedido *#${p.num}*!`}[p.estado];
+    if(t)waResponder(p.tel,t,true);
   }
   save();
 }
@@ -990,8 +967,6 @@ function eCosto(){const r={};E.receta.forEach(x=>{if(x.ins&&pdec(x.cant)>0)r[x.i
 
 /* reservas */
 let rFecha=null;
-function fechaISO(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-const fechaLinda=f=>{const [y,m,d]=f.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})};
 const ESTRES={confirmada:['Confirmada','blue'],sentada:['Ya llegó','ok'],novino:['No vino','bad'],cancelada:['Cancelada','']};
 function vReservas(){
   rFecha=rFecha||fechaISO();
@@ -1066,58 +1041,6 @@ function vImpresora(){const m=ls('taca-autoprint')||'off';return`<section class=
 <p class="muted" style="font-size:13px;margin:0 0 10px">Funciona con cualquier impresora térmica de 80 mm puesta como predeterminada. Para que imprima sin preguntar, abrí Chrome con la opción <b>--kiosk-printing</b>.</p>
 <div class="btns"><button data-a="pruebaImpresion">Imprimir prueba</button><a href="#pantalla" style="align-self:center;font-size:14px;color:var(--accd)">Abrir pantalla de retiro (para un televisor) →</a></div></section>`}
 
-
-/* reservas por WhatsApp */
-const DIAS=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
-function leerReserva(t,r){
-  const hoyD=new Date();hoyD.setHours(0,0,0,0);const mas=n=>{const d=new Date(hoyD);d.setDate(d.getDate()+n);return fechaISO(d)};
-  if(/pasado manana/.test(t))r.fecha=mas(2);else if(/\bmanana\b/.test(t))r.fecha=mas(1);else if(/\bhoy\b|esta noche/.test(t))r.fecha=mas(0);
-  else{const i=DIAS.findIndex(d=>new RegExp('\\b'+d+'\\b').test(t));if(i>=0)r.fecha=mas((i-hoyD.getDay()+7)%7);
-    const m=t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);if(m){let y=m[3]?+m[3]:hoyD.getFullYear();if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!m[3]&&d<hoyD)d.setFullYear(y+1);r.fecha=fechaISO(d)}}
-  const sin=t.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g,' ');
-  const h=sin.match(/a las? (\d{1,2})(?:[:.](\d{2}))?/)||sin.match(/\b(\d{1,2})[:.](\d{2})\b/)||sin.match(/\b(\d{1,2})\s*(?:hs|h|horas)\b/);
-  if(h){let H=+h[1];const M=h[2]?+h[2]:0;if(H>=1&&H<=11&&!/manana|mediodia/.test(t.slice(h.index)))H+=12;if(H<=23&&M<=59)r.hora=String(H).padStart(2,'0')+':'+String(M).padStart(2,'0')}
-  const p=sin.match(/para (\d{1,2})\b/)||sin.match(/\b(\d{1,2})\s*(?:personas|pers|comensales)\b/)||sin.match(/somos (\d{1,2})\b/);
-  if(p)r.personas=+p[1];else{const w=sin.match(/(?:para|somos) (una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/);if(w)r.personas=NUMS[w[1]]}
-  return r;
-}
-function pasoReserva(txt){
-  const wa=S.wa,r=leerReserva(norm(txt),wa.draft.res||{}),cl=cliente();wa.draft.res=r;
-  if(wa.step==='res_nombre'){r.nombre=txt.trim().slice(0,40)}
-  const falta=[!r.fecha&&'el día',!r.hora&&'la hora',!r.personas&&'cuántas personas'].filter(Boolean);
-  if(falta.length){wa.step='res';return[`¡Dale! Pasame ${falta.join(', ').replace(/, ([^,]*)$/,' y $1')} 🙂\nPor ejemplo: *mañana a las 21:30 para 4*`]}
-  if(r.fecha<fechaISO()||(r.fecha===fechaISO()&&r.hora<new Date().toTimeString().slice(0,5))){delete r.hora;wa.step='res';return['Esa hora ya pasó 😅 ¿Para qué otro horario?']}
-  if(r.personas>20){wa.step='res';return['Para grupos de más de 20 personas escribinos y lo armamos especialmente 🙌']}
-  const t=x=>{const[a,b]=x.split(':').map(Number);return a*60+b};
-  if(S.reservas.filter(x=>x.fecha===r.fecha&&x.estado==='confirmada'&&Math.abs(t(x.hora)-t(r.hora))<90).length>=Math.ceil(S.mesas*.6)){delete r.hora;wa.step='res';return[`Uh, a esa hora estamos completos 😕 ¿Te sirve un poco antes o más tarde?`]}
-  if(!r.nombre){const prev=S.reservas.filter(x=>x.tel===wa.tel).pop();if(cl)r.nombre=cl.nombre;else if(prev)r.nombre=prev.nombre;else{wa.step='res_nombre';return['¿A nombre de quién la anoto?']}}
-  wa.step='res_ok';
-  return[`📅 *Tu reserva*\n${fechaLinda(r.fecha).replace(/^./,c=>c.toUpperCase())} a las *${r.hora}*\n${r.personas} persona${r.personas>1?'s':''} · a nombre de *${r.nombre}*\n\nRespondé *SI* para confirmar.`];
-}
-function botReserva(t,txt){
-  const wa=S.wa;
-  if(/cancel\w* (la |mi )?reserva/.test(t)){
-    const r=S.reservas.filter(x=>x.tel===wa.tel&&x.estado==='confirmada'&&x.fecha>=fechaISO()).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora))[0];
-    if(!r)return['No encontré reservas tuyas a confirmar 🤔'];
-    r.estado='cancelada';audit('Reserva cancelada',`${r.nombre} · ${r.fecha} ${r.hora} (por WhatsApp)`);if(wa.step.startsWith('res'))wa.step='inicio';
-    return[`Listo, cancelé tu reserva del ${fechaLinda(r.fecha)} a las ${r.hora}. ¡Gracias por avisar! 🙏`];
-  }
-  if(wa.step.startsWith('res')){
-    if(/^(chau|salir|nada|olvidate|dejalo)/.test(t)){wa.step='inicio';wa.draft={};return['Listo 👍 Cuando quieras escribí *reservar* o pedí de la carta.']}
-    if(!/reserv/.test(t)&&parsear(t).lines.length){wa.step='inicio';wa.draft={};return null}
-  }
-  if(wa.step==='res_ok'){
-    if(/^(si|dale|ok|confirmo|de una)/.test(t)){const r=wa.draft.res;
-      S.reservas.push({id:uid(),nombre:r.nombre,tel:wa.tel,personas:r.personas,fecha:r.fecha,hora:r.hora,mesa:null,nota:'Pidió por WhatsApp',estado:'confirmada',ts:Date.now(),por:'WhatsApp'});
-      wa.step='inicio';wa.draft={};
-      return[`✅ ¡Reserva confirmada! Te esperamos.\nSi no podés venir, escribí *cancelar reserva* así liberamos la mesa.`]}
-    if(/^no\b|cancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, no la anoto. Si querés otro horario escribí *reservar*.']}
-    return pasoReserva(txt);
-  }
-  if(wa.step.startsWith('res')){if(/^(cancel|salir|chau)/.test(t)){wa.step='inicio';wa.draft={};return['Listo 👍']}return pasoReserva(txt)}
-  if(/reserv/.test(t)){wa.step='res';wa.draft={res:{}};const r=pasoReserva(txt);return r}
-  return null;
-}
 
 /* turnos de caja */
 function calcTurno(t){const cobs=S.cobros.filter(c=>!c.anulado&&c.turno===t.id),ef=cobs.reduce((a,c)=>a+(c.pagos.efectivo||0),0),eg=S.egresos.filter(e=>e.turno===t.id).reduce((a,e)=>a+e.monto,0);
@@ -1195,10 +1118,31 @@ ${S.cierres.length?`<section class="card"><h2>Días anteriores</h2>${S.cierres.s
 /* whatsapp */
 const QUICK=['Hola','2 hamburguesas sin tomate y 1 coca','Lucía, Córdoba 1520','1','SI','estado','lo de siempre','quiero reservar','mañana a las 21:30 para 4','cancelar reserva'];
 function fmtWa(t){return esc(t).replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+function waReal(){return !!(enNube()&&SY.info&&SY.info.whatsapp&&NB&&NB.waEnviar)}
+let WAV=null;
+async function waResponder(tel,t,auto){
+  const c=S.waConv&&S.waConv[tel];if(!c)return;
+  try{await NB.waEnviar(LID,tel,t);c.msgs=(c.msgs||[]).concat({from:'local',t,ts:Date.now(),por:auto?'Aviso automático':yo()}).slice(-40);save();renderSafe()}
+  catch(e){toast(auto?'No se pudo avisar por WhatsApp: '+errMsg(e):errMsg(e),1)}
+}
+function vWaReal(){
+  if(!enNube())return'';
+  if(!waReal())return`<section class="card" style="border:2px dashed var(--acc)"><h2>📲 Conectá el WhatsApp de tu local</h2><p class="muted" style="margin-top:0">Con el plan <b>Encendido</b>, este asistente contesta en el número de WhatsApp de tu local: toma pedidos de delivery y reservas y los manda directo a cocina. Más abajo podés probar cómo responde.</p><div class="btns"><a class="btn primary" style="text-decoration:none" href="${linkPago('encendido')}" target="_blank" rel="noopener">Quiero conectar mi WhatsApp</a></div></section>`;
+  const convs=Object.values(S.waConv||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!WAV&&convs.length)WAV=convs[0].tel;
+  const c=WAV&&S.waConv[WAV],abierta=c&&S.waUlt&&S.waUlt[WAV]&&Date.now()-S.waUlt[WAV]<864e5;
+  const nom=x=>(S.clientes[x.tel]||{}).nombre||x.nombre||('+'+x.tel);
+  return`<section class="card"><h2>✅ WhatsApp conectado <span class="chip ok">${esc(SY.info.whatsapp)}</span></h2><p class="muted" style="margin-top:0">El asistente está contestando solo. Acá ves las conversaciones reales y podés responder vos si hace falta.</p>
+${convs.length?`<div class="wa-wrap"><div style="max-height:460px;overflow:auto">${convs.map(x=>{const u=(x.msgs||[]).slice(-1)[0];return`<button class="row" style="width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:${x.tel===WAV?'var(--acc2)':'transparent'}" data-a="waVer" data-tel="${esc(x.tel)}"><span><b>${esc(nom(x))}</b><small style="display:block;color:var(--muted)">${u?esc(u.t.slice(0,60)):''}</small></span><small>${x.ts?hm(x.ts):''}</small></button>`}).join('')}</div>
+<div class="phone"><div class="wa-h"><span class="av">👤</span><div><b>${esc(c?nom(c):'')}</b><small>+${esc(c?c.tel:'')}</small></div></div>
+<div class="wa-body">${c?(c.msgs||[]).map(m=>`<div class="msg ${m.from==='user'?'bot':'user'}"><div>${fmtWa(m.t)}</div><small>${m.from==='local'?esc(m.por||'Local')+' · ':''}${hm(m.ts)}</small></div>`).join(''):''}</div>
+${abierta?`<form class="wa-in" data-f="waResp"><input name="t" placeholder="Responder como el local" autocomplete="off"><button aria-label="Enviar">➤</button></form>`:'<p class="muted" style="font-size:12px;padding:8px 12px;margin:0">Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp no deja responder hasta que vuelva a escribir.</p>'}</div></div>`
+:'<p class="muted">Todavía no escribió nadie. Cuando un cliente le escriba a tu WhatsApp, la conversación aparece acá.</p>'}</section>`;
+}
 function vWhatsapp(){
   const peds=S.pedidos.filter(p=>p.origen==='whatsapp'&&!p.anulado).slice().reverse();
   return`<div class="ptitle"><div><h1>Pedidos y reservas por WhatsApp</h1><small>El asistente responde solo, toma el pedido con aclaraciones, controla el stock y lo manda a cocina para delivery.</small></div><button class="ghost small" data-a="waReset">Nueva conversación</button></div>
-<div class="wa-wrap"><div class="phone"><div class="wa-h"><span class="av">🍔</span><div><b>${esc(S.negocio)}</b><small>Asistente automático · en línea</small></div></div>
+${vWaReal()}${enNube()?'<h2 style="margin:18px 0 8px">🧪 Probá el asistente</h2>':''}<div class="wa-wrap"><div class="phone"><div class="wa-h"><span class="av">🍔</span><div><b>${esc(S.negocio)}</b><small>Asistente automático · en línea</small></div></div>
 <div class="wa-tel">Simulás ser el cliente del número <input data-set="waTel" value="${esc(S.wa.tel)}"></div>
 <div class="wa-body" id="wab"><div class="msg sys">Escribí como si fueras un cliente. Cambiá el número de arriba para simular otro cliente.</div>
 ${S.wa.msgs.map(m=>`<div class="msg ${m.from}"><div>${fmtWa(m.t)}</div><small>${hm(m.ts)}</small></div>`).join('')}${typing?'<div class="msg bot"><i>escribiendo…</i></div>':''}</div>
@@ -1248,74 +1192,6 @@ function render(){
 }
 function busy(){const a=document.activeElement;return a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.id!=='wain'}
 
-/* ---------- asistente de WhatsApp ---------- */
-const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
-function parsear(t){
-  const out={},notas=[];
-  norm(t).split(/,|\by\b|\be\b|\n|\+|;/).forEach(seg=>{
-    seg=seg.trim();if(!seg)return;
-    const ac=seg.match(/\b(sin|con|extra|bien|jugosa?|a punto)\b.*$/);
-    const p=activos().find(p=>p.alias.some(a=>seg.includes(a)));
-    if(!p){if(ac&&/^(una?|la|el)?\s*(sin|con|extra|bien)/.test(seg))notas.push(seg.replace(/^(una?|la|el)\s+/,''));return}
-    let q=1;const m=seg.match(/(\d+)/);
-    if(m)q=+m[1];else{for(const w in NUMS)if(new RegExp('\\b'+w+'\\b').test(seg)){q=NUMS[w];break}}
-    out[p.id]=(out[p.id]||0)+q;
-    if(ac&&!p.alias.some(a=>ac[0].includes(a)))notas.push(p.nombre+': '+ac[0]);
-  });
-  return{lines:Object.entries(out).map(([id,cant])=>({id,cant,mods:[]})),nota:notas.join(' · ')};
-}
-function cartaTxt(){const ps=activos(),cats=[...new Set(ps.map(p=>p.cat))];return'📋 *Nuestra carta*\n'+cats.map(c=>`\n*${c}*\n`+ps.filter(p=>p.cat===c).map(p=>`• ${p.nombre} — ${fmt(p.precio)}${disp(p)<=0?' (agotado)':''}`).join('\n')).join('\n')+`\n\n🛵 Envío: ${fmt(S.envio)}`}
-function resumenItems(lines){const sub=lines.reduce((a,l)=>a+lineInfo(l).precio*l.cant,0);return lines.map(l=>`• ${l.cant}× ${plato(l.id).nombre} — ${fmt(lineInfo(l).precio*l.cant)}`).join('\n')+`\n• Envío — ${fmt(S.envio)}\n*Total: ${fmt(sub+S.envio)}*`}
-function cliente(){return S.clientes[S.wa.tel]}
-function pasoResumen(lines,nota){
-  const f=faltante(lines);
-  if(f){S.wa.step='pedido';const pl=lines.map(lineInfo).find(x=>x.receta[f.id]);return[`Uy, ${pl?'de '+pl.p.nombre:'eso'} no nos queda suficiente hoy 😕 (quedan ${pl?disp(pl.p):0}). ¿Querés cambiar algo?`]}
-  S.wa.draft={lines,nota};const cl=cliente();
-  const out=['Perfecto, te anoto:\n'+resumenItems(lines)+(nota?`\n📝 ${nota}`:'')];
-  if(cl){S.wa.draft.cliente=cl.nombre;S.wa.draft.direccion=cl.dir;S.wa.step='pago';out.push(`Te lo mandamos a *${cl.dir}* como siempre (si es otra, escribí *otra dirección*).\n¿Cómo vas a pagar?\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago`)}
-  else{S.wa.step='datos';out.push('¿A nombre de quién y a qué dirección lo mandamos? (por ejemplo: *Juan, San Martín 1234*)')}
-  return out;
-}
-function bot(txt){
-  const t=norm(txt),wa=S.wa,cl=cliente();
-  const rv=botReserva(t,txt);if(rv)return rv;
-  if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
-  if(/^estado\b|como va mi pedido|donde esta mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
-  if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
-  if(/lo de siempre|lo mismo|repetir/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
-  if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
-    const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
-    wa.step='pedido';
-    if(cl&&cl.ultItems)return[`¡Hola ${cl.nombre}! 👋 Qué bueno verte de nuevo.\n¿Te mando *lo de siempre*? (${cl.ultItems.map(l=>l.cant+'× '+(plato(l.id)||{}).nombre).join(', ')})\nO escribí *menú* para ver la carta.`];
-    return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery o te anoto una reserva.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*\nPara reservar mesa escribí *reservar*.'];
-  }
-  if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'];return pasoResumen(r.lines,r.nota)}
-  if(wa.step==='datos'){
-    if(t.length<5)return['Pasame nombre y dirección completa, por favor 🙏'];
-    const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():'Cliente';wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
-    wa.step='pago';return[`Genial, ${wa.draft.cliente}. ¿Cómo vas a pagar?\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago`];
-  }
-  if(wa.step==='pago'){
-    if(/otra direc|cambiar direc/.test(t)){wa.step='datos';return['Dale, pasame nombre y la dirección nueva (ej: *Juan, San Martín 1234*).']}
-    const m=/^1|efect/.test(t)?'efectivo':/^2|transf/.test(t)?'transferencia':/^3|mercado|^mp/.test(t)?'mp':null;
-    if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago.'];
-    wa.draft.medio=m;wa.step='confirmar';
-    return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.lines)}${wa.draft.nota?`\n📝 ${wa.draft.nota}`:''}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?`\nAlias: ${S.alias}`:''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
-  }
-  if(wa.step==='confirmar'){
-    if(/^(si|dale|ok|confirmo|de una)/.test(t)){
-      const d=wa.draft,r=crearPedido({origen:'whatsapp',por:'WhatsApp',cliente:d.cliente,direccion:d.direccion,tel:wa.tel,lines:d.lines,medio:d.medio,nota:d.nota});
-      if(r.error){wa.step='pedido';return['Uy, justo se nos acabó algo: '+r.error+'. ¿Querés pedir otra cosa?']}
-      const c=S.clientes[wa.tel]||{tel:wa.tel,pedidos:0,gastado:0};
-      Object.assign(c,{nombre:d.cliente,dir:d.direccion,pedidos:c.pedidos+1,gastado:c.gastado+r.total,ult:Date.now(),ultItems:d.lines});S.clientes[wa.tel]=c;
-      wa.ultimo=r.id;wa.step='inicio';wa.draft={};
-      return[`✅ ¡Pedido *#${r.num}* confirmado y enviado a la cocina!\nDemora estimada: 35 a 45 min.\nEscribí *estado* cuando quieras saber cómo va.`];
-    }
-    if(/^no\b/.test(t)){wa.step='inicio';wa.draft={};return['Listo, no lo confirmo. Si querés empezar de nuevo escribí *menú*.']}
-    return['Respondé *SI* para confirmar o *cancelar*.'];
-  }
-  wa.step='inicio';return bot(txt);
-}
 function waSend(txt){
   if(!txt.trim()||typing)return;
   S.wa.msgs.push({from:'user',t:txt,ts:Date.now()});typing=true;save();render();
@@ -1466,6 +1342,7 @@ const A={
 <form data-f="pagarMP"><input type="hidden" name="plan" value="${pl.id}"><label>Email de tu cuenta de Mercado Pago<input name="email" type="email" value="${esc(AUTH.user?AUTH.user.email:'')}" required autocomplete="email"></label>
 <p class="muted" style="font-size:12px;margin:4px 0 0">Tiene que ser el mismo email con el que entrás a Mercado Pago para pagar.</p>
 <div class="btns"><button type="button" class="ghost" data-a="verPlanes">← Volver</button><button class="primary">Ir a Mercado Pago →</button></div></form>`)},
+  waVer(b){WAV=b.dataset.tel;render()},
   verPlanes(){modal(`<h2>Planes de ta-ca</h2>${vPlanes()}<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`,true)},
   async yaPague(b){b.disabled=true;b.textContent='Revisando…';await refrescarInfo();if(bloqueado()){toast('Todavía figura sin pagar. Si ya pagaste, en un rato se activa.',1);render()}},
   cerrarSesion(){AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
@@ -1483,6 +1360,7 @@ const A={
     modal(`<h2>${esc(x.nombre)}</h2><p class="muted" style="margin-top:0">Código del local: <b>${esc(x.id)}</b> · ${(x.duenos||[]).map(esc).join(', ')||'sin dueño'}</p>
 <form data-f="admPlan"><input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="plan" value="${esc(x.plan||'prueba')}"><input type="hidden" name="dias" value="0">
 <label>Nota interna<input name="nota" value="${esc(x.nota||'')}" placeholder="ej: lo llamé el martes, le interesa el plan anual"></label><div class="btns"><button class="primary">Guardar nota</button></div></form>
+<h3 style="margin:16px 0 6px">WhatsApp del local</h3><form data-f="admWa"><input type="hidden" name="id" value="${esc(x.id)}"><div class="inline"><label>Phone number ID (de Meta)<input name="pid" value="" placeholder="${x.whatsapp?'Conectado · dejá vacío para desconectar':'ej: 123456789012345'}" inputmode="numeric"></label><label>Número a mostrar<input name="num" value="${esc(x.whatsapp||'')}" placeholder="+54 9 341 555-0000"></label></div><div class="btns"><button class="${x.whatsapp?'ghost':'primary'}">${x.whatsapp?'Actualizar o desconectar':'Conectar WhatsApp'}</button></div></form>
 <div class="btns" style="margin-top:14px">${x.plan==='suspendido'?`<button data-a="admSusp" data-id="${esc(x.id)}" data-p="${x.pagado_hasta&&new Date(x.pagado_hasta)>Date.now()?'activo':'prueba'}">Reactivar</button>`:`<button class="ghost bad" data-a="admSusp" data-id="${esc(x.id)}" data-p="suspendido">Suspender</button>`}<button type="button" class="ghost" data-a="close">Cerrar</button></div>`)},
   async admSusp(b){const p=b.dataset.p;if(p==='suspendido'&&!confirm('¿Suspender este local? Por ahora queda marcado en el panel.'))return;await admGuardar(b.dataset.id,p,0,null)},
   wPaso(b){W.paso=+b.dataset.p;render()},
@@ -1499,6 +1377,8 @@ const A={
   resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
 };
 const F={
+  async admWa(d){if(!d.pid.trim()&&!confirm('¿Desconectar el WhatsApp de este local?'))return;try{const r=await NB.adminWa(d.id,d.pid.trim(),d.num.trim());if(r&&r.ok===false)return toast(r.error,1);closeModal();toast(d.pid.trim()?'WhatsApp conectado ✓':'WhatsApp desconectado');await cargarAdmin()}catch(e){toast(errMsg(e),1)}},
+  async waResp(d,f){const t=(d.t||'').trim();if(!t||!WAV)return;f.querySelector('input').value='';await waResponder(WAV,t,false)},
   async pagarMP(d,f){const btn=f.querySelector('button.primary');btn.disabled=true;btn.textContent='Abriendo Mercado Pago…';
     try{const r=await NB.suscribir(LID,d.plan,PER,d.email.trim());ls('taca-espera-pago',JSON.stringify({ts:Date.now(),antes:(SY.info&&SY.info.pagado_hasta)||''}));location.href=r.url}
     catch(e){btn.disabled=false;btn.textContent='Ir a Mercado Pago →';toast(errMsg(e),1)}},

@@ -43,6 +43,16 @@ create table if not exists public.taca_pagos (
 alter table public.taca_pagos enable row level security;
 revoke all on public.taca_pagos from anon, authenticated;
 
+-- Números de WhatsApp conectados (uno por local). Lo usa el servidor para saber a qué local llega cada mensaje.
+create table if not exists public.taca_wa (
+  phone_number_id text primary key,
+  local_id        text not null unique references public.taca_locales(id) on delete cascade,
+  numero          text,
+  creado          timestamptz not null default now()
+);
+alter table public.taca_wa enable row level security;
+revoke all on public.taca_wa from anon, authenticated;
+
 -- Estado del abono: 'ok', 'gracia' (venció hace menos de 3 días, sigue andando) o 'bloqueado' (solo lectura).
 create or replace function public.taca_estado_plan(p_plan text, p_prueba timestamptz, p_pagado timestamptz)
 returns text language sql stable set search_path = public as $$
@@ -101,7 +111,8 @@ create or replace function public.taca_leer(p_id text)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object('data', data, 'version', version, 'plan', plan, 'prueba_hasta', prueba_hasta,
          'pagado_hasta', pagado_hasta, 'estado', taca_estado_plan(plan, prueba_hasta, pagado_hasta),
-         'abono', abono, 'mp_estado', mp_estado)
+         'abono', abono, 'mp_estado', mp_estado,
+         'whatsapp', (select numero from taca_wa w where w.local_id = taca_locales.id))
   from taca_locales where id = p_id and taca_es_miembro(p_id);
 $$;
 
@@ -223,7 +234,8 @@ returns jsonb language sql stable security definer set search_path = public as $
   select case when taca_es_admin() then
     (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', coalesce(l.nombre, l.data->>'negocio'),
        'tipo', l.data->>'tipo', 'plan', l.plan, 'abono', l.abono, 'mp_estado', l.mp_estado,
-       'pagos', (select count(*) from taca_pagos p where p.local_id = l.id), 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
+       'pagos', (select count(*) from taca_pagos p where p.local_id = l.id),
+       'whatsapp', (select numero from taca_wa w where w.local_id = l.id), 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
        'creado', l.creado, 'actualizado', l.updated_at,
        'pedidos', coalesce(jsonb_array_length(l.data->'pedidos'), 0),
        'equipo', coalesce(jsonb_array_length(l.data->'equipo'), 0),
@@ -279,15 +291,45 @@ returns jsonb language sql security definer set search_path = public as $$
   returning jsonb_build_object('ok', true);
 $$;
 
+-- Guardado del servidor (bot de WhatsApp): mismo control de versión que taca_guardar, sin sesión de usuario.
+create or replace function public.taca_guardar_servidor(p_id text, p_data jsonb, p_version integer)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r taca_locales%rowtype;
+begin
+  select * into r from taca_locales where id = p_id for update;
+  if not found then return jsonb_build_object('ok', false, 'error', 'No existe ese local'); end if;
+  if r.version <> p_version then return jsonb_build_object('ok', false, 'conflicto', true, 'version', r.version); end if;
+  update taca_locales set data = p_data, version = r.version + 1, updated_at = now() where id = p_id;
+  return jsonb_build_object('ok', true, 'version', r.version + 1);
+end $$;
+
+-- Panel de Roman Web: conectar o desconectar el número de WhatsApp de un local.
+create or replace function public.taca_admin_wa(p_local text, p_phone_id text, p_numero text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not taca_es_admin() then return jsonb_build_object('ok', false, 'error', 'Solo Roman Web'); end if;
+  if coalesce(trim(p_phone_id), '') = '' then
+    delete from taca_wa where local_id = p_local;
+    return jsonb_build_object('ok', true, 'desconectado', true);
+  end if;
+  if not exists (select 1 from taca_locales where id = p_local) then return jsonb_build_object('ok', false, 'error', 'No existe ese local'); end if;
+  insert into taca_wa(phone_number_id, local_id, numero) values (trim(p_phone_id), p_local, nullif(trim(p_numero), ''))
+  on conflict (local_id) do update set phone_number_id = excluded.phone_number_id, numero = excluded.numero;
+  return jsonb_build_object('ok', true);
+exception when unique_violation then
+  return jsonb_build_object('ok', false, 'error', 'Ese número ya está conectado a otro local');
+end $$;
+
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function public.taca_pago_registrar(text, text, text, integer, numeric, text, jsonb),
   public.taca_suscripcion_guardar(text, text, text, text) to service_role;
 grant execute on function public.taca_carta(text, integer), public.taca_cliente(text, text, integer, jsonb, jsonb) to anon, authenticated;
 grant execute on function public.taca_es_miembro(text), public.taca_mis_locales(), public.taca_crear_local(text, jsonb),
   public.taca_leer(text), public.taca_version(text), public.taca_guardar(text, jsonb, integer), public.taca_admin_locales(),
-  public.taca_es_admin(), public.taca_admin_plan(text, text, integer, text) to authenticated;
+  public.taca_es_admin(), public.taca_admin_plan(text, text, integer, text), public.taca_admin_wa(text, text, text) to authenticated;
+grant execute on function public.taca_guardar_servidor(text, jsonb, integer) to service_role;
 
 -- Permisos para el servidor de ta-ca (api/ en Vercel, con la clave secreta de Supabase).
 grant usage on schema public to service_role;
-grant select, insert, update on public.taca_locales, public.taca_miembros, public.taca_pagos to service_role;
+grant select, insert, update on public.taca_locales, public.taca_miembros, public.taca_pagos, public.taca_wa to service_role;
 grant execute on function public.taca_estado_plan(text, timestamptz, timestamptz) to service_role;
