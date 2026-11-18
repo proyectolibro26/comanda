@@ -12,7 +12,7 @@ function planHabilitado(l) {
 }
 
 async function procesar(phoneId, msg, contacto) {
-  const [w] = await sbSelect(`taca_wa?select=local_id&phone_number_id=eq.${encodeURIComponent(phoneId)}`);
+  const [w] = await sbSelect(`taca_wa?select=local_id&activo=eq.true&phone_number_id=eq.${encodeURIComponent(phoneId)}`);
   if (!w) return console.log('wa: número sin local', phoneId);
   const tel = msg.from;
   let texto = '';

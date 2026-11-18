@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
     if (!user || !user.id) return res.status(401).json({ error: 'Iniciá sesión de nuevo' });
     const m = await sbSelect(`taca_miembros?select=rol&local_id=eq.${encodeURIComponent(local)}&user_id=eq.${user.id}`);
     if (!m.length) return res.status(403).json({ error: 'Sin acceso a ese local' });
-    const [w] = await sbSelect(`taca_wa?select=phone_number_id&local_id=eq.${encodeURIComponent(local)}`);
+    const [w] = await sbSelect(`taca_wa?select=phone_number_id&activo=eq.true&local_id=eq.${encodeURIComponent(local)}`);
     if (!w) return res.status(404).json({ error: 'El local no tiene WhatsApp conectado' });
     // solo a clientes que le escribieron al local (evita usarlo para mandar mensajes a cualquiera)
     const [l] = await sbSelect(`taca_locales?select=ult:data->waUlt&id=eq.${encodeURIComponent(local)}`);

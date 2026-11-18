@@ -50,6 +50,7 @@ create table if not exists public.taca_wa (
   numero          text,
   creado          timestamptz not null default now()
 );
+alter table public.taca_wa add column if not exists activo boolean not null default true;
 alter table public.taca_wa enable row level security;
 revoke all on public.taca_wa from anon, authenticated;
 
@@ -112,7 +113,7 @@ returns jsonb language sql stable security definer set search_path = public as $
   select jsonb_build_object('data', data, 'version', version, 'plan', plan, 'prueba_hasta', prueba_hasta,
          'pagado_hasta', pagado_hasta, 'estado', taca_estado_plan(plan, prueba_hasta, pagado_hasta),
          'abono', abono, 'mp_estado', mp_estado,
-         'whatsapp', (select numero from taca_wa w where w.local_id = taca_locales.id))
+         'whatsapp', (select numero from taca_wa w where w.local_id = taca_locales.id and w.activo))
   from taca_locales where id = p_id and taca_es_miembro(p_id);
 $$;
 
@@ -235,7 +236,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', coalesce(l.nombre, l.data->>'negocio'),
        'tipo', l.data->>'tipo', 'plan', l.plan, 'abono', l.abono, 'mp_estado', l.mp_estado,
        'pagos', (select count(*) from taca_pagos p where p.local_id = l.id),
-       'whatsapp', (select numero from taca_wa w where w.local_id = l.id), 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
+       'whatsapp', (select numero from taca_wa w where w.local_id = l.id and w.activo), 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta, 'nota', l.nota,
        'creado', l.creado, 'actualizado', l.updated_at,
        'pedidos', coalesce(jsonb_array_length(l.data->'pedidos'), 0),
        'equipo', coalesce(jsonb_array_length(l.data->'equipo'), 0),
@@ -309,12 +310,12 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   if not taca_es_admin() then return jsonb_build_object('ok', false, 'error', 'Solo Roman Web'); end if;
   if coalesce(trim(p_phone_id), '') = '' then
-    delete from taca_wa where local_id = p_local;
+    update taca_wa set phone_number_id = 'baja-' || p_local, numero = null, activo = false where local_id = p_local;
     return jsonb_build_object('ok', true, 'desconectado', true);
   end if;
   if not exists (select 1 from taca_locales where id = p_local) then return jsonb_build_object('ok', false, 'error', 'No existe ese local'); end if;
   insert into taca_wa(phone_number_id, local_id, numero) values (trim(p_phone_id), p_local, nullif(trim(p_numero), ''))
-  on conflict (local_id) do update set phone_number_id = excluded.phone_number_id, numero = excluded.numero;
+  on conflict (local_id) do update set phone_number_id = excluded.phone_number_id, numero = excluded.numero, activo = true;
   return jsonb_build_object('ok', true);
 exception when unique_violation then
   return jsonb_build_object('ok', false, 'error', 'Ese número ya está conectado a otro local');
