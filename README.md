@@ -18,7 +18,12 @@ Software para bares y restaurantes — por Roman Web. (Antes "Comanda".)
 - **Turnos de caja**: cada cajera abre su turno y lo cierra contando a ciegas; el dueño ve esperado, contado y faltante/sobrante por turno.
 - **Roles**: el saldo de caja solo lo ve el dueño; la cajera hace el arqueo a ciegas.
 
-PIN de prueba: Dueño `1234` · Cajera `0000` · Mozo `2222` · Cocina `1111`.
+## Cuentas y locales
+
+- El dueño crea su cuenta (email y contraseña) y su local: 14 días de prueba. Un asistente lo guía: datos del local, su PIN, la carta (de ejemplo o vacía) y su equipo.
+- En cada equipo del local (caja, cocina, celular del mozo) se inicia sesión una vez con la cuenta; después cada persona entra con su PIN.
+- Nadie ve un local sin ser miembro (funciones SQL con `auth.uid()`). El QR del cliente funciona sin cuenta y solo ve carta, stock y su mesa.
+- **Demo** sin registrarse: botón "Ver la demo" (datos de ejemplo, solo en ese equipo). PIN de la demo: Dueño `1234` · Cajera `0000` · Mozo `2222` · Cocina `1111`.
 
 Sitio estático (`index.html`). En la demo los datos se guardan en el navegador; para uso real hace falta backend compartido, WhatsApp Business Cloud API, Mercado Pago y facturación ARCA.
 

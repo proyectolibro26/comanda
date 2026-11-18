@@ -208,7 +208,7 @@ const ROLES={
   mozo:{pin:'2222',nombre:'Mozo',tabs:['salon','tomar','cocina','reservas']},
   cocina:{pin:'1111',nombre:'Cocina',tabs:['cocina','stock']}
 };
-const TABS={reservas:'📅 Reservas',cierre:'📊 Cierre y reportes',salon:'🪑 Salón',caja:'💵 Caja',tomar:'📝 Tomar pedido',cocina:'👨‍🍳 Cocina y barra',stock:'📦 Stock y compras',carta:'🍽 Carta y recetas',clientes:'👥 Clientes',whatsapp:'💬 WhatsApp',mesas:'🔳 QR y ajustes',menu:'📱 Vista cliente'};
+const TABS={reservas:'📅 Reservas',cierre:'📊 Cierre y reportes',salon:'🪑 Salón',caja:'💵 Caja',tomar:'📝 Tomar pedido',cocina:'👨‍🍳 Cocina y barra',stock:'📦 Stock y compras',carta:'🍽 Carta y recetas',clientes:'👥 Clientes',whatsapp:'💬 WhatsApp',mesas:'⚙️ Ajustes, equipo y QR',menu:'📱 Vista cliente'};
 const ESTADO={nuevo:'Recibido',preparando:'En preparación',listo:'Listo',entregado:'Entregado',enviado:'En camino'};
 const MEDIO={efectivo:'💵 Efectivo',mp:'Mercado Pago',tarjeta:'💳 Tarjeta',transferencia:'🏦 Transferencia'};
 const AREA={cocina:'🍳 Cocina',barra:'🍺 Barra'};
@@ -258,9 +258,9 @@ function seed(){return{
 
 let S=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.insumos&&s.cobros)return completar(s)}catch(e){}return seed()}
-function completar(s){s.reservas=s.reservas||[];s.turnos=s.turnos||[];if(s.turno===undefined)s.turno=null;return s}
+function completar(s){if(!s.equipo)s.equipo=[{id:'p-dueno',nombre:'Dueño',rol:'dueno',pin:'1234'},{id:'p-cajera',nombre:'Cajera',rol:'cajera',pin:'0000'},{id:'p-mozo',nombre:'Mozo',rol:'mozo',pin:'2222'},{id:'p-cocina',nombre:'Cocina',rol:'cocina',pin:'1111'}];if(s.setup===undefined)s.setup=true;s.reservas=s.reservas||[];s.turnos=s.turnos||[];if(s.turno===undefined)s.turno=null;return s}
 function saveLocal(){if(cloudClient())return;if(typeof LID!=='undefined'&&LID&&SY.base)return persistSync();try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
-function save(){if(cloudClient())return;saveLocal();if(NB&&LID){SY.pend=true;clearTimeout(SY.t);SY.t=setTimeout(push,250)}}
+function save(){if(cloudClient())return;saveLocal();if(enNube()){SY.pend=true;clearTimeout(SY.t);SY.t=setTimeout(push,250)}}
 let rol=null;try{rol=sessionStorage.getItem('comanda-rol')}catch(e){}
 let tab=null,clienteMode=null,typing=false,kArea='todas',CB=null,E=null,pendingMods=null;
 
@@ -270,9 +270,10 @@ const NUBE={url:'https://ktoicklowsblqmerqqdo.supabase.co',key:'sb_publishable_h
 const QS=new URLSearchParams(location.search);
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
 let LID=ls('taca-local')||'';           // local al que está conectado este equipo del personal
+if(ls('taca-modo')==='demo')LID='';
 const CLID=QS.get('l')||'';            // local del QR (celular del cliente)
 const NB=crearNube();
-const SY={ver:0,base:null,pend:false,pushing:false,estado:'',t:null,escucha:false};
+const SY={ver:0,base:null,pend:false,pushing:false,estado:'',t:null,escucha:false,info:null};
 let pendRender=false,cartaOk=false,cartaError='';
 (()=>{try{const m=JSON.parse(ls(K+'-sync'));if(LID&&m&&m.id===LID&&m.S){SY.ver=m.ver;SY.base=m.base;S=m.S}}catch(e){}})();
 function cloudClient(){return !!(clienteMode&&NB&&CLID)}
@@ -281,7 +282,7 @@ const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
 // Datos, referencia y versión se guardan juntos: así otra pestaña nunca lee una mezcla.
 function persistSync(){if(LID)ls(K+'-sync',JSON.stringify({id:LID,ver:SY.ver,base:SY.base,S}))}
 function estadoNube(e){if(SY.estado===e)return;SY.estado=e;const c=document.getElementById('chipnube');if(c)c.outerHTML=chipNube()}
-function chipNube(){if(!NB||!LID)return'';return SY.estado==='off'?'<span id="chipnube" class="nube off" title="Se sigue guardando en este equipo y se sincroniza al volver la conexión">● Sin conexión</span>':'<span id="chipnube" class="nube ok">● En línea</span>'}
+function chipNube(){if(!enNube())return'';return SY.estado==='off'?'<span id="chipnube" class="nube off" title="Se sigue guardando en este equipo y se sincroniza al volver la conexión">● Sin conexión</span>':'<span id="chipnube" class="nube ok">● En línea</span>'}
 
 /* fusión de cambios: lo que cambió este equipo se aplica sobre lo último de la nube */
 const DELTA=new Set(['stock','nextNum','gastado','pedidos']);
@@ -321,7 +322,7 @@ function fusionar(remoto,ver){
   S=m;SY.base=clone(remoto);SY.ver=ver;saveLocal();persistSync();renderSafe();
 }
 async function push(){
-  if(!NB||!LID||SY.pushing||!SY.base)return;SY.pushing=true;
+  if(!enNube()||SY.pushing||!SY.base)return;SY.pushing=true;
   try{
     for(let i=0;i<8;i++){
       if(!makeDiff(SY.base,S)){SY.pend=false;break}
@@ -333,16 +334,18 @@ async function push(){
   finally{SY.pushing=false}
 }
 async function pull(){
-  if(!NB||!LID||!SY.base)return;if(SY.pushing){setTimeout(pull,300);return}
+  if(!enNube()||!SY.base)return;if(SY.pushing){setTimeout(pull,300);return}
   try{const r=await NB.leer(LID);estadoNube('ok');if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
   catch(e){estadoNube('off')}
 }
-async function revisar(){if(!NB||!LID)return;try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
+async function revisar(){if(!enNube())return;try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
 async function conectar(){
   try{
+    if(!enNube())return;
     const r=await NB.leer(LID);
-    if(!r){toast('Ese local no existe en la nube',1);return}
-    if(!SY.base){S=r.data;SY.base=clone(r.data);SY.ver=r.version;saveLocal();persistSync();renderSafe()}
+    if(!r){toast('No tenés acceso a ese local',1);LID='';ls('taca-local',null);AUTH.locales=null;despuesDeEntrar();return}
+    SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta};
+    if(!SY.base){S=completar(r.data);SY.base=clone(r.data);SY.ver=r.version;saveLocal();persistSync();renderSafe()}
     else if(r.version>SY.ver){fusionar(r.data,r.version);push()}
     else if(makeDiff(SY.base,S))push();
     estadoNube('ok');
@@ -362,7 +365,7 @@ async function crearLocal(){
   try{const r=await NB.guardar(code,clone(S),0);if(!r.ok)throw 0;SY.ver=r.version;SY.base=clone(S);persistSync();toast('Local creado en la nube ✓');render();conectar()}
   catch(e){LID='';ls('taca-local',null);toast('No se pudo crear, revisá la conexión',1)}
 }
-function urlMesa(base,n){try{const u=new URL(base,location.href);if(LID)u.searchParams.set('l',LID);if(QS.get('mock'))u.searchParams.set('mock','1');u.hash='mesa-'+n;return u.toString()}catch(e){return base+'#mesa-'+n}}
+function urlMesa(base,n){try{const u=new URL(base,location.href);if(enNube())u.searchParams.set('l',LID);if(QS.get('mock'))u.searchParams.set('mock','1');u.hash='mesa-'+n;return u.toString()}catch(e){return base+'#mesa-'+n}}
 function vNube(){
   if(!NB)return`<section class="card"><h2>☁️ Nube</h2><p class="muted" style="margin:0">Todavía no está activada en esta versión. Mientras tanto, cada equipo guarda sus datos por separado.</p></section>`;
   if(LID)return`<section class="card"><h2>☁️ Nube ${chipNube()}</h2><p style="margin-top:0">Este equipo está conectado al local <b>${esc(LID)}</b>. Todos los equipos con este código ven lo mismo: salón, cocina, caja y stock.</p><p class="muted">Para sumar otro equipo (celular del mozo, tablet de cocina): abrí la app, y en la entrada poné este código. Los QR de las mesas ya lo llevan adentro.</p><div class="btns"><button data-a="copiarCodigo">📋 Copiar código</button><button class="ghost bad" data-a="desconectar">Desconectar este equipo</button></div></section>`;
@@ -387,6 +390,7 @@ async function accionCliente(tipo,ok){
 /* conectores */
 function crearNube(){
   if(QS.get('mock')==='1')return mockNube();
+  try{if(window.self!==window.top)return null}catch(e){return null} // dentro de otra página (vista previa): solo demo
   if(NUBE.url&&NUBE.key&&window.supabase){try{return supaNube(window.supabase.createClient(NUBE.url,NUBE.key))}catch(e){}}
   return null;
 }
@@ -394,6 +398,18 @@ function supaNube(sb){
   const rpc=async(f,a)=>{const{data,error}=await sb.rpc(f,a);if(error)throw error;return data};
   let ch=null;
   return{
+    auth:{
+      async sesion(){const{data}=await sb.auth.getSession();return data.session?data.session.user:null},
+      async entrar(e,p){const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});if(error)throw error;return data.user},
+      async registrar(e,p){const{data,error}=await sb.auth.signUp({email:e,password:p,options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;
+        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('User already registered');return{user:data.user,confirmar:!data.session}},
+      async salir(){await sb.auth.signOut()},
+      async recuperar(e){const{error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});if(error)throw error},
+      async nuevaClave(p){const{error}=await sb.auth.updateUser({password:p});if(error)throw error},
+      onCambio(cb){sb.auth.onAuthStateChange((ev,s)=>setTimeout(()=>cb(ev,s?s.user:null)))}
+    },
+    misLocales:()=>rpc('taca_mis_locales'),
+    crearLocal:(n,d)=>rpc('taca_crear_local',{p_nombre:n,p_data:d}),
     leer:id=>rpc('taca_leer',{p_id:id}),
     version:id=>rpc('taca_version',{p_id:id}),
     guardar:(id,d,v)=>rpc('taca_guardar',{p_id:id,p_data:d,p_version:v}),
@@ -406,13 +422,27 @@ function supaNube(sb){
 // Servidor de prueba dentro del navegador (?mock=1): imita las funciones SQL para probar varios equipos a la vez.
 function mockNube(){
   const DB='taca-mock-db',get=()=>JSON.parse(ls(DB)||'{}'),put=x=>ls(DB,JSON.stringify(x));
+  const US='taca-mock-users',users=()=>JSON.parse(ls(US)||'{}'),ses=()=>{try{return JSON.parse(sessionStorage.getItem('taca-mock-sesion')||ls('taca-mock-sesion'))}catch(e){return null}};
+  const miembro=id=>{const r=get()[id],u=ses();return !!(r&&u&&(r.miembros||[]).includes(u.id))};
+  const cbs=[];
   const bc=('BroadcastChannel' in window)?new BroadcastChannel('taca-mock'):null;
   const later=f=>new Promise((ok,ko)=>setTimeout(()=>{try{ok(f())}catch(e){ko(e)}},20+Math.random()*60));
   return{
-    leer:id=>later(()=>{const r=get()[id];return r?clone(r):null}),
-    version:id=>later(()=>{const r=get()[id];return r?r.version:null}),
+    auth:{
+      sesion:()=>later(()=>ses()),
+      entrar:(e,p)=>later(()=>{const u=users()[e.toLowerCase()];if(!u||u.pass!==p)throw new Error('Invalid login credentials');const x={id:u.id,email:e.toLowerCase()};ls('taca-mock-sesion',JSON.stringify(x));return x}),
+      registrar:(e,p)=>later(()=>{if(p.length<6)throw new Error('Password should be at least 6 characters');const us=users();if(us[e.toLowerCase()])throw new Error('User already registered');us[e.toLowerCase()]={pass:p,id:'u'+uid()};ls(US,JSON.stringify(us));const x={id:us[e.toLowerCase()].id,email:e.toLowerCase()};ls('taca-mock-sesion',JSON.stringify(x));return{user:x,confirmar:false}}),
+      salir:()=>later(()=>{ls('taca-mock-sesion',null)}),
+      recuperar:()=>later(()=>true),nuevaClave:()=>later(()=>true),
+      onCambio(cb){cbs.push(cb)}
+    },
+    misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:'prueba',prueba_hasta:r.prueba_hasta}))}),
+    crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
+      db[id]={data:d,version:1,miembros:[u.id],prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
+    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:'prueba',prueba_hasta:r.prueba_hasta}:null}),
+    version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
-      if(!r){db[id]={data:d,version:1};put(db);return{ok:true,version:1}}
+      if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
       if(r.version!==v)return{ok:false,data:r.data,version:r.version};
       r.data=d;r.version++;put(db);return{ok:true,version:r.version}}),
     carta:(id,m)=>later(()=>{const r=get()[id];if(!r)return null;const d=r.data;
@@ -431,6 +461,127 @@ function mockNube(){
     avisar(){if(bc)bc.postMessage(LID||CLID)}
   };
 }
+
+/* ---------- cuentas: registro, locales y primeros pasos ---------- */
+const AUTH={user:null,cargando:true,locales:null,aviso:'',vista:'entrar',recuperando:false,ocupado:false};
+let personaId=null;try{personaId=sessionStorage.getItem('taca-persona')}catch(e){}
+let W=null; // asistente de primeros pasos
+function modoDemo(){return !NB||ls('taca-modo')==='demo'}
+function enNube(){return !!(NB&&!modoDemo()&&AUTH.user&&LID)}
+const EQUIPO_DEMO=[{id:'p-dueno',nombre:'Dueño',rol:'dueno',pin:'1234'},{id:'p-cajera',nombre:'Cajera',rol:'cajera',pin:'0000'},{id:'p-mozo',nombre:'Mozo',rol:'mozo',pin:'2222'},{id:'p-cocina',nombre:'Cocina',rol:'cocina',pin:'1111'}];
+const TIPOS=['Restaurante','Cervecería','Bar','Cafetería','Pizzería','Hamburguesería','Parrilla','Rotisería','Otro'];
+function seedVacio(nombre){const s=seed();Object.assign(s,{negocio:nombre,insumos:[],platos:[],proveedores:[],equipo:[],setup:false,apertura:0,alias:'',tipo:''});s.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'};return s}
+function cartaEjemplo(){const s=seed();return{insumos:s.insumos,platos:s.platos,proveedores:s.proveedores}}
+function persona(){return(S.equipo||[]).find(p=>p.id===personaId)||null}
+function errMsg(e){const m=String((e&&(e.message||e.error_description||e.msg))||e||'');
+  if(/invalid login/i.test(m))return'Email o contraseña incorrectos';
+  if(/not confirmed/i.test(m))return'Todavía no confirmaste tu email: revisá tu casilla (y la carpeta de spam)';
+  if(/already registered|already been registered/i.test(m))return'Ya hay una cuenta con ese email: entrá con tu contraseña';
+  if(/at least 6|password should/i.test(m))return'La contraseña tiene que tener al menos 6 caracteres';
+  if(/rate limit|too many|security purposes/i.test(m))return'Demasiados intentos seguidos, esperá unos minutos';
+  if(/invalid.*email|email.*invalid/i.test(m))return'Revisá el email, parece que está mal escrito';
+  if(/fetch|network|failed to/i.test(m))return'Sin conexión, probá de nuevo';
+  return m||'Algo salió mal, probá de nuevo';}
+function diasPrueba(){const i=SY.info;if(!i||i.plan!=='prueba'||!i.prueba_hasta)return null;return Math.ceil((new Date(i.prueba_hasta)-Date.now())/864e5)}
+function chipPrueba(){if(rol!=='dueno')return'';const d=diasPrueba();if(d===null)return'';return d<=0?'<span class="chip bad">Prueba vencida</span>':`<span class="chip ${d<=3?'warn':''}">Prueba: ${d} día${d>1?'s':''}</span>`}
+
+async function arrancarCuentas(){
+  if(modoDemo()||cloudClient()){AUTH.cargando=false;return}
+  try{AUTH.user=await NB.auth.sesion()}catch(e){AUTH.user=null}
+  AUTH.cargando=false;
+  NB.auth.onCambio((ev,u)=>{if(ev==='PASSWORD_RECOVERY'){AUTH.recuperando=true}
+    const antes=AUTH.user&&AUTH.user.id;AUTH.user=u;
+    if(u&&u.id!==antes){AUTH.locales=null;despuesDeEntrar()}else if(!u&&antes){salirTodo(false)}
+    renderSafe()});
+  if(AUTH.user){if(LID)conectar();else despuesDeEntrar()}
+  render();
+}
+async function despuesDeEntrar(){
+  if(LID){conectar();return}
+  try{AUTH.locales=await NB.misLocales()}catch(e){AUTH.locales=[];toast(errMsg(e),1)}
+  const pend=ls('taca-pendiente');
+  if(pend&&!AUTH.locales.length){ls('taca-pendiente',null);return crearLocalNube(pend)}
+  if(AUTH.locales.length===1&&!pend)return elegirLocal(AUTH.locales[0].id);
+  renderSafe();
+}
+function elegirLocal(id){LID=id;ls('taca-local',id);SY.base=null;SY.ver=0;SY.info=null;rol=null;personaId=null;render();conectar()}
+async function crearLocalNube(nombre){
+  AUTH.ocupado=true;render();
+  try{const r=await NB.crearLocal(nombre,seedVacio(nombre));if(!r||!r.ok)throw new Error((r&&r.error)||'No se pudo crear');
+    AUTH.ocupado=false;toast('¡Tu local está listo! 14 días de prueba gratis 🎉');elegirLocal(r.id)}
+  catch(e){AUTH.ocupado=false;toast(errMsg(e),1);render()}
+}
+async function salirTodo(llamarSalir){
+  try{if(llamarSalir&&NB)await NB.auth.salir()}catch(e){}
+  ['taca-local',K+'-sync','taca-pendiente'].forEach(k=>ls(k,null));
+  try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}
+  location.reload();
+}
+
+function vInicio(){
+  const v=AUTH.vista,oc=AUTH.ocupado?'disabled':'';
+  let cuerpo;
+  if(AUTH.recuperando)cuerpo=`<h2>Nueva contraseña</h2><form data-f="nuevaClave"><input name="clave" type="password" minlength="6" placeholder="Nueva contraseña (mín. 6)" autocomplete="new-password" required><button class="primary" ${oc}>Guardar</button></form>`;
+  else if(v==='crear')cuerpo=`<h2>Probá ta-ca 14 días gratis</h2><p class="muted" style="margin:0 0 6px;font-size:14px">Sin tarjeta. Cancelás cuando quieras.</p>
+<form data-f="registro"><input name="local" placeholder="Nombre de tu local" autocomplete="organization" required><input name="email" type="email" placeholder="Tu email" autocomplete="email" required><input name="clave" type="password" minlength="6" placeholder="Contraseña (mín. 6)" autocomplete="new-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Creando…':'Crear mi cuenta'}</button></form>
+<p style="font-size:14px">¿Ya tenés cuenta? <button class="link" data-a="authVista" data-v="entrar">Entrá</button></p>`;
+  else if(v==='olvide')cuerpo=`<h2>Recuperar contraseña</h2><form data-f="olvide"><input name="email" type="email" placeholder="Tu email" autocomplete="email" required><button class="primary" ${oc}>Mandarme un link</button></form><p style="font-size:14px"><button class="link" data-a="authVista" data-v="entrar">Volver</button></p>`;
+  else cuerpo=`<h2>Entrá a tu local</h2><form data-f="entrar"><input name="email" type="email" placeholder="Email" autocomplete="email" required><input name="clave" type="password" placeholder="Contraseña" autocomplete="current-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Entrando…':'Entrar'}</button></form>
+<p style="font-size:14px;margin-bottom:4px"><button class="link" data-a="authVista" data-v="olvide">Me olvidé la contraseña</button></p>
+<p style="font-size:14px;margin-top:4px">¿Todavía no usás ta-ca? <button class="link" data-a="authVista" data-v="crear">Probalo 14 días gratis</button></p>`;
+  return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p>
+${AUTH.aviso?`<p class="hint" style="margin-top:14px">${AUTH.aviso}</p>`:''}<div style="text-align:left;margin-top:16px" class="auth">${cuerpo}</div>
+<p style="margin-top:18px"><button class="ghost small" data-a="entrarDemo">Ver la demo sin registrarme</button></p></div></div>`;
+}
+function vLocales(){
+  const l=AUTH.locales;
+  if(l===null||AUTH.ocupado)return`<div class="login"><div class="card">${LOGO}<p class="tagline">${AUTH.ocupado?'Preparando tu local…':'Buscando tus locales…'}</p></div></div>`;
+  return`<div class="login"><div class="card" style="max-width:440px">${LOGO}<p class="tagline" style="margin-top:4px">${esc(AUTH.user.email)}</p>
+${l.length?`<h2 style="text-align:left;margin-top:18px">Elegí el local</h2>${l.map(x=>{const d=x.plan==='prueba'?Math.ceil((new Date(x.prueba_hasta)-Date.now())/864e5):null;
+  return`<button class="mesa-c" style="width:100%;min-height:0;margin-bottom:8px" data-a="elegirLocal" data-id="${esc(x.id)}"><b>${esc(x.nombre)}</b><small>${x.rol==='dueno'?'Dueño':esc(x.rol)}${d!==null?` · ${d>0?'prueba: quedan '+d+' días':'prueba vencida'}`:''}</small></button>`}).join('')}`:'<p class="muted" style="margin-top:16px">Todavía no tenés ningún local en ta-ca.</p>'}
+<form data-f="nuevoLocal" class="inline" style="margin-top:10px;text-align:left"><label>${l.length?'Sumar otro local':'Creá tu local'}<input name="nombre" placeholder="Nombre del local" required></label><button class="primary">Crear</button></form>
+<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
+}
+function vCargando(t){return`<div class="login"><div class="card">${LOGO}<p class="tagline">${t}</p></div></div>`}
+
+/* asistente de primeros pasos */
+function vBienvenida(){
+  W=W||{paso:1,equipo:[]};const p=W.paso,pasos=['Tu local','Tu PIN','Tu carta','Tu equipo'];
+  const barra=`<div style="display:flex;gap:6px;margin:14px 0 18px">${pasos.map((t,i)=>`<div style="flex:1;text-align:center;font-size:12px;font-weight:600;color:${i+1<=p?'var(--accd)':'var(--muted)'}"><div style="height:5px;border-radius:3px;background:${i+1<=p?'var(--acc)':'var(--line)'};margin-bottom:5px"></div>${t}</div>`).join('')}</div>`;
+  let c='';
+  if(p===1)c=`<h2>Contanos de tu local</h2><form data-f="w1"><label>Nombre<input name="negocio" value="${esc(S.negocio)}" required></label>
+<label>¿Qué es?<select name="tipo">${TIPOS.map(t=>`<option ${S.tipo===t?'selected':''}>${t}</option>`).join('')}</select></label>
+<div class="inline"><label>Cantidad de mesas<input name="mesas" type="number" min="0" max="60" value="${S.mesas||10}" required></label><label>Costo de envío (si hacés delivery)<input name="envio" inputmode="decimal" value="${S.envio||0}"></label></div>
+<label>Alias para transferencias (opcional)<input name="alias" value="${esc(S.alias||'')}" placeholder="ej: mi.local.mp"></label><button class="primary">Seguir →</button></form>`;
+  if(p===2)c=`<h2>Tu PIN de dueño</h2><p class="muted" style="margin-top:0">Con este PIN entrás vos en cualquier equipo del local. Ves todo, incluido el saldo de caja.</p><form data-f="w2"><label>Tu nombre<input name="nombre" value="${esc(W.nombre||'')}" required></label>
+<div class="inline"><label>PIN (4 a 6 números)<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><label>Repetilo<input name="pin2" type="password" inputmode="numeric" required autocomplete="off"></label></div><div class="btns"><button type="button" class="ghost" data-a="wPaso" data-p="1">← Volver</button><button class="primary">Seguir →</button></div></form>`;
+  if(p===3)c=`<h2>Tu carta</h2><p class="muted" style="margin-top:0">Después podés cambiar todo en <b>Carta y recetas</b>.</p>
+<div style="display:grid;gap:10px"><button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="ejemplo"><b>Empezar con una carta de ejemplo</b><small>Hamburguesas, milanesas, pizza y bebidas, con sus recetas e insumos. Editás precios y sacás lo que no va.</small></button>
+<button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="vacia"><b>Empezar con la carta vacía</b><small>Cargás tus platos e insumos desde cero.</small></button></div><div class="btns"><button class="ghost" data-a="wPaso" data-p="2">← Volver</button></div>`;
+  if(p===4)c=`<h2>Tu equipo</h2><p class="muted" style="margin-top:0">Cada persona entra con su PIN y ve solo lo que le toca. Podés sumar gente después en <b>Ajustes</b>.</p>
+${W.equipo.map((x,i)=>`<div class="row"><span><b>${esc(x.nombre)}</b> · ${ROLES[x.rol].nombre}</span><button class="small ghost bad" data-a="wQuitar" data-i="${i}">Quitar</button></div>`).join('')}
+<form data-f="w4" class="inline" style="margin-top:8px"><label>Nombre<input name="nombre" required></label><label style="max-width:130px">Puesto<select name="rol"><option value="cajera">Caja</option><option value="mozo">Mozo</option><option value="cocina">Cocina</option><option value="dueno">Encargado (ve todo)</option></select></label><label style="max-width:110px">PIN<input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><button>Sumar</button></form>
+<div class="btns" style="margin-top:16px"><button class="ghost" data-a="wPaso" data-p="3">← Volver</button><button class="primary" data-a="wFin">${W.equipo.length?'Terminar':'Terminar, lo sumo después'} ✓</button></div>`;
+  return`<div class="login"><div class="card" style="max-width:520px;text-align:left"><div style="text-align:center">${LOGO}<p class="tagline" style="margin-top:4px">Primeros pasos · ${esc(S.negocio)}</p></div>${barra}${c}</div></div>`;
+}
+function pinLibre(pin,salvo){return /^\d{4,6}$/.test(pin)&&!(S.equipo||[]).some(p=>p.pin===pin&&p.id!==salvo)&&!(W&&W.equipo.some(p=>p.pin===pin))&&!(W&&W.pin===pin&&!salvo)}
+
+/* equipo y cuenta (en Ajustes) */
+function vEquipo(){
+  return`<section class="card"><h2>👥 Equipo</h2><p class="muted" style="margin-top:0;font-size:14px">Cada persona entra con su PIN. Caja no ve el saldo; mozo y cocina solo ven lo suyo.</p>
+${(S.equipo||[]).map(p=>`<div class="row"><span><b>${esc(p.nombre)}</b></span><span style="display:flex;gap:6px;align-items:center"><select data-eqrol="${p.id}" style="width:auto;padding:4px 8px">${Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${p.rol===k?'selected':''}>${k==='dueno'?'Dueño / encargado':r.nombre}</option>`).join('')}</select><button class="small" data-a="eqPin" data-id="${p.id}">PIN</button><button class="small ghost bad" data-a="eqQuitar" data-id="${p.id}" aria-label="Quitar a ${esc(p.nombre)}">✕</button></span></div>`).join('')}
+<form data-f="eqNuevo" class="inline" style="margin-top:10px"><label>Nombre<input name="nombre" required></label><label style="max-width:140px">Puesto<select name="rol"><option value="cajera">Caja</option><option value="mozo">Mozo</option><option value="cocina">Cocina</option><option value="dueno">Encargado</option></select></label><label style="max-width:100px">PIN<input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><button>Sumar</button></form></section>`;
+}
+function vCuenta(){
+  if(modoDemo())return NB?`<section class="card"><h2>Estás en la demo</h2><p class="muted" style="margin-top:0">Los datos de la demo quedan solo en este equipo. Para usar ta-ca en tu local, creá tu cuenta: 14 días gratis.</p><div class="btns"><button class="primary" data-a="salirDemo">Crear mi cuenta</button></div></section>`:'';
+  const d=diasPrueba();
+  return`<section class="card"><h2>☁️ Cuenta ${chipNube()}</h2>
+<div class="row"><span>Cuenta</span><b>${esc(AUTH.user?AUTH.user.email:'')}</b></div><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div>
+${d!==null?`<div class="row"><span>Plan</span><b class="${d<=3?'badt':''}">${d>0?`Prueba gratis · quedan ${d} días`:'Prueba vencida'}</b></div>`:''}
+<p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo: abrí ta-ca en ese equipo, entrá con este email y contraseña y elegí el local. Después cada persona usa su PIN.</p>
+<div class="btns"><button data-a="cambiarLocal">Cambiar de local</button><button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
+}
+
 const C={mesa:1,cart:[]};
 
 /* ---------- utilidades ---------- */
@@ -449,7 +600,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const plato=id=>S.platos.find(p=>p.id===id);
 const insumo=id=>S.insumos.find(i=>i.id===id);
 const prov=id=>S.proveedores.find(p=>p.id===id);
-const yo=()=>rol?ROLES[rol].nombre:'Cliente';
+const yo=()=>{const p=rol&&persona();return p?p.nombre:rol?ROLES[rol].nombre:'Cliente'};
 const activos=()=>S.platos.filter(p=>p.activo!==false);
 const disp=p=>{const e=Object.entries(p.receta);if(!e.length)return 999;return Math.max(0,Math.floor(Math.min(...e.map(([i,c])=>insumo(i)?insumo(i).stock/c:0))+1e-6))};
 const costoReceta=r=>Object.entries(r).reduce((a,[i,c])=>a+c*(insumo(i)?insumo(i).costo:0),0);
@@ -545,13 +696,10 @@ function ingenieria(c){
 }
 
 /* ---------- vistas ---------- */
-function vLogin(){return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p><small style="margin-top:14px">${esc(S.negocio)}</small>
-<form data-f="login"><select name="rol">${Object.entries(ROLES).map(([k,r])=>`<option value="${k}">${r.nombre}</option>`).join('')}</select>
-<input name="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" required><button class="primary">Entrar</button></form>
-<p class="hint">PIN de prueba — Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p>
-<p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>
-${NB&&!LID?`<form data-f="conectar" class="inline" style="margin-top:6px;text-align:left"><label>¿Tu local ya está en ta-ca? Código<input name="codigo" placeholder="ej: la-esquina-x7k2p9" autocomplete="off" required></label><button>Conectar</button></form>`:''}
-${LID?`<p class="hint">☁️ Conectado al local <b>${esc(LID)}</b></p>`:''}</div></div>`}
+function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p>
+<form data-f="login"><input name="pin" type="password" inputmode="numeric" placeholder="Tu PIN" autocomplete="off" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>
+${demo?`<p class="hint">Demo · PIN de prueba: Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p><p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>${NB?'<p style="font-size:14px"><button class="link" data-a="salirDemo">Salir de la demo y crear mi cuenta</button></p>':''}`
+:`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
 
 function badge(t){
   let n=0;
@@ -562,7 +710,7 @@ function badge(t){
   return n?`<span class="b">${n}</span>`:'';
 }
 function header(){const tabs=ROLES[rol].tabs;return`<header class="top"><div class="brand">${LOGO}<small style="margin-left:6px">${esc(S.negocio)} · ${S.dia}</small></div>
-<div class="who">${chipNube()}<span class="chip">${ROLES[rol].nombre}</span><button class="ghost small" data-a="logout">Salir</button></div></header>
+<div class="who">${chipPrueba()}${chipNube()}<span class="chip">${esc(yo())}${persona()&&persona().nombre!==ROLES[rol].nombre?' · '+ROLES[rol].nombre:''}</span><button class="ghost small" data-a="logout">Salir</button></div></header>
 <nav>${tabs.map(t=>`<button class="${t===tab?'on':''}" data-a="tab" data-t="${t}">${TABS[t]}${badge(t)}</button>`).join('')}</nav>`}
 
 /* carta (cliente QR, vista previa y mozo) */
@@ -853,6 +1001,10 @@ function botReserva(t,txt){
     r.estado='cancelada';audit('Reserva cancelada',`${r.nombre} · ${r.fecha} ${r.hora} (por WhatsApp)`);if(wa.step.startsWith('res'))wa.step='inicio';
     return[`Listo, cancelé tu reserva del ${fechaLinda(r.fecha)} a las ${r.hora}. ¡Gracias por avisar! 🙏`];
   }
+  if(wa.step.startsWith('res')){
+    if(/^(chau|salir|nada|olvidate|dejalo)/.test(t)){wa.step='inicio';wa.draft={};return['Listo 👍 Cuando quieras escribí *reservar* o pedí de la carta.']}
+    if(!/reserv/.test(t)&&parsear(t).lines.length){wa.step='inicio';wa.draft={};return null}
+  }
   if(wa.step==='res_ok'){
     if(/^(si|dale|ok|confirmo|de una)/.test(t)){const r=wa.draft.res;
       S.reservas.push({id:uid(),nombre:r.nombre,tel:wa.tel,personas:r.personas,fecha:r.fecha,hora:r.hora,mesa:null,nota:'Pidió por WhatsApp',estado:'confirmada',ts:Date.now(),por:'WhatsApp'});
@@ -964,15 +1116,23 @@ function vMesas(){
 <div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label>
 <div class="inline"><label>Costo de envío<input data-set="envio" inputmode="decimal" value="${S.envio}"></label><label>Descuento máximo de la cajera (%)<input data-set="descMax" inputmode="decimal" value="${S.descMax}"></label></div>
 <label>Alias para transferencias<input data-set="alias" value="${esc(S.alias)}"></label></section>
-${vNube()}${vImpresora()}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section></div>`;
+${vCuenta()}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
 }
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
 function render(){
   const app=$('#app');
-  if(pantallaMode){app.innerHTML=vPantalla();return}
-  if(!cloudClient()&&(!S.reservas||!S.turnos))completar(S);
+  if(pantallaMode&&(modoDemo()||SY.base)){app.innerHTML=vPantalla();return}
+  if(!cloudClient()&&(!S.reservas||!S.turnos||!S.equipo))completar(S);
   if(clienteMode){if(cloudClient()&&!cartaOk){app.innerHTML=`<div class="login"><div class="card">${LOGO}<p class="tagline">${cartaError?esc(cartaError):'Cargando la carta…'}</p></div></div>`;return}app.innerHTML=vCliente('cliente');return}
+  if(!modoDemo()&&!cloudClient()){
+    if(AUTH.cargando)return app.innerHTML=vCargando('Abriendo ta-ca…');
+    if(!AUTH.user)return app.innerHTML=vInicio();
+    if(!LID)return app.innerHTML=vLocales();
+    if(!SY.base)return app.innerHTML=vCargando('Abriendo tu local…');
+    if(!S.setup)return app.innerHTML=vBienvenida();
+  }
+  if(rol&&!persona()&&S.equipo&&S.equipo.length){rol=null;personaId=null}
   if(!rol||!ROLES[rol]){rol=null;app.innerHTML=vLogin();return}
   const tabs=ROLES[rol].tabs;if(!tabs.includes(tab))tab=tabs[0];
   app.innerHTML=header()+`<main>${V[tab]()}</main>`;
@@ -1082,7 +1242,7 @@ const A={
   closeOv(b,e){if(e.target===b)closeModal()},
   close(){closeModal()},
   tab(b){tab=b.dataset.t;render();scrollTo(0,0)},
-  logout(){rol=null;try{sessionStorage.removeItem('comanda-rol')}catch(e){}render()},
+  logout(){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}render()},
   abrirMesa(b){location.hash='mesa-'+b.dataset.n},
   salirCliente(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);clienteMode=null;render()},
   mas(b){const p=plato(b.dataset.id);if(p.mods.length){pendingMods=p.id;
@@ -1181,7 +1341,6 @@ const A={
   waReset(){S.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:S.wa.tel};save();render()},
   demoVentas(){demoVentas();toast('Ventas de ejemplo cargadas');tab='cierre';render()},
   reset(){modal(`<h2>¿Reiniciar la demo?</h2><p class="muted">Se borran ventas, stock, carta y ajustes y se vuelve al estado inicial.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="resetOk">Reiniciar</button></div>`)},
-  crearLocal(){crearLocal()},
   imprimirComanda(b){const p=S.pedidos.find(x=>x.id===b.dataset.id);if(p)imprimir('Comanda #'+p.num,comandaHTML(p,kArea))},
   imprimirPrecuenta(b){imprimir('Precuenta',precuentaHTML(b.dataset.g))},
   imprimirTicket(b){const c=S.cobros.find(x=>x.id===b.dataset.id);if(c)imprimir('Ticket',ticketHTML(c))},
@@ -1190,18 +1349,46 @@ const A={
   salirPantalla(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);pantallaMode=false;render()},
   resEstado(b){const r=S.reservas.find(x=>x.id===b.dataset.id);if(!r)return;r.estado=b.dataset.e;if(r.estado==='cancelada')audit('Reserva cancelada',`${r.nombre} · ${r.fecha} ${r.hora}`);save();render();if(r.estado==='sentada'&&r.mesa)toast(`${r.nombre} ya está en la mesa ${r.mesa}`)},
   resRecordar(b){const r=S.reservas.find(x=>x.id===b.dataset.id);if(r)copiar(`¡Hola ${r.nombre}! Te esperamos ${r.fecha===fechaISO()?'hoy':'el '+fechaLinda(r.fecha)} a las ${r.hora} en ${S.negocio} para ${r.personas} persona${r.personas>1?'s':''}. Si no podés venir, avisanos por acá así liberamos la mesa. ¡Gracias!`,'Recordatorio copiado ✓ — pegalo en el WhatsApp del cliente')},
-  copiarCodigo(){copiar(LID,'Código copiado ✓')},
   desconectar(){modal(`<h2>¿Desconectar este equipo?</h2><p class="muted">Este equipo deja de sincronizar con el local <b>${esc(LID)}</b>. Los datos en la nube no se borran.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="desconectarOk">Desconectar</button></div>`)},
   desconectarOk(){try{localStorage.removeItem('taca-local');localStorage.removeItem(K+'-sync')}catch(e){}location.reload()},
+  authVista(b){AUTH.vista=b.dataset.v;AUTH.aviso='';render()},
+  entrarDemo(){ls('taca-modo','demo');location.reload()},
+  salirDemo(){ls('taca-modo',null);try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}location.hash='';location.reload()},
+  elegirLocal(b){elegirLocal(b.dataset.id)},
+  cambiarLocal(){LID='';ls('taca-local',null);ls(K+'-sync',null);rol=null;personaId=null;SY.base=null;AUTH.locales=null;closeModal();render();NB.misLocales().then(l=>{AUTH.locales=l;render()}).catch(e=>{AUTH.locales=[];toast(errMsg(e),1);render()})},
+  cerrarSesion(){salirTodo(true)},
+  wPaso(b){W.paso=+b.dataset.p;render()},
+  wCarta(b){if(b.dataset.c==='ejemplo'){const c=cartaEjemplo();S.insumos=c.insumos;S.platos=c.platos;S.proveedores=c.proveedores}else{S.insumos=[];S.platos=[];S.proveedores=[]}W.carta=b.dataset.c;W.paso=4;save();render()},
+  wQuitar(b){W.equipo.splice(+b.dataset.i,1);render()},
+  wFin(){const yoP={id:uid(),nombre:W.nombre,rol:'dueno',pin:W.pin};S.equipo=[yoP].concat(W.equipo.map(x=>Object.assign({id:uid()},x)));S.setup=true;
+    audit('Local creado',`${S.negocio} · ${S.equipo.length} persona${S.equipo.length>1?'s':''} en el equipo`);
+    rol='dueno';personaId=yoP.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',personaId)}catch(e){}
+    tab=W.carta==='vacia'?'carta':'salon';W=null;save();render();toast('¡Listo! Tu local está encendido 🔥')},
+  eqPin(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(p)modal(`<h2>Nuevo PIN para ${esc(p.nombre)}</h2><form data-f="eqPin"><input type="hidden" name="id" value="${p.id}"><label>PIN (4 a 6 números)<input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
+  eqQuitar(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(!p)return;if(p.rol==='dueno'&&S.equipo.filter(x=>x.rol==='dueno').length<2)return toast('Tiene que quedar al menos un dueño',1);if(p.id===personaId)return toast('No te podés quitar a vos mismo',1);
+    S.equipo=S.equipo.filter(x=>x.id!==p.id);audit('Equipo',`Se quitó a ${p.nombre}`);save();render();toast(`${p.nombre} ya no puede entrar`)},
   resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
 };
 const F={
-  conectar(d){conectarCodigo(d.codigo)},
   reserva(d,f){const m=d.mesa?+d.mesa:null,per=parseInt(d.personas)||0;if(!d.nombre.trim()||per<1)return toast('Completá nombre y personas',1);
     if(m&&choque(d.fecha,d.hora,m))return toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);
     S.reservas.push({id:uid(),nombre:d.nombre.trim(),tel:d.tel.trim(),personas:per,fecha:d.fecha,hora:d.hora,mesa:m,nota:d.nota.trim(),estado:'confirmada',ts:Date.now(),por:yo()});
     rFecha=d.fecha;save();render();toast('Reserva guardada ✓')},
-  login(d){if(ROLES[d.rol]&&ROLES[d.rol].pin===d.pin){rol=d.rol;try{sessionStorage.setItem('comanda-rol',rol)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
+  async entrar(d){AUTH.ocupado=true;AUTH.aviso='';render();try{AUTH.user=await NB.auth.entrar(d.email.trim(),d.clave);AUTH.ocupado=false;despuesDeEntrar();render()}catch(e){AUTH.ocupado=false;render();toast(errMsg(e),1)}},
+  async registro(d){const nombre=d.local.trim();if(nombre.length<2)return toast('Poné el nombre del local',1);AUTH.ocupado=true;render();
+    try{const r=await NB.auth.registrar(d.email.trim(),d.clave);AUTH.ocupado=false;ls('taca-pendiente',nombre);
+      if(r.confirmar){AUTH.vista='entrar';AUTH.aviso=`📧 Te mandamos un email a <b>${esc(d.email.trim())}</b>. Tocá el link para confirmar tu cuenta y después entrá acá.`;render()}
+      else{AUTH.user=r.user;despuesDeEntrar();render()}}
+    catch(e){AUTH.ocupado=false;render();toast(errMsg(e),1)}},
+  async olvide(d){AUTH.ocupado=true;render();try{await NB.auth.recuperar(d.email.trim());AUTH.vista='entrar';AUTH.aviso='📧 Si hay una cuenta con ese email, te llegó un link para elegir una contraseña nueva.'}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
+  async nuevaClave(d){AUTH.ocupado=true;render();try{await NB.auth.nuevaClave(d.clave);AUTH.recuperando=false;toast('Contraseña cambiada ✓');history.replaceState(null,'',location.pathname+location.search)}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
+  nuevoLocal(d){crearLocalNube(d.nombre.trim())},
+  w1(d){S.negocio=d.negocio.trim()||S.negocio;S.tipo=d.tipo;S.mesas=Math.max(0,Math.min(60,parseInt(d.mesas)||0));S.envio=Math.max(0,pnum(d.envio));S.alias=d.alias.trim();W.paso=2;save();render()},
+  w2(d){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);W.nombre=d.nombre.trim()||'Dueño';W.pin=d.pin;W.paso=3;render()},
+  w4(d,f){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin===W.pin||W.equipo.some(p=>p.pin===d.pin))return toast('Ese PIN ya lo usa otra persona',1);W.equipo.push({nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});render()},
+  eqNuevo(d){if(!d.nombre.trim())return;if(!pinLibre(d.pin))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);S.equipo.push({id:uid(),nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});audit('Equipo',`Se sumó ${d.nombre.trim()} (${ROLES[d.rol].nombre})`);save();render();toast('Persona sumada ✓')},
+  eqPin(d){if(!pinLibre(d.pin,d.id))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);const p=S.equipo.find(x=>x.id===d.id);if(p){p.pin=d.pin;audit('Equipo',`Cambió el PIN de ${p.nombre}`);save()}closeModal();render();toast('PIN cambiado ✓')},
+  login(d){const p=(S.equipo||[]).find(x=>x.pin===String(d.pin).trim());if(p){rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
   wa(d,f){const t=d.t;f.reset();waSend(t)},
   abrirTurno(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);if(!S.turnos.length&&!S.cobros.length)S.apertura=m;S.turno={id:uid(),cajera:yo(),apertura:m,inicio:Date.now()};audit('Apertura de turno',yo(),m);save();render();toast('Turno abierto ✓')},
   cerrarTurno(d){const m=pnum(d.monto);if(!(m>=0)||String(d.monto).trim()==='')return toast('Cargá el efectivo contado',1);const t=cerrarTurnoCon(m);save();closeModal();render();toast(rol==='dueno'&&t.diferencia?`Turno cerrado · ${t.diferencia>0?'sobran':'faltan'} ${fmt(Math.abs(t.diferencia))}`:'Turno cerrado ✓')},
@@ -1251,6 +1438,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.dataset.eqrol){const p=S.equipo.find(x=>x.id===t.dataset.eqrol);if(p){if(p.rol==='dueno'&&t.value!=='dueno'&&S.equipo.filter(x=>x.rol==='dueno').length<2){toast('Tiene que quedar al menos un dueño',1);return render()}p.rol=t.value;audit('Equipo',`${p.nombre} pasó a ${ROLES[t.value].nombre}`);save();render()}return}
   if(t.dataset.resmesa){const r=S.reservas.find(x=>x.id===t.dataset.resmesa);if(r){const m=t.value?+t.value:null;if(m&&choque(r.fecha,r.hora,m,r.id)){toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);return render()}r.mesa=m;save();render()}return}
   if(t.dataset.precio){const p=plato(t.dataset.precio),v=pnum(t.value);if(v>0&&v!==p.precio){audit('Cambio de precio',`${p.nombre}: ${fmt(p.precio)} → ${fmt(v)}`);p.precio=v;save();toast('Precio actualizado')}render();return}
   if(t.dataset.activo){const p=plato(t.dataset.activo);p.activo=t.checked;save();render();return}
@@ -1271,7 +1459,7 @@ window.addEventListener('hashchange',route);
 window.addEventListener('storage',e=>{if(NB||e.key!==K||!e.newValue)return;try{S=JSON.parse(e.newValue)}catch(x){return}renderSafe()});
 setInterval(()=>{if(!busy()&&!$('#modal').innerHTML&&(pantallaMode||((tab==='cocina'||tab==='salon')&&!clienteMode)))render()},pantallaMode?5000:30000);
 route();
-if(NB&&LID&&!cloudClient())conectar();
+arrancarCuentas();
 if(cloudClient()){NB.escuchar(CLID,()=>cargarCarta());setInterval(cargarCarta,5000)}
 </script>
 </body>
