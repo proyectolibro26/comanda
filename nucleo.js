@@ -90,15 +90,17 @@ function botReserva(t,txt){
 const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
 function parsear(t){
   const out={},notas=[];
-  norm(t).split(/,|\by\b|\be\b|\n|\+|;/).forEach(seg=>{
+  const cant='\\d+|una?|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez';
+  const palabras=p=>norm(p.nombre).split(/\s+/).filter(w=>w.length>3&&!['con','del','para','sin'].includes(w));
+  norm(t).split(/,|\by\b|\be\b|\n|\+|;/).flatMap(x=>x.split(new RegExp('\\s+(?=(?:'+cant+')\\s)'))).forEach(seg=>{
     seg=seg.trim();if(!seg)return;
     const ac=seg.match(/\b(sin|con|extra|bien|jugosa?|a punto)\b.*$/);
-    const p=activos().find(p=>p.alias.some(a=>seg.includes(a)));
+    const p=activos().find(p=>(p.alias||[]).some(a=>seg.includes(a)))||activos().find(p=>!(p.alias||[]).length&&palabras(p).some(w=>seg.includes(w)));
     if(!p){if(ac&&/^(una?|la|el)?\s*(sin|con|extra|bien)/.test(seg))notas.push(seg.replace(/^(una?|la|el)\s+/,''));return}
     let q=1;const m=seg.match(/(\d+)/);
     if(m)q=+m[1];else{for(const w in NUMS)if(new RegExp('\\b'+w+'\\b').test(seg)){q=NUMS[w];break}}
     out[p.id]=(out[p.id]||0)+q;
-    if(ac&&!p.alias.some(a=>ac[0].includes(a)))notas.push(p.nombre+': '+ac[0]);
+    if(ac&&!(p.alias||[]).some(a=>ac[0].includes(a)))notas.push(p.nombre+': '+ac[0]);
   });
   return{lines:Object.entries(out).map(([id,cant])=>({id,cant,mods:[]})),nota:notas.join(' · ')};
 }
@@ -123,6 +125,30 @@ function bot(txt){
   if(/lo de siempre|lo mismo|repetir/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
   // un saludo siempre arranca de cero (no seguir un pedido viejo a medio hacer)
   if(/^(hola|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal)\b/.test(t)&&t.split(' ').length<=4&&wa.step!=='inicio'){wa.step='inicio';wa.draft={}}
+  // sumar cosas al último pedido (si todavía no salió)
+  const ult=wa.ultimo&&S.pedidos.find(p=>p.id===wa.ultimo);
+  const totalJunto=()=>ult?S.pedidos.filter(p=>(p.id===ult.id||p.agregaA===ult.id)&&!p.anulado).reduce((a,p)=>a+p.total,0):0;
+  if(wa.step==='agregar'){
+    if(/^(si|dale|ok|sumalo|de una|agregalo)/.test(t)&&ult&&wa.draft.lines){
+      const r=crearPedido({origen:'whatsapp',por:'WhatsApp',cliente:ult.cliente,direccion:ult.direccion,tel:wa.tel,lines:wa.draft.lines,medio:ult.medio,nota:`➕ Va con el pedido #${ult.num}${wa.draft.nota?' · '+wa.draft.nota:''}`});
+      if(r.error){wa.step='inicio';wa.draft={};return['Uy, justo se nos acabó: '+r.error+'.']}
+      r.envio=0;r.total=r.subtotal;r.agregaA=ult.id;
+      const c=S.clientes[wa.tel];if(c)c.gastado=(c.gastado||0)+r.total;
+      wa.step='inicio';wa.draft={};save();
+      return[`✅ ¡Listo! Sumé ${r.items.map(i=>i.cant+'× '+i.nombre).join(', ')} a tu pedido *#${ult.num}*. Sale todo junto.
+Total a pagar: *${fmt(ult.total+r.total)}*.`];
+    }
+    if(/^no\b/.test(t)&&wa.draft.lines){const d=wa.draft;wa.draft={};wa.step='inicio';return pasoResumen(d.lines,d.nota)}
+    wa.step='inicio';wa.draft={};
+  }
+  if(wa.step==='inicio'&&ult&&!ult.anulado&&['nuevo','preparando'].includes(ult.estado)&&Date.now()-ult.ts<90*60e3){
+    const r=parsear(t);
+    if(r.lines.length&&(/agreg|sumal|suma|tambien|ademas|me olvide|falto|otra|y una?\b/.test(t)||Date.now()-ult.ts<30*60e3)){
+      const sub=r.lines.reduce((a,l)=>a+lineInfo(l).precio*l.cant,0);
+      wa.step='agregar';wa.draft={lines:r.lines,nota:r.nota};
+      return[`Te sumo al pedido *#${ult.num}*:\n${r.lines.map(l=>{const x=lineInfo(l);return`• ${l.cant}× ${x.p.nombre} — ${fmt(x.precio*l.cant)}`}).join('\n')}\nSin envío extra: sale todo junto.\nTotal a pagar: *${fmt(totalJunto()+sub)}*\n\nRespondé *SI* para sumarlo o *NO* si es un pedido aparte.`];
+    }
+  }
   if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
     const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
     wa.step='pedido';
@@ -137,7 +163,7 @@ function bot(txt){
   }
   if(wa.step==='pago'){
     if(/otra direc|cambiar direc/.test(t)){wa.step='datos';return['Dale, pasame nombre y la dirección nueva (ej: *Juan, San Martín 1234*).']}
-    const m=/^1|efect/.test(t)?'efectivo':/^2|transf/.test(t)?'transferencia':/^3|mercado|^mp/.test(t)?'mp':null;
+    const m=/^1\b|^ef|efect|cash|contado|billete/.test(t)?'efectivo':/^2\b|transf|^trans|alias|cbu/.test(t)?'transferencia':/^3\b|mercado|^mp\b|^merc/.test(t)?'mp':null;
     if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago.'];
     wa.draft.medio=m;wa.step='confirmar';
     return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.lines)}${wa.draft.nota?`\n📝 ${wa.draft.nota}`:''}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?`\nAlias: ${S.alias}`:''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
