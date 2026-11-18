@@ -1005,12 +1005,13 @@ ${r.estado==='confirmada'?`<div class="btns"><button class="small primary" data-
 /* pantalla de retiro (para llevar) */
 let pantallaMode=false;
 function vPantalla(){
-  const l=S.pedidos.filter(p=>p.origen==='mostrador'&&!p.anulado&&['nuevo','preparando','listo'].includes(p.estado));
+  const l=S.pedidos.filter(p=>(p.origen==='mostrador'||p.origen==='mesa')&&!p.anulado&&['nuevo','preparando','listo'].includes(p.estado));
+  const quien=p=>p.origen==='mesa'?'🍽 Mesa '+p.mesa:esc(p.cliente||'');
   const col=(t,arr,ok)=>`<div style="flex:1;min-width:280px;background:${ok?'#1f3a29':'#211d18'};border-radius:24px;padding:28px"><h2 style="font:700 26px Unbounded,sans-serif;color:${ok?'#9be3b5':'#F3EBDD'};margin-bottom:20px">${t}</h2>
-${arr.map(p=>`<div style="display:flex;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)"><b style="font:900 ${ok?'54px':'40px'} Unbounded,sans-serif;color:${ok?'#FFFFFF':'#F3EBDD'}">${p.num}</b><span style="font-size:${ok?'28px':'22px'};color:${ok?'#d7f5e1':'#B5AC9E'}">${esc(p.cliente)}</span></div>`).join('')||`<p style="color:#8a8275;font-size:20px">—</p>`}</div>`;
+${arr.map(p=>`<div style="display:flex;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)"><b style="font:900 ${ok?'54px':'40px'} Unbounded,sans-serif;color:${ok?'#FFFFFF':'#F3EBDD'}">${p.num}</b><span style="font-size:${ok?'28px':'22px'};color:${ok?'#d7f5e1':'#B5AC9E'}">${quien(p)}${ok&&p.origen==='mesa'?' <small style="font-size:.7em;opacity:.8">· te lo llevamos</small>':''}</span></div>`).join('')||`<p style="color:#8a8275;font-size:20px">—</p>`}</div>`;
   return`<div style="min-height:100vh;background:#16130F;color:#F3EBDD;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
 <div style="display:flex;justify-content:space-between;align-items:center"><span class="tc" style="font-size:40px;--knob:#16130F">ta<i></i>ca</span><b style="font:700 24px Unbounded,sans-serif">${esc(S.negocio)}</b></div>
-<div style="display:flex;gap:24px;flex-wrap:wrap;flex:1">${col('Preparando',l.filter(p=>p.estado!=='listo'),false)}${col('¡Listo! Retiralo',l.filter(p=>p.estado==='listo'),true)}</div>
+<div style="display:flex;gap:24px;flex-wrap:wrap;flex:1">${col('Preparando',l.filter(p=>p.estado!=='listo'),false)}${col('¡Listo!',l.filter(p=>p.estado==='listo'),true)}</div>
 <p style="margin:0;text-align:right"><a href="#" data-a="salirPantalla" style="color:#5B544A;font-size:13px">salir</a></p></div>`;
 }
 
@@ -1052,7 +1053,7 @@ function marcarImpresos(){ls('taca-impresos',JSON.stringify(S.pedidos.map(p=>p.i
 function vImpresora(){const m=ls('taca-autoprint')||'off';return`<section class="card"><h2>🖨 Impresora de este equipo</h2>
 <label>Imprimir comandas automáticamente al entrar un pedido<select data-set="autoprint">${[['off','No, solo cuando toco 🖨'],['todas','Sí, todas las comandas'],['cocina','Sí, solo lo de cocina'],['barra','Sí, solo lo de barra']].map(([k,t])=>`<option value="${k}" ${m===k?'selected':''}>${t}</option>`).join('')}</select></label>
 <p class="muted" style="font-size:13px;margin:0 0 10px">Funciona con cualquier impresora térmica de 80 mm puesta como predeterminada. Para que imprima sin preguntar, abrí Chrome con la opción <b>--kiosk-printing</b>.</p>
-<div class="btns"><button data-a="pruebaImpresion">Imprimir prueba</button><a href="#pantalla" style="align-self:center;font-size:14px;color:var(--accd)">Abrir pantalla de retiro (para un televisor) →</a></div></section>`}
+<div class="btns"><button data-a="pruebaImpresion">Imprimir prueba</button><a href="#pantalla" style="align-self:center;font-size:14px;color:var(--accd)">Abrir pantalla de pedidos (para un televisor) →</a></div></section>`}
 
 
 /* turnos de caja */
