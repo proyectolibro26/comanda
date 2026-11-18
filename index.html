@@ -102,6 +102,7 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 .ticket.whatsapp{border-left-color:var(--wa)}
 .ticket .th{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
 .ticket .th b{font-size:18px}
+.ticket .dest{display:block;font:800 22px/1.15 Unbounded,sans-serif;margin:0 0 6px;color:var(--ink,#1d1a16)}.ticket .dest small{font:600 13px system-ui,sans-serif;color:var(--muted,#7a7166);margin-left:6px}
 .ticket .time{margin-left:auto}
 .ticket ul{margin:0 0 8px;padding-left:18px}
 .ticket li small{display:block;color:var(--warn);font-weight:600}
@@ -861,7 +862,7 @@ function tk(p){
   const its=p.items.filter(i=>kArea==='todas'||i.area===kArea);if(!its.length)return'';
   const lab={nuevo:'Empezar ▶',preparando:'Marcar listo ✓',listo:p.origen==='mesa'?'Entregado en la mesa':p.origen==='mostrador'?'Lo retiró 🥡':'Salió el delivery 🛵'}[p.estado];
   const m=mins(p.ts),tc=p.estado==='listo'?'':m>=20?'bad':m>=10?'warn':'';
-  return`<div class="ticket ${p.origen==='whatsapp'?'whatsapp':''}"><div class="th"><b>#${p.num}</b>${p.origen==='mesa'?`<span class="chip blue">Mesa ${p.mesa}</span>`:p.origen==='mostrador'?`<span class="chip warn">🥡 ${esc(p.cliente)}</span>`:'<span class="chip ok">Delivery</span>'}<small style="display:inline">${p.por}</small><span class="chip time ${tc}" data-ts="${p.ts}">${hace(p.ts)}</span><button class="small ghost" data-a="imprimirComanda" data-id="${p.id}" aria-label="Imprimir comanda" title="Imprimir comanda">🖨</button></div>
+  return`<div class="ticket ${p.origen==='whatsapp'?'whatsapp':''}"><span class="dest">${p.origen==='mesa'?`🍽 Mesa ${p.mesa}`:p.origen==='mostrador'?`🥡 ${esc(p.cliente||'Para llevar')}`:`🛵 ${esc(p.cliente||'Delivery')}`}</span><div class="th"><b>#${p.num}</b><small style="display:inline">${p.origen==='mesa'?(p.por==='QR'?'Pidió por QR':'Mozo: '+esc(p.por)):p.origen==='mostrador'?'Para llevar':'Delivery por WhatsApp'}</small><span class="chip time ${tc}" data-ts="${p.ts}">${hace(p.ts)}</span><button class="small ghost" data-a="imprimirComanda" data-id="${p.id}" aria-label="Imprimir comanda" title="Imprimir comanda">🖨</button></div>
 <ul>${its.map(i=>`<li><b>${i.cant}×</b> ${esc(i.nombre)}${kArea==='todas'?` <span class="muted" style="font-size:12px">${i.area==='barra'?'🍺':'🍳'}</span>`:''}${i.mods.length?`<small>${esc(i.mods.join(' · '))}</small>`:''}</li>`).join('')}</ul>
 ${p.nota?`<p class="nota">📝 ${esc(p.nota)}</p>`:''}${p.origen==='whatsapp'?`<p class="dir">🛵 ${esc(p.cliente)} — ${esc(p.direccion)}</p>`:''}
 <button class="${p.estado==='listo'?'':'primary'}" data-a="avanzar" data-id="${p.id}">${lab}</button></div>`}
