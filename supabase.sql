@@ -286,3 +286,8 @@ grant execute on function public.taca_carta(text, integer), public.taca_cliente(
 grant execute on function public.taca_es_miembro(text), public.taca_mis_locales(), public.taca_crear_local(text, jsonb),
   public.taca_leer(text), public.taca_version(text), public.taca_guardar(text, jsonb, integer), public.taca_admin_locales(),
   public.taca_es_admin(), public.taca_admin_plan(text, text, integer, text) to authenticated;
+
+-- Permisos para el servidor de ta-ca (api/ en Vercel, con la clave secreta de Supabase).
+grant usage on schema public to service_role;
+grant select, insert, update on public.taca_locales, public.taca_miembros, public.taca_pagos to service_role;
+grant execute on function public.taca_estado_plan(text, timestamptz, timestamptz) to service_role;
