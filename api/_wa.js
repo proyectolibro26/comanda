@@ -46,7 +46,12 @@ function correrBot(data, tel, texto, nombrePerfil) {
 // con el 9 o sin el 9 (54XXXXXXXXXX). Se prueba el formato recibido y, si Meta lo rechaza, el otro.
 function variantes(to) {
   to = String(to).replace(/\D/g, '');
-  if (/^549\d{10}$/.test(to)) return [to, '54' + to.slice(3)];
+  if (/^549\d{10}$/.test(to)) {
+    const n = to.slice(3); // código de área + número, 10 dígitos
+    // formato viejo con 15 después del código de área (2, 3 o 4 dígitos): lo pide a veces el modo prueba de Meta
+    const con15 = [3, 2, 4].map(k => '54' + n.slice(0, k) + '15' + n.slice(k));
+    return [to, '54' + n].concat(con15);
+  }
   if (/^54[1-8]\d{9}$/.test(to)) return [to, '549' + to.slice(2)];
   return [to];
 }
@@ -67,7 +72,7 @@ async function enviarTexto(phoneId, to, body) {
   let ultimo;
   for (const v of vs) {
     try { const j = await enviarUno(phoneId, v, body); formatoOk[to] = v; return j; }
-    catch (e) { ultimo = e; if (e.code !== 131030 && e.code !== 131026 && e.status !== 400) throw e; }
+    catch (e) { ultimo = e; if (e.code !== 131030 && e.code !== 131026 && e.code !== 100 && e.status !== 400) throw e; }
   }
   console.error('wa: Meta rechazó todos los formatos', vs.map(v => v.slice(0, 5) + '…' + v.slice(-3)).join(' / '));
   throw ultimo;
