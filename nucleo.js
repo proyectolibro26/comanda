@@ -90,8 +90,9 @@ function botReserva(t,txt){
 const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
 function lev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
 function parecido(seg,a){if(a.length<4)return false;return seg.split(/\s+/).some(w=>w.length>=4&&(lev(w,a)<=(a.length>=6?2:1)||(w.length>a.length&&lev(w.slice(0,a.length),a)<=1)))}
+function sinDim(w){return w.length<6?w:w.replace(/quit([oa]s?)$/,'c$1').replace(/guit([oa]s?)$/,'g$1').replace(/cit([oa]s?)$/,'z$1').replace(/it([oa]s?)$/,'$1')}
 function parsear(t){
-  const out={},notas=[];
+  const out={},notas=[];t=norm(t).split(/(\s+)/).map(sinDim).join('');
   const cant='\\d+|una?|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez';
   const palabras=p=>norm(p.nombre).split(/\s+/).filter(w=>w.length>3&&!['con','del','para','sin'].includes(w));
   norm(t).split(/,|\by\b|\be\b|\n|\+|;/).flatMap(x=>x.split(new RegExp('\\s+(?=(?:'+cant+')\\s)'))).forEach(seg=>{
@@ -180,6 +181,26 @@ Total a pagar: *${fmt(ult.total+r.total)}*.`];
     return[`¡Hola! 👋 Soy el asistente de *${S.negocio}*. Te tomo el pedido para delivery o te anoto una reserva.`,cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas sin tomate y 1 coca*\nPara reservar mesa escribí *reservar*.'];
   }
   if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return noEntiendo(t);return pasoResumen(r.lines,r.nota)}
+  // en medio del pedido: sumar cosas, preguntar por un producto o pedir agregar algo
+  if(['datos','pago','confirmar','mas'].includes(wa.step)&&wa.draft.lines){
+    const paso=wa.step==='mas'?wa.draft.volver:wa.step;
+    const pregunta=()=>paso==='datos'?'¿A nombre de quién y a qué dirección lo mandamos? (por ejemplo: *Juan, San Martín 1234*)':paso==='pago'?'¿Cómo vas a pagar?\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago':'Respondé *SI* para confirmar o *cancelar*.';
+    const esPago=/^[123]\b|^ef|efect|cash|contado|transf|alias|cbu|mercado|^mp\b/.test(t),esSi=/^(si|dale|ok|confirmo|de una)\b/.test(t);
+    const tieneDir=paso==='datos'&&(txt.includes(',')||/\d{2,}/.test(t));
+    const r=(wa.step==='mas'||(!esPago&&!esSi&&!tieneDir&&!(paso==='datos'&&!/^(y|agrega|suma|tambien|ademas)\b/.test(t))))?parsear(t):{lines:[]};
+    if(r.lines.length){
+      const ls=wa.draft.lines.map(l=>({...l}));r.lines.forEach(n=>{const e=ls.find(l=>l.id===n.id&&!(l.mods||[]).length);if(e)e.cant+=n.cant;else ls.push(n)});
+      const f=faltante(ls);if(f){wa.step=paso;return['Uy, de eso no nos queda suficiente hoy 😕. Seguimos con lo que tenías.\n'+pregunta()]}
+      wa.draft.lines=ls;if(r.nota)wa.draft.nota=[wa.draft.nota,r.nota].filter(Boolean).join(' · ');wa.step=paso;delete wa.draft.volver;
+      return['Listo, lo sumo ✅\n'+resumenItems(ls)+(wa.draft.nota?`\n📝 ${wa.draft.nota}`:''),pregunta()];
+    }
+    if(wa.step==='mas'){
+      if(/^(no|nada|listo|eso|asi esta)\b/.test(t)){wa.step=paso;delete wa.draft.volver;return['Dale 👍 '+pregunta()]}
+      const ne=noEntiendo(t);return[ne[0].replace(/\n¿Te tienta.*$|Decime qué querés.*$/,'')+'\nDecime qué sumar (ej: *1 coca*) o escribí *nada* para seguir.']}
+    if(!esPago&&!esSi&&!tieneDir&&/agreg|sumar|suma\b|sumame|tambien|ademas|me olvide|falto|algo mas|otra cosa|cambiar el pedido/.test(t)){wa.draft.volver=paso;wa.step='mas';return['Dale, ¿qué le sumo? Decime por ejemplo: *1 coca* o *2 papas*.']}
+    const q=!esPago&&!esSi&&!tieneDir&&(t.match(/^(?:y|y (?:un|una|unos|unas|el|la))\s+([a-zñ]{3,})\s*\??$/)||t.match(/\b(?:hay|tienen|tenes|venden|hacen)\s+(?:un|una|unos|unas)?\s*([a-zñ]{3,})/));
+    if(q&&!NO_PRODUCTO.includes(q[1])){wa.consulta=q[1];return[`No tenemos *${q[1]}* en la carta 😕 Lo que hay: ${activos().map(p=>p.nombre).join(', ')}.`,pregunta()]}
+  }
   if(wa.step==='datos'){
     if(t.length<5)return['Pasame nombre y dirección completa, por favor 🙏'];
     const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():(wa.perfil||'Cliente');wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
@@ -188,7 +209,7 @@ Total a pagar: *${fmt(ult.total+r.total)}*.`];
   if(wa.step==='pago'){
     if(/otra direc|cambiar direc/.test(t)){wa.step='datos';return['Dale, pasame nombre y la dirección nueva (ej: *Juan, San Martín 1234*).']}
     const m=/^1\b|^ef|efect|cash|contado|billete/.test(t)?'efectivo':/^2\b|transf|^trans|alias|cbu/.test(t)?'transferencia':/^3\b|mercado|^mp\b|^merc/.test(t)?'mp':null;
-    if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago.'];
+    if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago. Si querés sumar algo, decime qué (ej: *1 coca*).'];
     wa.draft.medio=m;wa.step='confirmar';
     return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.lines)}${wa.draft.nota?`\n📝 ${wa.draft.nota}`:''}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?`\nAlias: ${S.alias}`:''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
   }
