@@ -333,4 +333,5 @@ grant execute on function public.taca_guardar_servidor(text, jsonb, integer) to 
 -- Permisos para el servidor de ta-ca (api/ en Vercel, con la clave secreta de Supabase).
 grant usage on schema public to service_role;
 grant select, insert, update on public.taca_locales, public.taca_miembros, public.taca_pagos, public.taca_wa to service_role;
+grant select on public.taca_admins to service_role;
 grant execute on function public.taca_estado_plan(text, timestamptz, timestamptz) to service_role;
