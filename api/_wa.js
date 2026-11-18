@@ -21,7 +21,9 @@ function correrBot(data, tel, texto, nombrePerfil) {
   S.waConv = S.waConv || {};
   const conv = S.waConv[tel] || { tel, step: 'inicio', draft: {}, msgs: [], nombre: nombrePerfil || '' };
   if (nombrePerfil && !conv.nombre) conv.nombre = nombrePerfil;
-  S.wa = { tel, step: conv.step || 'inicio', draft: conv.draft || {}, msgs: [], ultimo: conv.ultimo || null };
+  if (nombrePerfil && S.clientes[tel] && S.clientes[tel].nombre === 'Cliente') S.clientes[tel].nombre = nombrePerfil; // nombre real del perfil de WhatsApp
+  if (conv.ts && Date.now() - conv.ts > 3 * 3600e3) { conv.step = 'inicio'; conv.draft = {}; } // conversación vieja sin terminar: empezar de nuevo
+  S.wa = { tel, step: conv.step || 'inicio', draft: conv.draft || {}, msgs: [], ultimo: conv.ultimo || null, perfil: conv.nombre || nombrePerfil || '' };
   const ctx = {
     S, console, Date, Math, JSON, Object, Array, String, Number, RegExp, Intl,
     save() {},

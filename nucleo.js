@@ -118,9 +118,11 @@ function bot(txt){
   const t=norm(txt),wa=S.wa,cl=cliente();
   const rv=botReserva(t,txt);if(rv)return rv;
   if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
-  if(/^estado\b|como va mi pedido|donde esta mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
+  if(wa.ultimo&&/^estado\b|^(como|que tal) (va|viene)\b|(como va|como viene|donde esta|que paso con|y) mi pedido|cuanto (falta|tarda|demora)|ya (sale|salio|viene|esta)\b|^y\s?\?*$/.test(t)||/^estado\b|(como va|como viene|donde esta) mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
   if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
   if(/lo de siempre|lo mismo|repetir/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
+  // un saludo siempre arranca de cero (no seguir un pedido viejo a medio hacer)
+  if(/^(hola|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal)\b/.test(t)&&t.split(' ').length<=4&&wa.step!=='inicio'){wa.step='inicio';wa.draft={}}
   if(wa.step==='inicio'||(wa.step==='pedido'&&/^(hola|buenas|buen dia)/.test(t))){
     const r=parsear(t);if(r.lines.length)return pasoResumen(r.lines,r.nota);
     wa.step='pedido';
@@ -130,7 +132,7 @@ function bot(txt){
   if(wa.step==='pedido'){const r=parsear(t);if(!r.lines.length)return['No te entendí 🙈. Decime qué querés de la carta, por ejemplo: *1 pizza y 2 cervezas*. O escribí *menú* para verla.'];return pasoResumen(r.lines,r.nota)}
   if(wa.step==='datos'){
     if(t.length<5)return['Pasame nombre y dirección completa, por favor 🙏'];
-    const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():'Cliente';wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
+    const i=txt.indexOf(',');wa.draft.cliente=i>0?txt.slice(0,i).trim():(wa.perfil||'Cliente');wa.draft.direccion=i>0?txt.slice(i+1).trim():txt.trim();
     wa.step='pago';return[`Genial, ${wa.draft.cliente}. ¿Cómo vas a pagar?\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago`];
   }
   if(wa.step==='pago'){
