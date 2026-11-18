@@ -42,22 +42,35 @@ function correrBot(data, tel, texto, nombrePerfil) {
   if (tels.length > 200) tels.sort((a, b) => (S.waConv[a].ts || 0) - (S.waConv[b].ts || 0)).slice(0, tels.length - 200).forEach(k => { delete S.waConv[k]; delete S.waUlt[k]; });
   return respuestas;
 }
-// WhatsApp entrega los celulares argentinos como 549XXXXXXXXXX, pero para responder hay que usar 54XXXXXXXXXX (sin el 9).
-function destino(to) {
+// Celulares argentinos: WhatsApp los entrega como 549XXXXXXXXXX, pero según la cuenta acepta responder
+// con el 9 o sin el 9 (54XXXXXXXXXX). Se prueba el formato recibido y, si Meta lo rechaza, el otro.
+function variantes(to) {
   to = String(to).replace(/\D/g, '');
-  if (/^549\d{10}$/.test(to)) return '54' + to.slice(3);
-  return to;
+  if (/^549\d{10}$/.test(to)) return [to, '54' + to.slice(3)];
+  if (/^54[1-8]\d{9}$/.test(to)) return [to, '549' + to.slice(2)];
+  return [to];
 }
-async function enviarTexto(phoneId, to, body) {
-  to = destino(to);
+async function enviarUno(phoneId, to, body) {
   const r = await fetch(`${GRAPH}/${encodeURIComponent(phoneId)}/messages`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + process.env.WA_TOKEN, 'Content-Type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'text', text: { preview_url: false, body: String(body).slice(0, 4000) } })
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error((j.error && j.error.message) || `WhatsApp ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) { const e = new Error((j.error && j.error.message) || `WhatsApp ${r.status}`); e.status = r.status; e.code = j.error && j.error.code; throw e; }
   return j;
+}
+const formatoOk = {};
+async function enviarTexto(phoneId, to, body) {
+  const vs = variantes(to);
+  if (formatoOk[to]) vs.sort((a, b) => (b === formatoOk[to]) - (a === formatoOk[to]));
+  let ultimo;
+  for (const v of vs) {
+    try { const j = await enviarUno(phoneId, v, body); formatoOk[to] = v; return j; }
+    catch (e) { ultimo = e; if (e.code !== 131030 && e.code !== 131026 && e.status !== 400) throw e; }
+  }
+  console.error('wa: Meta rechazó todos los formatos', vs.map(v => v.slice(0, 5) + '…' + v.slice(-3)).join(' / '));
+  throw ultimo;
 }
 function firmaMetaValida(raw, header, secret) {
   if (!header || !header.startsWith('sha256=')) return false;
@@ -73,4 +86,4 @@ function leerCuerpo(req) {
     req.on('error', () => resolve(''));
   });
 }
-module.exports = { destino, correrBot, enviarTexto, firmaMetaValida, leerCuerpo };
+module.exports = { variantes, correrBot, enviarTexto, firmaMetaValida, leerCuerpo };
