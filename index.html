@@ -698,7 +698,7 @@ function ingenieria(c){
 
 /* ---------- vistas ---------- */
 function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p>
-<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="Tu PIN" autocomplete="off" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>
+${demo?'':'<p style="margin:14px 0 4px;font-weight:700">PIN del equipo</p><p class="muted" style="margin:0 0 8px;font-size:13px">Son los 4 a 6 números que elegiste al crear el local. No es la contraseña de tu cuenta.</p>'}<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="PIN (solo números)" maxlength="6" pattern="[0-9]{4,6}" title="Solo números, de 4 a 6" oninput="this.value=this.value.replace(/\\D/g,'')" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>${demo?'':'<p style="font-size:13px;margin:6px 0"><button class="link" data-a="olvidePin">¿Olvidaste tu PIN?</button></p>'}
 ${demo?`<p class="hint">Demo · PIN de prueba: Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p><p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>${NB?'<p style="font-size:14px"><button class="link" data-a="salirDemo">Salir de la demo y crear mi cuenta</button></p>':''}`
 :`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
 
@@ -1366,6 +1366,7 @@ const A={
     audit('Local creado',`${S.negocio} · ${S.equipo.length} persona${S.equipo.length>1?'s':''} en el equipo`);
     rol='dueno';personaId=yoP.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',personaId)}catch(e){}
     tab=W.carta==='vacia'?'carta':'salon';W=null;save();render();toast('¡Listo! Tu local está encendido 🔥')},
+  olvidePin(){modal(`<h2>Recuperar el PIN de dueño</h2><p class="muted" style="margin-top:0">Escribí la contraseña de tu cuenta (${esc(AUTH.user?AUTH.user.email:'')}) y elegí un PIN nuevo. Solo lo puede hacer el dueño del local.</p><form data-f="olvidePin"><input name="clave" type="password" placeholder="Contraseña de tu cuenta" autocomplete="current-password" required><div class="inline"><label>PIN nuevo (4 a 6 números)<input name="pin" type="text" inputmode="numeric" class="pin" maxlength="6" pattern="[0-9]{4,6}" autocomplete="off" required></label><label>Repetilo<input name="pin2" type="text" inputmode="numeric" class="pin" maxlength="6" autocomplete="off" required></label></div><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar y entrar</button></div></form>`)},
   eqPin(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(p)modal(`<h2>Nuevo PIN para ${esc(p.nombre)}</h2><form data-f="eqPin"><input type="hidden" name="id" value="${p.id}"><label>PIN (4 a 6 números)<input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
   eqQuitar(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(!p)return;if(p.rol==='dueno'&&S.equipo.filter(x=>x.rol==='dueno').length<2)return toast('Tiene que quedar al menos un dueño',1);if(p.id===personaId)return toast('No te podés quitar a vos mismo',1);
     S.equipo=S.equipo.filter(x=>x.id!==p.id);audit('Equipo',`Se quitó a ${p.nombre}`);save();render();toast(`${p.nombre} ya no puede entrar`)},
@@ -1383,12 +1384,22 @@ const F={
       else{AUTH.user=r.user;despuesDeEntrar();render()}}
     catch(e){AUTH.ocupado=false;render();toast(errMsg(e),1)}},
   async olvide(d){AUTH.ocupado=true;render();try{await NB.auth.recuperar(d.email.trim());AUTH.vista='entrar';AUTH.aviso='📧 Si hay una cuenta con ese email, te llegó un link para elegir una contraseña nueva.'}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
-  async nuevaClave(d){if(d.clave!==d.clave2)return toast('Las contraseñas no coinciden',1);AUTH.ocupado=true;render();try{await NB.auth.nuevaClave(d.clave);AUTH.recuperando=false;toast('Contraseña cambiada ✓');history.replaceState(null,'',location.pathname);if(AUTH.user&&!LID)despuesDeEntrar()}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
+  async nuevaClave(d){if(d.clave!==d.clave2)return toast('Las contraseñas no coinciden',1);AUTH.ocupado=true;render();try{await NB.auth.nuevaClave(d.clave);AUTH.recuperando=false;toast('Contraseña cambiada ✓ Ahora entrá con el PIN del local');history.replaceState(null,'',location.pathname);if(AUTH.user&&!LID)despuesDeEntrar()}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
   nuevoLocal(d){crearLocalNube(d.nombre.trim())},
   w1(d){S.negocio=d.negocio.trim()||S.negocio;S.tipo=d.tipo;S.mesas=Math.max(0,Math.min(60,parseInt(d.mesas)||0));S.envio=Math.max(0,pnum(d.envio));S.alias=d.alias.trim();W.paso=2;save();render()},
   w2(d){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);W.nombre=d.nombre.trim()||'Dueño';W.pin=d.pin;W.paso=3;render()},
   w4(d,f){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin===W.pin||W.equipo.some(p=>p.pin===d.pin))return toast('Ese PIN ya lo usa otra persona',1);W.equipo.push({nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});render()},
   eqNuevo(d){if(!d.nombre.trim())return;if(!pinLibre(d.pin))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);S.equipo.push({id:uid(),nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});audit('Equipo',`Se sumó ${d.nombre.trim()} (${ROLES[d.rol].nombre})`);save();render();toast('Persona sumada ✓')},
+  async olvidePin(d){
+    if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);
+    if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);
+    try{await NB.auth.entrar(AUTH.user.email,d.clave)}catch(e){return toast('La contraseña de la cuenta no es correcta',1)}
+    let locs=[];try{locs=AUTH.locales=await NB.misLocales()}catch(e){return toast(errMsg(e),1)}
+    const r=(locs||[]).find(x=>x.id===LID);if(!r||r.rol!=='dueno')return toast('Solo el dueño del local puede recuperar el PIN',1);
+    const p=(S.equipo||[]).find(x=>x.rol==='dueno');if(!p)return toast('No hay un dueño cargado en el equipo',1);
+    if(!pinLibre(d.pin,p.id))return toast('Ese PIN ya lo usa otra persona del equipo',1);
+    p.pin=d.pin;audit('Equipo',`Recuperó el PIN de ${p.nombre} con la cuenta ${AUTH.user.email}`);save();closeModal();
+    rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render();toast('PIN nuevo guardado ✓ Ya entraste')},
   eqPin(d){if(!pinLibre(d.pin,d.id))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);const p=S.equipo.find(x=>x.id===d.id);if(p){p.pin=d.pin;audit('Equipo',`Cambió el PIN de ${p.nombre}`);save()}closeModal();render();toast('PIN cambiado ✓')},
   login(d){const p=(S.equipo||[]).find(x=>x.pin===String(d.pin).trim());if(p){rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
   wa(d,f){const t=d.t;f.reset();waSend(t)},
