@@ -42,7 +42,14 @@ function correrBot(data, tel, texto, nombrePerfil) {
   if (tels.length > 200) tels.sort((a, b) => (S.waConv[a].ts || 0) - (S.waConv[b].ts || 0)).slice(0, tels.length - 200).forEach(k => { delete S.waConv[k]; delete S.waUlt[k]; });
   return respuestas;
 }
+// WhatsApp entrega los celulares argentinos como 549XXXXXXXXXX, pero para responder hay que usar 54XXXXXXXXXX (sin el 9).
+function destino(to) {
+  to = String(to).replace(/\D/g, '');
+  if (/^549\d{10}$/.test(to)) return '54' + to.slice(3);
+  return to;
+}
 async function enviarTexto(phoneId, to, body) {
+  to = destino(to);
   const r = await fetch(`${GRAPH}/${encodeURIComponent(phoneId)}/messages`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + process.env.WA_TOKEN, 'Content-Type': 'application/json' },
@@ -66,4 +73,4 @@ function leerCuerpo(req) {
     req.on('error', () => resolve(''));
   });
 }
-module.exports = { correrBot, enviarTexto, firmaMetaValida, leerCuerpo };
+module.exports = { destino, correrBot, enviarTexto, firmaMetaValida, leerCuerpo };
