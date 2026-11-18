@@ -421,6 +421,8 @@ function supaNube(sb){
     misLocales:()=>rpc('taca_mis_locales'),
     esAdmin:()=>rpc('taca_es_admin'),
     adminWa:(local,phoneId,numero)=>rpc('taca_admin_wa',{p_local:local,p_phone_id:phoneId,p_numero:numero}),
+    async waSuscribir(waba){const t=await this.auth.token();const r=await fetch('/api/wa-suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({waba})});
+      const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo suscribir');return j},
     async waEnviar(local,tel,texto){const t=await this.auth.token();const r=await fetch('/api/wa-enviar',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,tel,texto})});
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo enviar');return j},
     async suscribir(local,plan,periodo,email){const t=await this.auth.token();const r=await fetch('/api/suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,plan,periodo,email})});
@@ -460,6 +462,7 @@ function mockNube(){
         whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
     suscribir:(local,plan,periodo)=>later(()=>{const db=get(),r=db[local];if(!r)throw new Error('No existe ese local');ls('taca-mock-pagoPend',JSON.stringify({local,plan,periodo}));return{url:location.pathname+'?mock=1&pago=ok'}}),
     adminWa:(local,phoneId,numero)=>later(()=>{const db=get(),r=db[local];if(!r)return{ok:false,error:'No existe ese local'};if(phoneId){r.wa={phoneId,numero}}else delete r.wa;put(db);return{ok:true}}),
+    waSuscribir:waba=>later(()=>({ok:true,apps:['ta-ca'],numeros:[{id:'PN-'+waba,numero:'+1 555 000-0000',nombre:'Prueba'}]})),
     waEnviar:(local,tel,texto)=>later(()=>{const l=JSON.parse(ls('taca-mock-wa-enviados')||'[]');l.push({local,tel,texto});ls('taca-mock-wa-enviados',JSON.stringify(l));return{ok:true}}),
     _acreditar:()=>later(()=>{const p=JSON.parse(ls('taca-mock-pagoPend')||'null');if(!p)return;const db=get(),r=db[p.local];r.plan='activo';r.abono=p.plan;r.mp_estado='authorized';r.pagado_hasta=new Date(Math.max(Date.now(),r.pagado_hasta?+new Date(r.pagado_hasta):0)+(p.periodo==='anual'?365:30)*864e5).toISOString();put(db);ls('taca-mock-pagoPend',null)}),
     adminPlan:(id,plan,dias,nota)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'No existe ese local'};const mas=(f)=>new Date(Math.max(Date.now(),f?+new Date(f):0)+(dias||0)*864e5).toISOString();
@@ -633,7 +636,7 @@ function vAdmin(){
 <td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
   return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">${LOGO}<h1 style="margin:0;font-size:20px">Panel Roman Web</h1><span style="flex:1"></span>
-<button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
+<button data-a="admWaba">📲 Cuenta de WhatsApp</button><button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
 ${ADM.lista===null?`<p class="muted">${ADM.cargando?'Cargando locales…':'Sin datos.'}</p>`:`
 <div class="kpis"><div class="kpi hi"><small>Locales</small><b>${L.length}</b></div><div class="kpi acc"><small>Pagando</small><b>${cuenta('activo')}</b></div>
 <div class="kpi"><small>En prueba</small><b>${cuenta('prueba')}</b></div><div class="kpi"><small>Por vencer</small><b>${cuenta('porvencer')}</b></div>
@@ -1349,6 +1352,10 @@ const A={
   admAbrir(){AUTH.panel=true;closeModal();cargarAdmin()},
   admCerrar(){AUTH.panel=false;render()},
   admRecargar(){cargarAdmin()},
+  admWaba(){modal(`<h2>📲 Cuenta de WhatsApp Business</h2><p class="muted" style="margin-top:0">Pegá el <b>Identificador de la cuenta de WhatsApp</b> (WABA ID) que muestra Meta. ta-ca la suscribe para recibir los mensajes y te lista sus números para conectarlos a un local.</p>
+<form data-f="admWaba"><label>Identificador de la cuenta de WhatsApp<input name="waba" inputmode="numeric" required placeholder="ej: 293002626629903"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cerrar</button><button class="primary">Suscribir y ver números</button></div></form><div id="wabaRes"></div>`)},
+  async admWaNum(b){const sel=document.getElementById('wl-'+b.dataset.pid);if(!sel||!sel.value)return toast('Elegí el local',1);
+    try{const r=await NB.adminWa(sel.value,b.dataset.pid,b.dataset.num);if(r&&r.ok===false)return toast(r.error,1);toast('WhatsApp conectado ✓');b.textContent='Conectado ✓';b.disabled=true;cargarAdmin()}catch(e){toast(errMsg(e),1)}},
   admFiltro(b){ADM.f=b.dataset.f;render()},
   admPlan(b){const x=(ADM.lista||[]).find(l=>l.id===b.dataset.id);if(!x)return;const act=b.dataset.p==='activo';
     modal(`<h2>${act?'Registrar pago':'Extender la prueba'} · ${esc(x.nombre)}</h2><p class="muted" style="margin-top:0">${act?'Suma días pagos desde hoy, o desde que vence lo que ya pagó.':'Suma días de prueba gratis desde hoy, o desde que vence la prueba actual.'}</p>
@@ -1377,6 +1384,11 @@ const A={
   resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
 };
 const F={
+  async admWaba(d,f){const btn=f.querySelector('button.primary');btn.disabled=true;btn.textContent='Consultando a Meta…';
+    try{const r=await NB.waSuscribir(d.waba.trim());const L=ADM.lista||[];
+      document.getElementById('wabaRes').innerHTML=`<p style="margin:12px 0 6px"><span class="chip ok">Suscripta ✓</span> Apps que reciben sus mensajes: ${r.apps.map(esc).join(', ')||'—'}</p>`+
+        (r.numeros.length?r.numeros.map(n=>`<div class="row" style="gap:8px;flex-wrap:wrap"><span><b>${esc(n.numero)}</b> ${esc(n.nombre||'')}<small style="display:block">Phone number ID: ${esc(n.id)}</small></span><span style="display:flex;gap:6px"><select id="wl-${esc(n.id)}"><option value="">Local…</option>${L.map(x=>`<option value="${esc(x.id)}">${esc(x.nombre||x.id)}</option>`).join('')}</select><button class="small primary" data-a="admWaNum" data-pid="${esc(n.id)}" data-num="${esc(n.numero)}">Conectar</button></span></div>`).join(''):'<p class="muted">La cuenta no tiene números todavía.</p>')}
+    catch(e){toast(errMsg(e),1)}btn.disabled=false;btn.textContent='Suscribir y ver números'},
   async admWa(d){if(!d.pid.trim()&&!confirm('¿Desconectar el WhatsApp de este local?'))return;try{const r=await NB.adminWa(d.id,d.pid.trim(),d.num.trim());if(r&&r.ok===false)return toast(r.error,1);closeModal();toast(d.pid.trim()?'WhatsApp conectado ✓':'WhatsApp desconectado');await cargarAdmin()}catch(e){toast(errMsg(e),1)}},
   async waResp(d,f){const t=(d.t||'').trim();if(!t||!WAV)return;f.querySelector('input').value='';await waResponder(WAV,t,false)},
   async pagarMP(d,f){const btn=f.querySelector('button.primary');btn.disabled=true;btn.textContent='Abriendo Mercado Pago…';
