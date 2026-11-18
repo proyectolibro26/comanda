@@ -72,7 +72,7 @@ function botReserva(t,txt){
   }
   if(wa.step.startsWith('res')){
     if(/^(chau|salir|nada|olvidate|dejalo)/.test(t)){wa.step='inicio';wa.draft={};return['Listo 👍 Cuando quieras escribí *reservar* o pedí de la carta.']}
-    if(!/reserv/.test(t)&&parsear(t).lines.length){wa.step='inicio';wa.draft={};return null}
+    const dr=leerReserva(t,{});if(!/reserv/.test(t)&&!(dr.fecha||dr.hora||dr.personas)&&parsear(t).lines.length){wa.step='inicio';wa.draft={};return null}
   }
   if(wa.step==='res_ok'){
     if(/^(si|dale|ok|confirmo|de una)/.test(t)){const r=wa.draft.res;
@@ -89,7 +89,8 @@ function botReserva(t,txt){
 /* ---------- asistente de WhatsApp ---------- */
 const NUMS={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
 function lev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
-function parecido(seg,a){if(a.length<4)return false;return seg.split(/\s+/).some(w=>w.length>=4&&(lev(w,a)<=(a.length>=6?2:1)||(w.length>a.length&&lev(w.slice(0,a.length),a)<=1)))}
+const COMUNES=new Set(['para','pero','pasa','paso','mesa','misa','hora','horas','casa','cosa','coso','todo','toda','algo','alla','aca','esta','este','eso','eso','lunes','martes','jueves','viernes','sabado','domingo','reserva','reservar','persona','personas','gracias','buenas','hola','bien','pago','pagar','plata','queso','quiero','queria','dale','vale','pasame','mandame','dame','tarde','noche','manana','hablar','hacer']);
+function parecido(seg,a){if(a.length<4)return false;return seg.split(/\s+/).some(w=>w.length>=4&&!COMUNES.has(w)&&(lev(w,a)<=(a.length>=6?2:1)||(w.length>a.length&&lev(w.slice(0,a.length),a)<=1)))}
 function sinDim(w){return w.length<6?w:w.replace(/quit([oa]s?)$/,'c$1').replace(/guit([oa]s?)$/,'g$1').replace(/cit([oa]s?)$/,'z$1').replace(/it([oa]s?)$/,'$1')}
 function parsear(t){
   const out={},notas=[];t=norm(t).split(/(\s+)/).map(sinDim).join('');
@@ -134,7 +135,7 @@ function noEntiendo(t){
 }
 function bot(txt){
   const t0=norm(txt),w0=S.wa;w0._ne=false;
-  if(/^(persona|humano|alguien|una persona|atencion|hablar con (alguien|una persona|el local|un humano))\b/.test(t0)){w0.humano=Date.now();w0.noEnt=0;return['Listo 🙌 Le aviso al local y te responden por acá en un ratito.']}
+  if(/^(persona|humano|alguien|una persona|atencion|encargad[oa]|dueñ[oa]|duen[oa])\b|hablar con\b|comunicarme con|atiend[ae] (alguien|una persona)|(una|otra) persona\b|persona real|un humano|al encargad|con el (encargad|dueñ|duen|local|mozo|gerente)|que me (llame|atienda|contacte)/.test(t0)){w0.humano=Date.now();w0.noEnt=0;return['Listo 🙌 Le aviso al local y te responden por acá en un ratito.']}
   if(w0.humano&&Date.now()-w0.humano<30*60e3&&!/^(menu|carta|asistente|bot)\b/.test(t0))return[];
   w0.humano=null;
   const r=botCore(txt);if(!w0._ne)w0.noEnt=0;return r;
