@@ -17,6 +17,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-
 h1,h2,h3{margin:0;line-height:1.2}
 h2{font-size:17px;margin-bottom:12px}
 small{color:var(--muted);display:block}
+a.btn{display:inline-block;font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:10px 12px;font-weight:600}a.btn.primary{background:var(--accd);border-color:var(--accd);color:#fff}button.chip{border:0;cursor:pointer}
 button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:8px 12px}
 button:hover{border-color:#cfc6b4}
 button:disabled{opacity:.4;cursor:not-allowed}
@@ -329,6 +330,7 @@ async function push(){
       if(!makeDiff(SY.base,S)){SY.pend=false;break}
       const snap=clone(S),r=await NB.guardar(LID,snap,SY.ver);
       if(r.ok){SY.ver=r.version;SY.base=snap;persistSync();NB.avisar();estadoNube('ok')}
+      else if(r.error){if(r.error==='bloqueado'){SY.info=Object.assign({},SY.info,{estado:'bloqueado'});renderSafe()}else toast(r.error,1);break}
       else fusionar(r.data,r.version);
     }
   }catch(e){estadoNube('off');setTimeout(push,4000)}
@@ -339,13 +341,16 @@ async function pull(){
   try{const r=await NB.leer(LID);estadoNube('ok');if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
   catch(e){estadoNube('off')}
 }
-async function revisar(){if(!enNube())return;try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
+function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
+  if(antes&&antes!==SY.info.estado){if(antes==='bloqueado')toast('¡Tu local está activo otra vez! 🔥');renderSafe();if(SY.info.estado!=='bloqueado')push()}}
+async function refrescarInfo(){try{const r=await NB.leer(LID);if(!r)return;ponerInfo(r);if(r.version>SY.ver)fusionar(r.data,r.version)}catch(e){}}
+async function revisar(){if(!enNube())return;if(SY.info&&Date.now()-(SY.infoTs||0)>(SY.info.estado==='bloqueado'?15e3:3e5))refrescarInfo();try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
 async function conectar(){
   try{
     if(!enNube())return;
     const r=await NB.leer(LID);
     if(!r){toast('No tenés acceso a ese local',1);LID='';ls('taca-local',null);AUTH.locales=null;despuesDeEntrar();return}
-    SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta};
+    ponerInfo(r);
     if(!SY.base){S=completar(r.data);SY.base=clone(r.data);SY.ver=r.version;saveLocal();persistSync();renderSafe()}
     else if(r.version>SY.ver){fusionar(r.data,r.version);push()}
     else if(makeDiff(SY.base,S))push();
@@ -380,6 +385,7 @@ async function cargarCarta(){
   if(!cloudClient())return;
   try{const r=await NB.carta(CLID,clienteMode);
     if(!r){cartaError='No encontramos este local. Pedile ayuda al mozo.';cartaOk=false;return renderSafe()}
+    if(r.pausado){cartaError='Este local no está tomando pedidos por QR en este momento. Pedile la carta al mozo.';cartaOk=false;return renderSafe()}
     S={negocio:r.negocio,mesas:r.mesas,platos:r.platos||[],insumos:r.insumos||[],pedidos:r.pedidos||[],llamados:r.llamados||[],envio:0};cartaOk=true;cartaError='';renderSafe()}
   catch(e){if(!cartaOk){cartaError='Sin conexión. Revisá internet y volvé a escanear.';renderSafe()}}
 }
@@ -446,19 +452,20 @@ function mockNube(){
         pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
     adminPlan:(id,plan,dias,nota)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'No existe ese local'};const mas=(f)=>new Date(Math.max(Date.now(),f?+new Date(f):0)+(dias||0)*864e5).toISOString();
       r.plan=plan;if(plan==='prueba'&&dias>0)r.prueba_hasta=mas(r.prueba_hasta);if(plan==='activo'&&dias>0)r.pagado_hasta=mas(r.pagado_hasta);if(nota!=null)r.nota=nota;put(db);return{ok:true}}),
-    misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:'prueba',prueba_hasta:r.prueba_hasta}))}),
+    misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}))}),
     crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
       db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
-    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:'prueba',prueba_hasta:r.prueba_hasta}:null}),
+    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
     version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
       if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
+      if(estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado')return{ok:false,error:'bloqueado'};
       if(r.version!==v)return{ok:false,data:r.data,version:r.version};
       r.data=d;r.version++;r.actualizado=new Date().toISOString();put(db);return{ok:true,version:r.version}}),
     carta:(id,m)=>later(()=>{const r=get()[id];if(!r)return null;const d=r.data;
-      return{version:r.version,negocio:d.negocio,mesas:d.mesas,platos:d.platos,insumos:d.insumos.map(i=>({id:i.id,stock:i.stock})),
+      return{version:r.version,pausado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado',negocio:d.negocio,mesas:d.mesas,platos:d.platos,insumos:d.insumos.map(i=>({id:i.id,stock:i.stock})),
         pedidos:d.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===m&&!p.cobrado&&!p.anulado),llamados:(d.llamados||[]).filter(l=>l.mesa===m)}}),
-    cliente:(id,tipo,mesa,pedido,consumo)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'Local no encontrado'};const d=r.data;let n=null;
+    cliente:(id,tipo,mesa,pedido,consumo)=>later(()=>{const db=get(),r=db[id];if(!r)return{ok:false,error:'Local no encontrado'};if(estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado')return{ok:false,error:'Este local no está tomando pedidos por QR en este momento. Pedile al mozo.'};const d=r.data;let n=null;
       if(!(mesa>=1&&mesa<=(d.mesas||60)))return{ok:false,error:'Mesa inválida'};
       if(tipo==='pedido'){for(const [k,c] of Object.entries(consumo||{})){const i=d.insumos.find(x=>x.id===k);if(!i)return{ok:false,error:'Insumo desconocido'};if(i.stock<c-1e-6)return{ok:false,error:`Se acabó ${i.nombre}, avisale al mozo`}}
         for(const [k,c] of Object.entries(consumo||{})){const i=d.insumos.find(x=>x.id===k);i.stock=r3(i.stock-c)}
@@ -492,8 +499,34 @@ function errMsg(e){const m=String((e&&(e.message||e.error_description||e.msg))||
   if(/invalid.*email|email.*invalid/i.test(m))return'Revisá el email, parece que está mal escrito';
   if(/fetch|network|failed to/i.test(m))return'Sin conexión, probá de nuevo';
   return m||'Algo salió mal, probá de nuevo';}
+function estadoPlan(plan,prueba,pagado){if(plan==='suspendido')return'bloqueado';const v=plan==='activo'?pagado:prueba;if(!v)return'ok';const t=+new Date(v);return t>Date.now()?'ok':t+3*864e5>Date.now()?'gracia':'bloqueado'}
+function infoPlan(){const i=SY.info;if(!i)return null;const vence=i.plan==='activo'?i.pagado_hasta:i.prueba_hasta;const est=i.estado||estadoPlan(i.plan,i.prueba_hasta,i.pagado_hasta);
+  return{est,plan:i.plan,vence,dias:vence?Math.ceil((new Date(vence)-Date.now())/864e5):null,corte:vence?Math.max(0,Math.ceil((+new Date(vence)+3*864e5-Date.now())/864e5)):null}}
+function bloqueado(){const p=infoPlan();return !!(p&&p.est==='bloqueado'&&enNube())}
 function diasPrueba(){const i=SY.info;if(!i||i.plan!=='prueba'||!i.prueba_hasta)return null;return Math.ceil((new Date(i.prueba_hasta)-Date.now())/864e5)}
-function chipPrueba(){if(rol!=='dueno')return'';const d=diasPrueba();if(d===null)return'';return d<=0?'<span class="chip bad">Prueba vencida</span>':`<span class="chip ${d<=3?'warn':''}">Prueba: ${d} día${d>1?'s':''}</span>`}
+/* precios: se cambian acá y en la página de venta */
+const PLANES=[
+  {id:'local',nombre:'Local',precio:49900,bajada:'Todo para atender, cobrar y controlar el stock.',items:['QR en las mesas: el pedido va directo a cocina y caja','Salón, mozos, cocina y barra en vivo','Caja con turnos, cierre a ciegas y saldo solo para el dueño','Stock por receta, mermas, compras y proveedores','Cierre del día, reportes e ingeniería de menú','Reservas, mostrador y para llevar','Equipos y personas sin límite']},
+  {id:'encendido',nombre:'Encendido',precio:89900,destacado:true,bajada:'Todo lo de Local, más pedidos y reservas por WhatsApp.',items:['Todo lo del plan Local','Bot de WhatsApp que toma pedidos, delivery y reservas','Te cargamos la carta y las recetas','Soporte prioritario, también de noche']}];
+const CONTACTO_PAGO={email:'lucastavano2020@gmail.com',whatsapp:''};
+function linkPago(plan){const pl=PLANES.find(x=>x.id===plan)||PLANES[0];const txt=`Hola Roman Web, quiero el plan ${pl.nombre} de ta-ca (${fmt(pl.precio)}/mes) para mi local "${S.negocio||''}" (código ${LID}).`;
+  return CONTACTO_PAGO.whatsapp?`https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent(txt)}`:`mailto:${CONTACTO_PAGO.email}?subject=${encodeURIComponent('Quiero contratar ta-ca')}&body=${encodeURIComponent(txt)}`}
+function vPlanes(){return`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;text-align:left">${PLANES.map(pl=>`<div class="card" style="margin:0;text-align:left;${pl.destacado?'border:2px solid var(--acc)':''}">
+<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">${pl.nombre}</h3>${pl.destacado?'<span class="chip warn">Recomendado</span>':''}</div>
+<p style="margin:6px 0 2px"><b style="font-size:26px">${fmt(pl.precio)}</b> <span class="muted">/ mes</span></p><p class="muted" style="margin:0 0 8px;font-size:13px">${pl.bajada} Pagando el año, 2 meses gratis.</p>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.5">${pl.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+<a class="btn ${pl.destacado?'primary':''}" style="display:block;text-align:center;text-decoration:none" href="${linkPago(pl.id)}" target="_blank" rel="noopener">Quiero el plan ${pl.nombre}</a></div>`).join('')}</div>
+<p class="muted" style="font-size:12px;margin-top:10px">Precios finales en pesos. Sin permanencia: si un mes no pagás, tus datos quedan guardados.</p>`}
+function vBloqueado(){const p=infoPlan()||{},esDueno=!rol||rol==='dueno';
+  const motivo=p.plan==='suspendido'?'El local está suspendido.':p.plan==='activo'?'Venció el abono de ta-ca.':'Terminó la prueba gratis de 14 días.';
+  return`<div class="login" style="align-items:flex-start"><div class="card" style="max-width:720px;margin-top:30px">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio||'')}</p>
+<h2 style="margin-top:16px">Tu local está en pausa</h2><p class="muted" style="margin-top:0">${motivo} Mientras tanto no se pueden tomar pedidos ni cobrar, y el QR de las mesas está apagado. <b>Todos tus datos siguen guardados</b> y vuelven apenas se active el plan.</p>
+${vPlanes()}
+<div class="btns" style="justify-content:center;margin-top:14px"><button data-a="yaPague">Ya pagué: revisar de nuevo</button><button class="ghost" data-a="cambiarLocal">Cambiar de local</button><button class="ghost" data-a="cerrarSesion">Cerrar sesión</button></div>
+<p class="muted" style="font-size:12px">¿Sos parte del equipo y no el dueño? Avisale al dueño del local.</p></div></div>`}
+function chipPrueba(){if(rol!=='dueno')return'';const p=infoPlan();if(p&&p.est==='gracia')return`<button class="chip bad" data-a="verPlanes">Venció · se pausa en ${p.corte} día${p.corte>1?'s':''}</button>`;
+  if(p&&p.plan==='activo')return p.dias!==null&&p.dias<=5?`<button class="chip warn" data-a="verPlanes">Abono: vence en ${p.dias} día${p.dias>1?'s':''}</button>`:'';
+  const d=diasPrueba();if(d===null)return'';if(d>0)return`<button class="chip ${d<=3?'warn':''}" data-a="verPlanes">Prueba: ${d} día${d>1?'s':''}</button>`;return d<=0?'<span class="chip bad">Prueba vencida</span>':`<span class="chip ${d<=3?'warn':''}">Prueba: ${d} día${d>1?'s':''}</span>`}
 
 async function arrancarCuentas(){
   if(modoDemo()||cloudClient()){AUTH.cargando=false;return}
@@ -549,8 +582,8 @@ function vLocales(){
   const l=AUTH.locales;
   if(l===null||AUTH.ocupado)return`<div class="login"><div class="card">${LOGO}<p class="tagline">${AUTH.ocupado?'Preparando tu local…':'Buscando tus locales…'}</p></div></div>`;
   return`<div class="login"><div class="card" style="max-width:440px">${LOGO}<p class="tagline" style="margin-top:4px">${esc(AUTH.user.email)}</p>
-${l.length?`<h2 style="text-align:left;margin-top:18px">Elegí el local</h2>${l.map(x=>{const d=x.plan==='prueba'?Math.ceil((new Date(x.prueba_hasta)-Date.now())/864e5):null;
-  return`<button class="mesa-c" style="width:100%;min-height:0;margin-bottom:8px" data-a="elegirLocal" data-id="${esc(x.id)}"><b>${esc(x.nombre)}</b><small>${x.rol==='dueno'?'Dueño':esc(x.rol)}${d!==null?` · ${d>0?'prueba: quedan '+d+' días':'prueba vencida'}`:''}</small></button>`}).join('')}`:'<p class="muted" style="margin-top:16px">Todavía no tenés ningún local en ta-ca.</p>'}
+${l.length?`<h2 style="text-align:left;margin-top:18px">Elegí el local</h2>${l.map(x=>{const e=x.estado||estadoPlan(x.plan,x.prueba_hasta,x.pagado_hasta),d=x.plan==='prueba'?Math.ceil((new Date(x.prueba_hasta)-Date.now())/864e5):null;
+  return`<button class="mesa-c" style="width:100%;min-height:0;margin-bottom:8px" data-a="elegirLocal" data-id="${esc(x.id)}"><b>${esc(x.nombre)}</b><small>${x.rol==='dueno'?'Dueño':esc(x.rol)}${e==='bloqueado'?' · <b style="color:var(--bad)">en pausa</b>':e==='gracia'?' · vencido':x.plan==='activo'?' · abono al día':d!==null?' · prueba: quedan '+d+' días':''}</small></button>`}).join('')}`:'<p class="muted" style="margin-top:16px">Todavía no tenés ningún local en ta-ca.</p>'}
 <form data-f="nuevoLocal" class="inline" style="margin-top:10px;text-align:left"><label>${l.length?'Sumar otro local':'Creá tu local'}<input name="nombre" placeholder="Nombre del local" required></label><button class="primary">Crear</button></form>
 ${AUTH.admin?'<p style="margin-top:14px"><button data-a="admAbrir">🛠 Panel Roman Web</button></p>':''}<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
 }
@@ -627,7 +660,8 @@ function vCuenta(){
   const d=diasPrueba();
   return`<section class="card"><h2>☁️ Cuenta ${chipNube()}</h2>
 <div class="row"><span>Cuenta</span><b>${esc(AUTH.user?AUTH.user.email:'')}</b></div><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div>
-${d!==null?`<div class="row"><span>Plan</span><b class="${d<=3?'badt':''}">${d>0?`Prueba gratis · quedan ${d} días`:'Prueba vencida'}</b></div>`:''}
+${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`Abono al día · hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
+  return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div><div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
 <p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo: abrí ta-ca en ese equipo, entrá con este email y contraseña y elegí el local. Después cada persona usa su PIN.</p>
 <div class="btns"><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
@@ -1182,6 +1216,7 @@ function render(){
     if(AUTH.panel&&AUTH.admin)return app.innerHTML=vAdmin();
     if(!LID)return app.innerHTML=vLocales();
     if(!SY.base)return app.innerHTML=vCargando('Abriendo tu local…');
+    if(bloqueado())return app.innerHTML=vBloqueado();
     if(!S.setup)return app.innerHTML=vBienvenida();
   }
   if(rol&&!persona()&&S.equipo&&S.equipo.length){rol=null;personaId=null}
@@ -1408,6 +1443,8 @@ const A={
   salirDemo(){ls('taca-modo',null);try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}location.hash='';location.reload()},
   elegirLocal(b){elegirLocal(b.dataset.id)},
   cambiarLocal(){LID='';ls('taca-local',null);ls(K+'-sync',null);rol=null;personaId=null;SY.base=null;AUTH.locales=null;closeModal();render();NB.misLocales().then(l=>{AUTH.locales=l;render()}).catch(e=>{AUTH.locales=[];toast(errMsg(e),1);render()})},
+  verPlanes(){modal(`<h2>Planes de ta-ca</h2>${vPlanes()}<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`,true)},
+  async yaPague(b){b.disabled=true;b.textContent='Revisando…';await refrescarInfo();if(bloqueado()){toast('Todavía figura sin pagar. Si ya pagaste, en un rato se activa.',1);render()}},
   cerrarSesion(){AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
   admAbrir(){AUTH.panel=true;closeModal();cargarAdmin()},
   admCerrar(){AUTH.panel=false;render()},

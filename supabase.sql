@@ -24,6 +24,19 @@ create table if not exists public.taca_miembros (
 );
 -- Cuentas de Roman Web que ven el panel de todos los locales.
 create table if not exists public.taca_admins (user_id uuid primary key references auth.users(id) on delete cascade);
+alter table public.taca_locales add column if not exists pagado_hasta timestamptz;
+alter table public.taca_locales add column if not exists nota text;
+
+-- Estado del abono: 'ok', 'gracia' (venció hace menos de 3 días, sigue andando) o 'bloqueado' (solo lectura).
+create or replace function public.taca_estado_plan(p_plan text, p_prueba timestamptz, p_pagado timestamptz)
+returns text language sql stable set search_path = public as $$
+  select case
+    when p_plan = 'suspendido' then 'bloqueado'
+    when (case when p_plan = 'activo' then p_pagado else p_prueba end) is null then 'ok'
+    when (case when p_plan = 'activo' then p_pagado else p_prueba end) > now() then 'ok'
+    when (case when p_plan = 'activo' then p_pagado else p_prueba end) + interval '3 days' > now() then 'gracia'
+    else 'bloqueado' end;
+$$;
 
 -- Nadie lee ni escribe las tablas directo: todo pasa por las funciones de abajo.
 alter table public.taca_locales  enable row level security;
@@ -43,7 +56,8 @@ $$;
 create or replace function public.taca_mis_locales()
 returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'nombre', coalesce(l.nombre, l.data->>'negocio'), 'rol', m.rol,
-           'plan', l.plan, 'prueba_hasta', l.prueba_hasta) order by l.creado), '[]'::jsonb)
+           'plan', l.plan, 'prueba_hasta', l.prueba_hasta, 'pagado_hasta', l.pagado_hasta,
+           'estado', taca_estado_plan(l.plan, l.prueba_hasta, l.pagado_hasta)) order by l.creado), '[]'::jsonb)
   from taca_miembros m join taca_locales l on l.id = m.local_id where m.user_id = auth.uid();
 $$;
 
@@ -69,7 +83,8 @@ end $$;
 -- Equipos del personal: leer el estado completo del local (solo miembros).
 create or replace function public.taca_leer(p_id text)
 returns jsonb language sql stable security definer set search_path = public as $$
-  select jsonb_build_object('data', data, 'version', version, 'plan', plan, 'prueba_hasta', prueba_hasta)
+  select jsonb_build_object('data', data, 'version', version, 'plan', plan, 'prueba_hasta', prueba_hasta,
+         'pagado_hasta', pagado_hasta, 'estado', taca_estado_plan(plan, prueba_hasta, pagado_hasta))
   from taca_locales where id = p_id and taca_es_miembro(p_id);
 $$;
 
@@ -85,6 +100,9 @@ declare r taca_locales%rowtype;
 begin
   if not taca_es_miembro(p_id) then return jsonb_build_object('ok', false, 'error', 'sin acceso'); end if;
   select * into r from taca_locales where id = p_id for update;
+  if taca_estado_plan(r.plan, r.prueba_hasta, r.pagado_hasta) = 'bloqueado' then
+    return jsonb_build_object('ok', false, 'error', 'bloqueado');
+  end if;
   if r.version <> p_version then
     return jsonb_build_object('ok', false, 'data', r.data, 'version', r.version);
   end if;
@@ -98,6 +116,7 @@ create or replace function public.taca_carta(p_id text, p_mesa integer)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'version', version,
+    'pausado', taca_estado_plan(plan, prueba_hasta, pagado_hasta) = 'bloqueado',
     'negocio', data->'negocio',
     'mesas',   data->'mesas',
     'platos',  (select coalesce(jsonb_agg(x), '[]'::jsonb) from jsonb_array_elements(coalesce(data->'platos', '[]'::jsonb)) x
@@ -126,6 +145,9 @@ declare
 begin
   select data, version into d, v from taca_locales where id = p_id for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'Local no encontrado'); end if;
+  if (select taca_estado_plan(plan, prueba_hasta, pagado_hasta) from taca_locales where id = p_id) = 'bloqueado' then
+    return jsonb_build_object('ok', false, 'error', 'Este local no está tomando pedidos por QR en este momento. Pedile al mozo.');
+  end if;
   if p_mesa is null or p_mesa < 1 or p_mesa > coalesce((d->>'mesas')::int, 60) then
     return jsonb_build_object('ok', false, 'error', 'Mesa inválida');
   end if;
