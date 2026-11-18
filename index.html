@@ -266,7 +266,7 @@ let tab=null,clienteMode=null,typing=false,kArea='todas',CB=null,E=null,pendingM
 
 /* ---------- nube: sincronización entre equipos ---------- */
 // Supabase del servicio ta-ca. La clave pública (anon) es pública por diseño: la seguridad está en las funciones SQL.
-const NUBE={url:'',key:''};
+const NUBE={url:'https://ktoicklowsblqmerqqdo.supabase.co',key:'sb_publishable_h_306P5TZJWcBUHXiZgo-A_P_rKMqjk'};
 const QS=new URLSearchParams(location.search);
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
 let LID=ls('taca-local')||'';           // local al que está conectado este equipo del personal
