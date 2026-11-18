@@ -62,6 +62,7 @@ tfoot td{font-weight:700;border-bottom:0}
 .tc i::after{content:"";width:.43em;height:.43em;border-radius:50%;background:var(--knob)}
 .top .tc{font-size:24px;--knob:var(--ink);color:var(--bg)}
 .nube{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}.nube.ok{background:#1f3a29;color:#9be3b5}.nube.off{background:#4a2a12;color:#ffc58f}
+.pin{-webkit-text-security:disc;text-security:disc}
 .tagline{font-weight:600;color:var(--muted);margin:12px 0 0}
 .who{display:flex;gap:8px;align-items:center}
 .who .ghost{color:#fff;border-color:#4a463f}
@@ -463,7 +464,7 @@ function mockNube(){
 }
 
 /* ---------- cuentas: registro, locales y primeros pasos ---------- */
-const AUTH={user:null,cargando:true,locales:null,aviso:'',vista:'entrar',recuperando:false,ocupado:false};
+const AUTH={user:null,cargando:true,locales:null,aviso:'',vista:'entrar',recuperando:/type=recovery/.test(location.hash+location.search),ocupado:false};
 let personaId=null;try{personaId=sessionStorage.getItem('taca-persona')}catch(e){}
 let W=null; // asistente de primeros pasos
 function modoDemo(){return !NB||ls('taca-modo')==='demo'}
@@ -521,7 +522,7 @@ async function salirTodo(llamarSalir){
 function vInicio(){
   const v=AUTH.vista,oc=AUTH.ocupado?'disabled':'';
   let cuerpo;
-  if(AUTH.recuperando)cuerpo=`<h2>Nueva contraseña</h2><form data-f="nuevaClave"><input name="clave" type="password" minlength="6" placeholder="Nueva contraseña (mín. 6)" autocomplete="new-password" required><button class="primary" ${oc}>Guardar</button></form>`;
+  if(AUTH.recuperando)cuerpo=`<h2>Elegí tu contraseña nueva</h2><p class="muted" style="margin:0 0 6px;font-size:14px">${esc(AUTH.user?AUTH.user.email:'')}</p><form data-f="nuevaClave"><input name="clave" type="password" minlength="6" placeholder="Contraseña nueva (mín. 6)" autocomplete="new-password" required><input name="clave2" type="password" minlength="6" placeholder="Repetila" autocomplete="new-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Guardando…':'Guardar contraseña'}</button></form>`;
   else if(v==='crear')cuerpo=`<h2>Probá ta-ca 14 días gratis</h2><p class="muted" style="margin:0 0 6px;font-size:14px">Sin tarjeta. Cancelás cuando quieras.</p>
 <form data-f="registro"><input name="local" placeholder="Nombre de tu local" autocomplete="organization" required><input name="email" type="email" placeholder="Tu email" autocomplete="email" required><input name="clave" type="password" minlength="6" placeholder="Contraseña (mín. 6)" autocomplete="new-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Creando…':'Crear mi cuenta'}</button></form>
 <p style="font-size:14px">¿Ya tenés cuenta? <button class="link" data-a="authVista" data-v="entrar">Entrá</button></p>`;
@@ -531,7 +532,7 @@ function vInicio(){
 <p style="font-size:14px;margin-top:4px">¿Todavía no usás ta-ca? <button class="link" data-a="authVista" data-v="crear">Probalo 14 días gratis</button></p>`;
   return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p>
 ${AUTH.aviso?`<p class="hint" style="margin-top:14px">${AUTH.aviso}</p>`:''}<div style="text-align:left;margin-top:16px" class="auth">${cuerpo}</div>
-<p style="margin-top:18px"><button class="ghost small" data-a="entrarDemo">Ver la demo sin registrarme</button></p></div></div>`;
+${AUTH.recuperando?'':'<p style="margin-top:18px"><button class="ghost small" data-a="entrarDemo">Ver la demo sin registrarme</button></p>'}</div></div>`;
 }
 function vLocales(){
   const l=AUTH.locales;
@@ -554,7 +555,7 @@ function vBienvenida(){
 <div class="inline"><label>Cantidad de mesas<input name="mesas" type="number" min="0" max="60" value="${S.mesas||10}" required></label><label>Costo de envío (si hacés delivery)<input name="envio" inputmode="decimal" value="${S.envio||0}"></label></div>
 <label>Alias para transferencias (opcional)<input name="alias" value="${esc(S.alias||'')}" placeholder="ej: mi.local.mp"></label><button class="primary">Seguir →</button></form>`;
   if(p===2)c=`<h2>Tu PIN de dueño</h2><p class="muted" style="margin-top:0">Con este PIN entrás vos en cualquier equipo del local. Ves todo, incluido el saldo de caja.</p><form data-f="w2"><label>Tu nombre<input name="nombre" value="${esc(W.nombre||'')}" required></label>
-<div class="inline"><label>PIN (4 a 6 números)<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><label>Repetilo<input name="pin2" type="password" inputmode="numeric" required autocomplete="off"></label></div><div class="btns"><button type="button" class="ghost" data-a="wPaso" data-p="1">← Volver</button><button class="primary">Seguir →</button></div></form>`;
+<div class="inline"><label>PIN (4 a 6 números)<input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" pattern="[0-9]{4,6}" required autocomplete="off"></label><label>Repetilo<input name="pin2" type="text" inputmode="numeric" class="pin" autocomplete="off" required autocomplete="off"></label></div><div class="btns"><button type="button" class="ghost" data-a="wPaso" data-p="1">← Volver</button><button class="primary">Seguir →</button></div></form>`;
   if(p===3)c=`<h2>Tu carta</h2><p class="muted" style="margin-top:0">Después podés cambiar todo en <b>Carta y recetas</b>.</p>
 <div style="display:grid;gap:10px"><button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="ejemplo"><b>Empezar con una carta de ejemplo</b><small>Hamburguesas, milanesas, pizza y bebidas, con sus recetas e insumos. Editás precios y sacás lo que no va.</small></button>
 <button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="vacia"><b>Empezar con la carta vacía</b><small>Cargás tus platos e insumos desde cero.</small></button></div><div class="btns"><button class="ghost" data-a="wPaso" data-p="2">← Volver</button></div>`;
@@ -697,7 +698,7 @@ function ingenieria(c){
 
 /* ---------- vistas ---------- */
 function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p>
-<form data-f="login"><input name="pin" type="password" inputmode="numeric" placeholder="Tu PIN" autocomplete="off" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>
+<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="Tu PIN" autocomplete="off" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>
 ${demo?`<p class="hint">Demo · PIN de prueba: Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p><p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>${NB?'<p style="font-size:14px"><button class="link" data-a="salirDemo">Salir de la demo y crear mi cuenta</button></p>':''}`
 :`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
 
@@ -1127,6 +1128,7 @@ function render(){
   if(clienteMode){if(cloudClient()&&!cartaOk){app.innerHTML=`<div class="login"><div class="card">${LOGO}<p class="tagline">${cartaError?esc(cartaError):'Cargando la carta…'}</p></div></div>`;return}app.innerHTML=vCliente('cliente');return}
   if(!modoDemo()&&!cloudClient()){
     if(AUTH.cargando)return app.innerHTML=vCargando('Abriendo ta-ca…');
+    if(AUTH.recuperando)return app.innerHTML=vInicio();
     if(!AUTH.user)return app.innerHTML=vInicio();
     if(!LID)return app.innerHTML=vLocales();
     if(!SY.base)return app.innerHTML=vCargando('Abriendo tu local…');
@@ -1381,7 +1383,7 @@ const F={
       else{AUTH.user=r.user;despuesDeEntrar();render()}}
     catch(e){AUTH.ocupado=false;render();toast(errMsg(e),1)}},
   async olvide(d){AUTH.ocupado=true;render();try{await NB.auth.recuperar(d.email.trim());AUTH.vista='entrar';AUTH.aviso='📧 Si hay una cuenta con ese email, te llegó un link para elegir una contraseña nueva.'}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
-  async nuevaClave(d){AUTH.ocupado=true;render();try{await NB.auth.nuevaClave(d.clave);AUTH.recuperando=false;toast('Contraseña cambiada ✓');history.replaceState(null,'',location.pathname+location.search)}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
+  async nuevaClave(d){if(d.clave!==d.clave2)return toast('Las contraseñas no coinciden',1);AUTH.ocupado=true;render();try{await NB.auth.nuevaClave(d.clave);AUTH.recuperando=false;toast('Contraseña cambiada ✓');history.replaceState(null,'',location.pathname);if(AUTH.user&&!LID)despuesDeEntrar()}catch(e){toast(errMsg(e),1)}AUTH.ocupado=false;render()},
   nuevoLocal(d){crearLocalNube(d.nombre.trim())},
   w1(d){S.negocio=d.negocio.trim()||S.negocio;S.tipo=d.tipo;S.mesas=Math.max(0,Math.min(60,parseInt(d.mesas)||0));S.envio=Math.max(0,pnum(d.envio));S.alias=d.alias.trim();W.paso=2;save();render()},
   w2(d){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);W.nombre=d.nombre.trim()||'Dueño';W.pin=d.pin;W.paso=3;render()},
