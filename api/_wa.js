@@ -18,6 +18,7 @@ function nucleo() {
 function correrBot(data, tel, texto, nombrePerfil) {
   const S = data;
   S.clientes = S.clientes || {}; S.reservas = S.reservas || []; S.pedidos = S.pedidos || []; S.audit = S.audit || [];
+  const simulador = S.wa; // conversación de prueba de la app: se guarda y se devuelve intacta
   S.waConv = S.waConv || {};
   const conv = S.waConv[tel] || { tel, step: 'inicio', draft: {}, msgs: [], nombre: nombrePerfil || '' };
   if (nombrePerfil && !conv.nombre) conv.nombre = nombrePerfil;
@@ -39,7 +40,7 @@ function correrBot(data, tel, texto, nombrePerfil) {
   conv.humano = S.wa.humano || null; conv.noEnt = S.wa.noEnt || 0; conv.consulta = S.wa.consulta || null;
   S.waConv[tel] = conv;
   S.waUlt = S.waUlt || {}; S.waUlt[tel] = ahora; // último mensaje del cliente (ventana de 24 h de WhatsApp)
-  delete S.wa; // el simulador de la app usa su propio S.wa; no se pisa
+  if (simulador) S.wa = simulador; else delete S.wa; // el simulador de la app usa su propio S.wa; no se pisa
   // no guardar conversaciones viejas para siempre: las 200 más recientes
   const tels = Object.keys(S.waConv);
   if (tels.length > 200) tels.sort((a, b) => (S.waConv[a].ts || 0) - (S.waConv[b].ts || 0)).slice(0, tels.length - 200).forEach(k => { delete S.waConv[k]; delete S.waUlt[k]; });

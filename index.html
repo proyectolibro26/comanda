@@ -1584,6 +1584,8 @@ function render2(){
     if(bloqueado())return app.innerHTML=vBloqueado();
     if(!S.setup)return app.innerHTML=vBienvenida();
   }
+  if(!S.wa||typeof S.wa!=='object')S.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'};
+  if(!Array.isArray(S.wa.msgs))S.wa.msgs=[];if(!S.wa.draft)S.wa.draft={};if(!S.wa.tel)S.wa.tel='341 555-0101';if(!S.wa.step)S.wa.step='inicio';
   if(rol&&!persona()&&S.equipo&&S.equipo.length){rol=null;personaId=null}
   if(!rol||!ROLES[rol]){rol=null;app.innerHTML=vLogin();return}
   const tabs=ROLES[rol].tabs;if(!tabs.includes(tab))tab=tabs[0];
