@@ -5,8 +5,30 @@
 const crypto = require('crypto');
 const { sb } = require('./_mpl');
 
+let chatCache = null;
+async function chat() {
+  if (process.env.TELEGRAM_CHAT) return process.env.TELEGRAM_CHAT;
+  if (chatCache) return chatCache;
+  try { const [a] = await sb('GET', 'taca_ajustes?select=valor&clave=eq.telegram_chat'); chatCache = a ? String(a.valor) : null; } catch (e) { chatCache = null; }
+  return chatCache;
+}
+// busca el chat de la última persona que le escribió al bot (para no tener que averiguar el número a mano)
+async function detectarChat() {
+  const t = process.env.TELEGRAM_TOKEN;
+  if (!t) return { error: 'Falta TELEGRAM_TOKEN en Vercel' };
+  const r = await fetch(`https://api.telegram.org/bot${t}/getUpdates?limit=50`).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!j.ok) return { error: 'Telegram no aceptó el token: revisalo en Vercel' };
+  const ms = (j.result || []).map(u => u.message || u.edited_message || u.channel_post).filter(Boolean).filter(m => m.chat);
+  const m = ms.filter(m => m.chat.type === 'private').pop() || ms.pop();
+  if (!m) return { error: 'No encontré mensajes. Mandale cualquier mensaje a tu bot en Telegram y probá de nuevo.' };
+  const id = String(m.chat.id), nombre = [m.chat.first_name, m.chat.last_name].filter(Boolean).join(' ') || m.chat.title || m.chat.username || '';
+  await sb('POST', 'taca_ajustes?on_conflict=clave', [{ clave: 'telegram_chat', valor: id, actualizado: new Date().toISOString() }], 'resolution=merge-duplicates');
+  chatCache = id;
+  return { ok: true, nombre };
+}
 async function telegram(texto) {
-  const t = process.env.TELEGRAM_TOKEN, c = process.env.TELEGRAM_CHAT;
+  const t = process.env.TELEGRAM_TOKEN, c = await chat();
   if (!t || !c) return false;
   const r = await fetch(`https://api.telegram.org/bot${t}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: c, text: texto.slice(0, 3900), disable_web_page_preview: true }) }).catch(() => null);
@@ -29,4 +51,4 @@ async function alertar(origen, mensaje, detalle, local) {
     return { ok: true, telegram: enviado };
   } catch (e) { console.error('alertar', e.message); return { ok: false }; }
 }
-module.exports = { alertar, telegram };
+module.exports = { alertar, telegram, detectarChat, chat };

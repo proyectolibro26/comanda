@@ -763,3 +763,13 @@ alter table public.taca_errores enable row level security;
 revoke all on public.taca_errores from anon, authenticated;
 grant select, insert, update on public.taca_errores to service_role;
 grant usage, select on sequence public.taca_errores_id_seq to service_role;
+
+-- Ajustes de Roman Web que guarda el servidor (por ejemplo, el chat de Telegram para los avisos).
+create table if not exists public.taca_ajustes (
+  clave  text primary key,
+  valor  jsonb not null,
+  actualizado timestamptz not null default now()
+);
+alter table public.taca_ajustes enable row level security;
+revoke all on public.taca_ajustes from anon, authenticated;
+grant select, insert, update on public.taca_ajustes to service_role;
