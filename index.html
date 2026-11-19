@@ -605,7 +605,7 @@ function diasPrueba(){const i=SY.info;if(!i||i.plan!=='prueba'||!i.prueba_hasta)
 const PLANES=[
   {id:'local',nombre:'Local',precio:49900,bajada:'Todo para atender, cobrar y controlar el stock.',items:['QR en las mesas: el pedido va directo a cocina y caja','Salón, mozos, cocina y barra en vivo','Caja con turnos, cierre a ciegas y saldo solo para el dueño','Stock por receta, mermas, compras y proveedores','Cierre del día, reportes e ingeniería de menú','Reservas, mostrador y para llevar','Equipos y personas sin límite']},
   {id:'encendido',nombre:'Encendido',precio:89900,destacado:true,bajada:'Todo lo de Local, más pedidos y reservas por WhatsApp.',items:['Todo lo del plan Local','Bot de WhatsApp que toma pedidos, delivery y reservas','Te cargamos la carta y las recetas','Soporte prioritario, también de noche']}];
-const CONTACTO_PAGO={email:'lucastavano2020@gmail.com',whatsapp:''};
+const CONTACTO_PAGO={email:'lucastavano2020@gmail.com',whatsapp:'5493412609941'};
 function linkPago(plan){const pl=PLANES.find(x=>x.id===plan)||PLANES[0];const txt=`Hola Roman Web, quiero el plan ${pl.nombre} de ta-ca (${fmt(pl.precio)}/mes) para mi local "${S.negocio||''}" (código ${LID}).`;
   return CONTACTO_PAGO.whatsapp?`https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent(txt)}`:`mailto:${CONTACTO_PAGO.email}?subject=${encodeURIComponent('Quiero contratar ta-ca')}&body=${encodeURIComponent(txt)}`}
 let PER='mensual';
@@ -781,7 +781,7 @@ function vCuenta(){
 ${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`${SY.info.abono?'Plan '+(PLANES.find(x=>x.id===SY.info.abono)||{nombre:SY.info.abono}).nombre+' · ':''}al día hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
   return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div>${SY.info.mp_estado?`<div class="row"><span>Mercado Pago</span><b>${{authorized:'Débito automático activo ✓',pending:'Esperando que cargues la tarjeta',paused:'Pausado',cancelled:'Dado de baja'}[SY.info.mp_estado]||esc(SY.info.mp_estado)}</b></div>`:''}<div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
 <p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo usá <b>📲 Equipos del local › Vincular un equipo</b>: así no tenés que poner tu contraseña en esos equipos.</p>
-<div class="btns"><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
+<div class="btns"><a class="btn" style="text-decoration:none" href="https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent('Hola, necesito ayuda con ta-ca (local '+(S.negocio||'')+')')}" target="_blank" rel="noopener">💬 Soporte por WhatsApp</a><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
 
 const C={mesa:1,cart:[]};
