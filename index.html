@@ -225,6 +225,22 @@ body{transition:background .2s,color .2s}
   nav button.on .b{background:#0b1120;color:#c4f82a}
   nav+main{margin-left:224px;max-width:none;padding:24px 28px 60px}
 }
+
+/* celular: cabecera que entra en la pantalla */
+.grid2>*,.grid3>*,.kpis>*{min-width:0}
+.tablewrap{max-width:100%;overflow-x:auto}
+html,body{overflow-x:clip}
+@media(max-width:700px){
+  .top{flex-wrap:wrap;gap:8px;padding:10px 12px;min-height:0;position:static}
+  .brand{gap:8px;min-width:0}.brand small{font-size:11px;line-height:1.25;max-width:120px}
+  .top .tc{font-size:21px}
+  .who{gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+  .who .chip,.who .nube{font-size:11px;padding:3px 8px}
+  .who .tema{width:32px;height:32px;font-size:14px}
+  .who .ghost.small{padding:5px 9px}
+  nav{top:0}
+  main{padding-left:12px;padding-right:12px}
+}
 </style>
 </head>
 <body>
