@@ -43,6 +43,7 @@ async function procesar(phoneId, msg, contacto) {
     // otro equipo guardó justo al mismo tiempo: se vuelve a leer y se corre de nuevo
   }
   console.error('wa: no se pudo guardar después de 4 intentos', w.local_id);
+  await require('./_alerta').alertar('WhatsApp', 'No se pudo guardar un mensaje después de 4 intentos', null, w.local_id);
 }
 
 module.exports = async (req, res) => {
@@ -69,6 +70,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('wa-webhook', e.message);
+    await require('./_alerta').alertar('WhatsApp', e.message, null);
     return res.status(500).json({ error: 'reintentar' });
   }
 };

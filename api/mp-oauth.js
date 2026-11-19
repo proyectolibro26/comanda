@@ -18,6 +18,7 @@ module.exports = async (req, res) => {
     return volver('ok', st.l);
   } catch (e) {
     console.error('mp-oauth', e.message, JSON.stringify(e.mp || {}).slice(0, 300));
+    await require('./_alerta').alertar('conectar Mercado Pago', e.message, null, st && st.l);
     return volver('error', st.l);
   }
 };

@@ -78,6 +78,7 @@ async function enviarTexto(phoneId, to, body) {
     catch (e) { ultimo = e; if (e.code !== 131030 && e.code !== 131026 && e.code !== 100 && e.status !== 400) throw e; }
   }
   console.error('wa: Meta rechazó todos los formatos', vs.map(v => v.slice(0, 5) + '…' + v.slice(-3)).join(' / '));
+  await require('./_alerta').alertar('WhatsApp', 'Meta rechazó la respuesta del bot en todos los formatos de número', { donde: 'termina en ' + String(to).slice(-3) });
   throw ultimo;
 }
 function firmaMetaValida(raw, header, secret) {

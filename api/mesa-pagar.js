@@ -44,6 +44,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: pref.init_point, total });
   } catch (e) {
     console.error('mesa-pagar', e.message, JSON.stringify(e.mp || {}).slice(0, 300));
+    if (e.status !== 401) await require('./_alerta').alertar('pago en la mesa', e.message, null);
     if (e.status === 401) return res.status(409).json({ error: 'no_conectado' });
     return res.status(502).json({ error: 'No se pudo abrir Mercado Pago. Pedile la cuenta al mozo.' });
   }

@@ -164,6 +164,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Acción inválida' });
   } catch (e) {
     console.error('arca', acc, e.message);
+    if (!e.arca) require('./_alerta').alertar('arca ' + acc, e.message, null, b.local);
     return res.status(502).json({ error: amable(e.arca || e.message) });
   }
 };

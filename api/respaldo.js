@@ -48,6 +48,7 @@ module.exports = async (req, res) => {
     return res.status(200).send(JSON.stringify(r.data));
   } catch (e) {
     console.error('respaldo', e.message);
+    await require('./_alerta').alertar('respaldo diario', e.message, null);
     return res.status(500).json({ error: 'No se pudo hacer el respaldo' });
   }
 };

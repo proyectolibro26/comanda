@@ -48,6 +48,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('mp-mesa', e.message);
+    await require('./_alerta').alertar('aviso de pago en la mesa', e.message, { donde: 'cobro ' + cobro });
     return res.status(500).json({ error: 'reintentar' });
   }
 };

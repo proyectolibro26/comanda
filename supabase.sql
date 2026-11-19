@@ -745,3 +745,21 @@ returns jsonb language sql stable security definer set search_path = public as $
 $$;
 revoke execute on function public.taca_eq_info(text) from public, anon, authenticated;
 grant execute on function public.taca_eq_info(text), public.taca_guardar_servidor(text, jsonb, integer) to service_role;
+
+-- Errores de la app y del servidor (los ve Roman Web en el panel y le llegan por Telegram).
+create table if not exists public.taca_errores (
+  id      bigserial primary key,
+  clave   text not null,
+  ts      timestamptz not null default now(),
+  ultimo  timestamptz not null default now(),
+  veces   integer not null default 1,
+  origen  text not null,
+  local_id text,
+  mensaje text not null,
+  detalle jsonb
+);
+create index if not exists taca_errores_clave on public.taca_errores(clave, ultimo desc);
+alter table public.taca_errores enable row level security;
+revoke all on public.taca_errores from anon, authenticated;
+grant select, insert, update on public.taca_errores to service_role;
+grant usage, select on sequence public.taca_errores_id_seq to service_role;

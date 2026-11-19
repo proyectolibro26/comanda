@@ -42,6 +42,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: pre.init_point, id: pre.id });
   } catch (e) {
     console.error('suscribir', e.message, e.mp || '');
+    await require('./_alerta').alertar('alta de abono', e.message, null);
     const msg = e.status ? `Mercado Pago no aceptó la suscripción: ${e.message}` : 'No se pudo iniciar el pago. Probá de nuevo en un rato.';
     return res.status(502).json({ error: msg });
   }

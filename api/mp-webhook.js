@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('mp-webhook', tipo, id, e.message);
+    await require('./_alerta').alertar('pago del abono', e.message, { donde: tipo + ' ' + id });
     return res.status(500).json({ error: 'reintentar' }); // Mercado Pago vuelve a mandar la notificación
   }
 };

@@ -286,8 +286,8 @@ function renderSafe(){if(busy()||$('#modal').innerHTML){pendRender=true}else ren
 const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
 // Datos, referencia y versión se guardan juntos: así otra pestaña nunca lee una mezcla.
 function persistSync(){if(LID)ls(K+'-sync',JSON.stringify({id:LID,ver:SY.ver,base:SY.base,S}))}
-function estadoNube(e){if(SY.estado===e)return;SY.estado=e;const c=document.getElementById('chipnube');if(c)c.outerHTML=chipNube()}
-function chipNube(){if(!enNube())return'';return SY.estado==='off'?'<span id="chipnube" class="nube off" title="Se sigue guardando en este equipo y se sincroniza al volver la conexión">● Sin conexión</span>':'<span id="chipnube" class="nube ok">● En línea</span>'}
+function estadoNube(e){if(SY.estado===e)return;const antes=SY.estado;SY.estado=e;if(antes==='off'&&e==='ok')setTimeout(()=>toast('Volvió internet: todo sincronizado ✓'),300);const c=document.getElementById('chipnube');if(c)c.outerHTML=chipNube()}
+function chipNube(){if(!enNube())return'';return SY.estado==='off'?'<span id="chipnube" class="nube off" title="Podés seguir tomando pedidos y cobrando: todo queda guardado en este equipo y se sube solo cuando vuelve internet">● Sin internet · se guarda acá</span>':'<span id="chipnube" class="nube ok">● En línea</span>'}
 
 /* fusión de cambios: lo que cambió este equipo se aplica sobre lo último de la nube */
 const DELTA=new Set(['stock','nextNum','gastado','pedidos']);
@@ -360,9 +360,12 @@ async function conectar(){
     if(!r){toast('No tenés acceso a ese local',1);LID='';ls('taca-local',null);AUTH.locales=null;despuesDeEntrar();return}
     ponerInfo(r);
     if(r.sinPin){if(rol){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}}
+      if(!SY.sinPin&&SY.base&&SY.ver>0&&makeDiff(SY.base,S)){SY.guard={base:SY.base,S:clone(S)};try{ls('taca-guard',JSON.stringify({id:LID,base:SY.base,S}))}catch(e){}} // cambios sin subir: se guardan hasta que alguien vuelva a entrar
       S=completar(r.data);SY.base=clone(r.data);SY.ver=-1;SY.sinPin=true;estadoNube('ok');renderSafe();
       if(!SY.escucha){SY.escucha=true;NB.escuchar(LID,()=>pull());setInterval(revisar,5000)}return}
-    if(SY.sinPin){SY.sinPin=false;SY.base=null}
+    if(SY.sinPin){SY.sinPin=false;SY.base=null;
+      let g=SY.guard;if(!g){try{const x=JSON.parse(ls('taca-guard')||'null');if(x&&x.id===LID)g=x}catch(e){}}
+      if(g){SY.guard=null;ls('taca-guard',null);SY.base=g.base;S=g.S;SY.ver=0;fusionar(r.data,r.version);push();estadoNube('ok');toast('Se subieron los cambios que habían quedado guardados en este equipo ✓');return}}
     if(!SY.base){S=completar(r.data);SY.base=clone(r.data);SY.ver=r.version;saveLocal();persistSync();renderSafe()}
     else if(r.version>SY.ver){fusionar(r.data,r.version);push()}
     else if(makeDiff(SY.base,S))push();
@@ -719,7 +722,7 @@ function vAdmin(){
 <td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
   return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">${LOGO}<h1 style="margin:0;font-size:20px">Panel Roman Web</h1><span style="flex:1"></span>
-<button data-a="admArca">🧾 ARCA</button><button data-a="admRespaldo" title="Guarda una copia de todos los locales ahora">💾 Copia ahora</button><button data-a="admDescargar" title="Descarga la última copia (se hace sola todas las madrugadas)">⬇ Último respaldo</button><button data-a="admWaba">📲 Cuenta de WhatsApp</button><button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
+<button data-a="admErrores">⚠ Errores</button><button data-a="admArca">🧾 ARCA</button><button data-a="admRespaldo" title="Guarda una copia de todos los locales ahora">💾 Copia ahora</button><button data-a="admDescargar" title="Descarga la última copia (se hace sola todas las madrugadas)">⬇ Último respaldo</button><button data-a="admWaba">📲 Cuenta de WhatsApp</button><button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
 ${ADM.lista===null?`<p class="muted">${ADM.cargando?'Cargando locales…':'Sin datos.'}</p>`:`
 <div class="kpis"><div class="kpi hi"><small>Locales</small><b>${L.length}</b></div><div class="kpi acc"><small>Pagando</small><b>${cuenta('activo')}</b></div>
 <div class="kpi"><small>En prueba</small><b>${cuenta('prueba')}</b></div><div class="kpi"><small>Por vencer</small><b>${cuenta('porvencer')}</b></div>
@@ -754,6 +757,13 @@ ${W.equipo.map((x,i)=>`<div class="row"><span><b>${esc(x.nombre)}</b> · ${ROLES
 <div class="btns" style="margin-top:16px"><button class="ghost" data-a="wPaso" data-p="3">← Volver</button><button class="primary" data-a="wFin">${W.equipo.length?'Terminar':'Terminar, lo sumo después'} ✓</button></div>`;
   return`<div class="login"><div class="card" style="max-width:520px;text-align:left"><div style="text-align:center">${LOGO}<p class="tagline" style="margin-top:4px">Primeros pasos · ${esc(S.negocio)}</p></div>${barra}${c}</div></div>`;
 }
+// PIN sin internet: después de cada ingreso verificado por el servidor, este equipo guarda una huella del PIN (no el PIN)
+async function huellaPin(pin){const sal=ls('taca-pinsal')||(()=>{const x=Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');ls('taca-pinsal',x);return x})();
+  const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(LID+':'+pin),'PBKDF2',false,['deriveBits']);
+  const b=await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(sal),iterations:150000,hash:'SHA-256'},k,256);return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function pinRecordar(pin,p){try{if(!crypto.subtle)return;const h=await huellaPin(pin),m=JSON.parse(ls('taca-pinloc')||'{}');Object.keys(m).forEach(k=>{if(m[k].id===p.id&&m[k].l===LID)delete m[k]});m[h]={id:p.id,l:LID,ts:Date.now()};ls('taca-pinloc',JSON.stringify(m))}catch(e){}}
+async function pinLocal(pin){try{if(!crypto.subtle)return null;const m=JSON.parse(ls('taca-pinloc')||'{}'),x=m[await huellaPin(pin)];if(!x||x.l!==LID||Date.now()-x.ts>30*864e5)return null;
+  const p=(S.equipo||[]).find(q=>q.id===x.id);return p?Object.assign({},p,{offline:true}):null}catch(e){return null}}
 async function pinOk(pin,salvo){if(!pinLibre(pin,salvo))return false;if(enNube()&&!EQ&&NB.pinLibre){try{return !!(await NB.pinLibre(LID,pin,salvo))}catch(e){return true}}return true}
 function pinLibre(pin,salvo){return /^\d{4,6}$/.test(pin)&&!(S.equipo||[]).some(p=>p.pin===pin&&p.id!==salvo)&&!(W&&W.equipo.some(p=>p.pin===pin))&&!(W&&W.pin===pin&&!salvo)}
 
@@ -1624,6 +1634,12 @@ ${f.nc?`<div class="row"><span>Anulada con</span><b>${esc(f.nc.nombre)} ${nroCbt
       closeModal();render();toast(`${r.nc.nombre} ${nroCbte(r.nc)} ✓`);if(c)imprimirFactura(c,r.nc)}catch(e){b.disabled=false;b.textContent='Hacer nota de crédito';toast(e.message,1)}},
   async arcaProbar(b){b.disabled=true;const t=b.textContent;b.textContent='Probando…';try{const r=await NB.arca({accion:'probar',local:LID});modal(`<h2>✅ Conectado con ARCA</h2><p>ARCA reconoce tu CUIT y el punto de venta ${esc(S.arca.ptoVta)}. La próxima ${esc(r.tipo)} va a ser la número <b>${r.ultimo+1}</b>.</p>${r.prueba?'<p class="muted">ta-ca está en modo prueba: las facturas todavía no tienen validez fiscal.</p>':''}<div class="btns"><button class="primary" data-a="close">Listo</button></div>`)}
     catch(e){modal(`<h2>Todavía no conecta</h2><p>${esc(e.message)}</p><div class="btns"><button class="primary" data-a="close">Entendido</button></div>`)}b.disabled=false;b.textContent=t},
+  async admErrores(){modal('<h2>⚠ Errores</h2><p class="muted">Cargando…</p>');let j;try{const t=await NB.auth.token();const r=await fetch('/api/alerta?lista=1',{headers:{Authorization:'Bearer '+t}});j=await r.json();if(!r.ok)throw new Error(j.error||'No se pudo')}catch(e){return toast(e.message,1)}
+    const f=t=>new Date(t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
+    modal(`<h2>⚠ Errores de ta-ca</h2><p class="muted" style="margin-top:0">${j.telegram?'✅ Los avisos llegan a tu Telegram.':'Todavía no llegan a Telegram: falta cargar TELEGRAM_TOKEN y TELEGRAM_CHAT en Vercel.'} El mismo error avisa una sola vez cada 30 minutos.</p>
+${(j.errores||[]).map(x=>`<div class="row" style="font-size:14px;align-items:flex-start"><span><b>${esc(x.origen)}</b>${x.local_id?` · ${esc(x.local_id)}`:''}<br>${esc(x.mensaje)}${x.detalle&&x.detalle.donde?`<small class="muted"> · ${esc(x.detalle.donde)}</small>`:''}</span><span style="white-space:nowrap;text-align:right"><small>${f(x.ultimo)}</small>${x.veces>1?`<br><span class="chip warn">${x.veces} veces</span>`:''}</span></div>`).join('')||'<p>Sin errores 🎉</p>'}
+<div class="btns"><button class="ghost" data-a="close">Cerrar</button><button data-a="admErrPrueba">Mandar aviso de prueba</button></div>`)},
+  async admErrPrueba(b){b.disabled=true;try{const t=await NB.auth.token();const r=await fetch('/api/alerta',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({prueba:true})});const j=await r.json();toast(j.ok?'Aviso enviado: fijate en Telegram ✓':j.telegram?'Telegram no aceptó el aviso: revisá el token y el chat':'Falta cargar TELEGRAM_TOKEN y TELEGRAM_CHAT en Vercel',!j.ok)}catch(e){toast(e.message,1)}b.disabled=false},
   async admArca(){modal('<h2>🧾 Factura electrónica ARCA</h2><p class="muted">Cargando…</p>');let l=[];try{l=await NB.arca({accion:'estado'})}catch(e){return toast(e.message,1)}ARCAADM=l;A.admArcaVer()},
   admArcaVer(){const l=ARCAADM||[],env=ARCAENV,c=l.find(x=>x.env===env)||{};const otro=l.find(x=>x.activo);
     modal(`<h2>🧾 Certificado de Roman Web en ARCA</h2><div class="seg" style="margin-bottom:10px"><button class="${env==='homo'?'on':''}" data-a="admArcaEnv" data-e="homo">Prueba (homologación)</button><button class="${env==='prod'?'on':''}" data-a="admArcaEnv" data-e="prod">Producción</button></div>
@@ -1804,8 +1820,8 @@ const F={
     rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render();toast('PIN nuevo guardado ✓ Ya entraste')},
   async eqPin(d){if(!(await pinOk(d.pin,d.id)))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);const p=S.equipo.find(x=>x.id===d.id);if(p){p.pin=d.pin;audit('Equipo',`Cambió el PIN de ${p.nombre}`);save()}closeModal();render();toast('PIN cambiado ✓')},
   async login(d){const pin=String(d.pin).trim();let p=null;
-    if(enNube()&&NB.pin){try{const r=await NB.pin(LID,pin);if(r&&r.ok)p=r.persona;else if(r&&r.error==='desvinculado')return desvincular('Este equipo fue desconectado del local.');else return toast((r&&r.error)||'PIN incorrecto',1)}
-      catch(e){p=(S.equipo||[]).find(x=>x.pin&&x.pin===pin)||null;if(!p)return toast(/fetch|network/i.test(String(e&&e.message))?'Sin conexión, probá de nuevo':'PIN incorrecto',1)}}
+    if(enNube()&&NB.pin){try{const r=await NB.pin(LID,pin);if(r&&r.ok){p=r.persona;pinRecordar(pin,p)}else if(r&&r.error==='desvinculado')return desvincular('Este equipo fue desconectado del local.');else return toast((r&&r.error)||'PIN incorrecto',1)}
+      catch(e){p=(S.equipo||[]).find(x=>x.pin&&x.pin===pin)||await pinLocal(pin);if(!p)return toast(/fetch|network|load failed/i.test(String(e&&e.message))?'Sin internet: en este equipo solo pueden entrar quienes ya entraron antes con conexión':'PIN incorrecto',1);if(p.offline)toast('Entraste sin internet: todo se guarda en este equipo y se sube al volver la conexión')}}
     else p=(S.equipo||[]).find(x=>x.pin===pin);
     if(!p)return toast('PIN incorrecto',1);
     rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;
@@ -1895,6 +1911,17 @@ setInterval(()=>{if(!busy()&&!$('#modal').innerHTML&&(pantallaMode||((tab==='coc
   },900);
 })();
 route();
+/* errores de la app: le llegan a Roman Web (panel y Telegram). Uno por tipo y como mucho 5 por sesión. */
+(function(){const vistos=new Set();let n=0;
+  function avisar(msg,stack,donde){msg=String(msg||'');if(location.protocol!=='https:'||QS.get('mock')||n>=5)return;
+    if(/ResizeObserver|Failed to fetch|NetworkError|Load failed|network|AbortError|Script error\.?$|chrome-extension|moz-extension|safari-extension/i.test(msg+' '+(stack||'')))return;
+    const k=msg.slice(0,120);if(vistos.has(k))return;vistos.add(k);n++;
+    try{fetch('/api/alerta',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({mensaje:msg,local:LID||CLID||null,detalle:{donde:(clienteMode?'QR mesa '+clienteMode:pantallaMode?'pantalla':tab||'inicio')+' · '+location.pathname,rol:rol||(EQ?'equipo':''),stack:String(stack||'').slice(0,800)}})}).catch(()=>{})}catch(e){}}
+  window.addEventListener('error',e=>{if(e.filename&&!e.filename.startsWith(location.origin))return;avisar(e.message,e.error&&e.error.stack)});
+  window.addEventListener('unhandledrejection',e=>{const r=e.reason;avisar(r&&r.message||String(r),r&&r.stack)});})();
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!QS.get('mock')){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}
+window.addEventListener('online',()=>{if(enNube()){push();pull()}else if(cloudClient())cargarCarta()});
+window.addEventListener('offline',()=>{if(enNube())estadoNube('off')});
 arrancarCuentas();
 if(cloudClient()){NB.escuchar(CLID,()=>cargarCarta());setInterval(cargarCarta,5000)}
 </script>
