@@ -677,3 +677,22 @@ grant execute on function public.taca_eq_vincular(text), public.taca_eq_pin(text
 -- Una sola vez: los PIN que estaban a la vista dentro de los datos pasan a guardarse cifrados.
 update public.taca_locales set data = public.taca_pines_guardar(id, data), version = version + 1
  where exists (select 1 from jsonb_array_elements(coalesce(data->'equipo', '[]'::jsonb)) x where x ? 'pin');
+
+-- Reportes por período (semana, mes, lo que elija el dueño): lo justo de cada día cerrado para armar los números.
+create or replace function public.taca_reporte(p_id text, p_desde timestamptz, p_hasta timestamptz)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when taca_es_miembro(p_id) then (
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'dia', h.dia, 'ts', h.ts, 'merma', coalesce(h.data->'merma', '0'::jsonb),
+      'egresos', (select coalesce(sum((e->>'monto')::numeric), 0) from jsonb_array_elements(coalesce(h.data->'egresos', '[]'::jsonb)) e),
+      'cobros', (select coalesce(jsonb_agg(jsonb_build_object('ts', c->'ts', 'total', c->'total', 'pagos', c->'pagos', 'por', c->'por', 'grupo', c->'grupo',
+                   'anulado', c->'anulado', 'descuento', c->'descuento', 'propina', c->'propina')), '[]'::jsonb)
+                 from jsonb_array_elements(coalesce(h.data->'cobros', '[]'::jsonb)) c),
+      'pedidos', (select coalesce(jsonb_agg(jsonb_build_object('origen', p->'origen', 'por', p->'por', 'anulado', p->'anulado', 'total', p->'total', 'ts', p->'ts',
+                   'items', (select coalesce(jsonb_agg(jsonb_build_object('nombre', i->'nombre', 'cant', i->'cant', 'precio', i->'precio')), '[]'::jsonb)
+                               from jsonb_array_elements(coalesce(p->'items', '[]'::jsonb)) i))), '[]'::jsonb)
+                  from jsonb_array_elements(coalesce(h.data->'pedidos', '[]'::jsonb)) p)
+    ) order by h.ts), '[]'::jsonb)
+    from taca_historial h where h.local_id = p_id and h.ts >= p_desde and h.ts < p_hasta) end;
+$$;
+grant execute on function public.taca_reporte(text, timestamptz, timestamptz) to authenticated;
