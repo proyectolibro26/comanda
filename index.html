@@ -2,11 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icono-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ta-ca">
 <title>ta-ca — tu local, encendido</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2316130F'/%3E%3Crect x='8' y='20' width='48' height='24' rx='12' fill='%23c4f82a'/%3E%3Ccircle cx='44' cy='32' r='8.5' fill='%2316130F'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#0f172a">
-<script>try{document.documentElement.dataset.tema=localStorage.getItem('taca-tema')||'oscuro'}catch(e){document.documentElement.dataset.tema='oscuro'}</script>
+<script>addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__instalar=e;if(window.render)try{render()}catch(x){}});addEventListener('appinstalled',()=>{window.__instalar=null});try{document.documentElement.dataset.tema=localStorage.getItem('taca-tema')||'oscuro'}catch(e){document.documentElement.dataset.tema='oscuro'}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -223,7 +229,7 @@ body{transition:background .2s,color .2s}
   nav button{text-align:left;padding:10px 12px;font-size:14.5px;display:flex;align-items:center;justify-content:space-between}
   nav button.on{background:var(--grad);color:var(--sobre);box-shadow:0 6px 16px rgba(132,204,22,.28)}
   nav button.on .b{background:#0b1120;color:#c4f82a}
-  nav+main{margin-left:224px;max-width:none;padding:24px 28px 60px}
+  nav~main{margin-left:224px;max-width:none;padding:24px 28px 60px}
 }
 
 /* celular: cabecera que entra en la pantalla */
@@ -240,6 +246,46 @@ html,body{overflow-x:clip}
   .who .ghost.small{padding:5px 9px}
   nav{top:0}
   main{padding-left:12px;padding-right:12px}
+}
+
+/* ---- estilo app en el celular ---- */
+button,a,input,select,textarea{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+main.entra{animation:entra .22s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){main.entra{animation:none}}
+.bnav,.sheet,.sheet-ov{display:none}
+button.instalar{background:var(--acc2);color:var(--acc);border:1px dashed var(--acc);font-weight:700}
+button.instalar.ancho{display:block;width:calc(100% - 48px);margin-top:14px}
+.pasos{padding-left:20px;line-height:1.7}.pasos li{margin:4px 0}
+@media(max-width:700px){
+  input,select,textarea{font-size:16px}
+  .top{position:sticky;top:0;flex-wrap:nowrap;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;z-index:6}
+  .top .brand small{max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .who>*:not(.tema){display:none}
+  nav{display:none}
+  main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  .bnav button{flex:1;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;font-size:11px;font-weight:600}
+  .bnav .i{font-size:21px;line-height:1.1;position:relative;display:inline-block;filter:grayscale(.6);opacity:.8}
+  .bnav .i .b{position:absolute;top:-4px;right:-12px;margin:0}
+  .bnav button.on{color:var(--ink)}
+  .bnav button.on .i{filter:none;opacity:1;background:var(--acc2);border-radius:99px;padding:2px 14px}
+  .bnav .b{display:inline-block;min-width:17px;padding:0 4px;border-radius:99px;background:var(--marca);color:var(--sobre);font-size:10px;line-height:17px;font-weight:800;text-align:center}
+  .sheet-ov{display:block;position:fixed;inset:0;z-index:31;background:rgba(2,6,23,.55);backdrop-filter:blur(2px)}
+  .sheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:32;background:var(--card);border-top:1px solid var(--line);border-radius:22px 22px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto;animation:sube .22s ease-out;box-shadow:0 -20px 50px rgba(0,0,0,.35)}
+  @keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+  .sheet-asa{width:42px;height:5px;border-radius:9px;background:var(--line3);margin:0 auto 14px}
+  .sheet-g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .sheet-g button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:16px;background:var(--soft);font-weight:600;font-size:13px}
+  .sheet-g button.on{background:var(--acc2);border-color:var(--acc);color:var(--acc)}
+  .sheet-g .i{font-size:24px;position:relative}.sheet-g .i .b{position:absolute;top:-6px;right:-14px}
+  .sheet-est{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 12px}
+  .sheet-acc{display:grid;gap:8px}
+  .sheet-acc button{padding:13px;border-radius:14px;font-weight:600}
+  .sheet-acc .salir{color:var(--bad)}
+  body.con-bnav .cartbar{bottom:calc(76px + env(safe-area-inset-bottom))}
+  body.con-bnav #toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+  #temaflot .tema-flot{top:calc(14px + env(safe-area-inset-top))}
 }
 </style>
 </head>
@@ -729,7 +775,7 @@ function vInicio(){
   else cuerpo=`<h2>Entrá a tu local</h2><form data-f="entrar"><input name="email" type="email" placeholder="Email" autocomplete="email" required><input name="clave" type="password" placeholder="Contraseña" autocomplete="current-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Entrando…':'Entrar'}</button></form>
 <p style="font-size:14px;margin-bottom:4px"><button class="link" data-a="authVista" data-v="olvide">Me olvidé la contraseña</button></p>
 <p style="font-size:14px;margin-top:4px">¿Todavía no usás ta-ca? <button class="link" data-a="authVista" data-v="crear">Probalo 14 días gratis</button></p><p style="font-size:14px;margin-top:4px">¿Trabajás en un local? <button class="link" data-a="authVista" data-v="equipo">Entrá con el código del dueño</button></p>`;
-  return`<div class="login"><div class="card"><div class="lhead">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p></div>
+  return`<div class="login"><div class="card"><div class="lhead">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p></div>${botonInstalar('instalar ancho')}
 ${AUTH.aviso?`<p class="hint" style="margin-top:14px">${AUTH.aviso}</p>`:''}<div style="text-align:left;margin-top:16px" class="auth">${cuerpo}</div>
 ${AUTH.recuperando?'':'<p style="margin-top:18px"><button class="ghost small" data-a="entrarDemo">Ver la demo sin registrarme</button></p>'}</div></div>`;
 }
@@ -926,8 +972,8 @@ function ingenieria(c){
 }
 
 /* ---------- vistas ---------- */
-function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card"><div class="lhead">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p></div>
-${demo?'':'<p style="margin:14px 0 4px;font-weight:700">PIN del equipo</p><p class="muted" style="margin:0 0 8px;font-size:13px">Son los 4 a 6 números que elegiste al crear el local. No es la contraseña de tu cuenta.</p>'}<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="PIN" maxlength="6" pattern="[0-9]{4,6}" title="Solo números, de 4 a 6" oninput="this.value=this.value.replace(/\\D/g,'')" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>${demo?'':EQ?'<p class="muted" style="font-size:13px;margin:6px 0">¿Te olvidaste el PIN? Pedile al dueño que te ponga uno nuevo.</p>':'<p style="font-size:13px;margin:6px 0"><button class="link" data-a="olvidePin">¿Olvidaste tu PIN?</button></p>'}
+function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card"><div class="lhead">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p></div>${botonInstalar('instalar ancho')}
+${demo?'':'<p style="margin:14px 24px 4px;font-weight:700">PIN del equipo</p><p class="muted" style="margin:0 24px 8px;font-size:13px">Son los 4 a 6 números que elegiste al crear el local. No es la contraseña de tu cuenta.</p>'}<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="PIN" maxlength="6" pattern="[0-9]{4,6}" title="Solo números, de 4 a 6" oninput="this.value=this.value.replace(/\\D/g,'')" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>${demo?'':EQ?'<p class="muted" style="font-size:13px;margin:6px 0">¿Te olvidaste el PIN? Pedile al dueño que te ponga uno nuevo.</p>':'<p style="font-size:13px;margin:6px 0"><button class="link" data-a="olvidePin">¿Olvidaste tu PIN?</button></p>'}
 ${demo?`<p class="hint">Demo · PIN de prueba: Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p><p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>${NB?'<p style="font-size:14px"><button class="link" data-a="salirDemo">Salir de la demo y crear mi cuenta</button></p>':''}`
 :EQ?`<p style="font-size:13px;color:var(--muted)">📲 ${esc(EQ.e||'Equipo')} · <button class="link" data-a="desvincularEste">Desvincular</button></p>`:`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
 
@@ -940,9 +986,26 @@ function badge(t){
   return n?`<span class="b">${n}</span>`:'';
 }
 function botonTema(f){const o=document.documentElement.dataset.tema!=='claro';return`<button class="tema${f?' tema-flot':''}" data-a="tema" title="${o?'Pasar a modo claro':'Pasar a modo oscuro'}" aria-label="${o?'Pasar a modo claro':'Pasar a modo oscuro'}">${o?'☀️':'🌙'}</button>`}
+const CORTO={salon:'Salón',caja:'Caja',tomar:'Pedido',cocina:'Cocina',cierre:'Cierre',reservas:'Reservas',stock:'Stock',carta:'Carta',clientes:'Clientes',whatsapp:'WhatsApp',mesas:'Ajustes',menu:'Vista'};
+const PRIORIDAD=['salon','caja','tomar','cocina','cierre','stock','reservas','carta','clientes','whatsapp','mesas','menu'];
+let MAS=false,TAB_ANT=null;
+const icoTab=t=>TABS[t].split(' ')[0];
+function tabsAbajo(){const ts=ROLES[rol].tabs;return PRIORIDAD.filter(t=>ts.includes(t)).slice(0,4)}
+const esApp=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
+const esIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const puedeInstalar=()=>!esApp()&&(!!window.__instalar||esIOS()||/android/i.test(navigator.userAgent));
+function botonInstalar(c){return puedeInstalar()?`<button class="${c||'instalar'}" data-a="instalar">📲 Instalar ta-ca en este celular</button>`:''}
+function bnav(){const ab=tabsAbajo(),resto=ROLES[rol].tabs.filter(t=>!ab.includes(t)),masOn=MAS||resto.includes(tab);
+  const bm=resto.reduce((a,t)=>a+(+(badge(t).replace(/\D/g,''))||0),0);
+  return`<div class="bnav" role="navigation" aria-label="Menú">${ab.map(t=>`<button class="${t===tab&&!MAS?'on':''}" data-a="tab" data-t="${t}"><span class="i">${icoTab(t)}${badge(t)}</span><span class="l">${CORTO[t]}</span></button>`).join('')}
+<button class="${masOn?'on':''}" data-a="mas2"><span class="i">☰${bm?`<span class="b">${bm}</span>`:''}</span><span class="l">Más</span></button></div>
+${MAS?`<div class="sheet-ov" data-a="masCerrar"></div><div class="sheet" role="dialog" aria-label="Más opciones"><div class="sheet-asa"></div>
+${resto.length?`<div class="sheet-g">${resto.map(t=>`<button class="${t===tab?'on':''}" data-a="tab" data-t="${t}"><span class="i">${icoTab(t)}${badge(t)}</span><span>${CORTO[t]}</span></button>`).join('')}</div>`:''}
+<div class="sheet-est">${chipPrueba()}${chipNube()}<span class="chip">${esc(yo())}${persona()&&persona().nombre!==ROLES[rol].nombre?' · '+ROLES[rol].nombre:''}</span></div>
+<div class="sheet-acc">${botonInstalar()}<button data-a="tema">${document.documentElement.dataset.tema!=='claro'?'☀️ Modo claro':'🌙 Modo oscuro'}</button><button class="salir" data-a="logout">Salir</button></div></div>`:''}`}
 function header(){const tabs=ROLES[rol].tabs;return`<header class="top"><div class="brand">${LOGO}<small style="margin-left:6px">${esc(S.negocio)} · ${S.dia}</small></div>
 <div class="who">${chipPrueba()}${chipNube()}<span class="chip">${esc(yo())}${persona()&&persona().nombre!==ROLES[rol].nombre?' · '+ROLES[rol].nombre:''}</span>${botonTema()}<button class="ghost small" data-a="logout">Salir</button></div></header>
-<nav>${tabs.map(t=>`<button class="${t===tab?'on':''}" data-a="tab" data-t="${t}">${TABS[t]}${badge(t)}</button>`).join('')}</nav>`}
+<nav>${tabs.map(t=>`<button class="${t===tab?'on':''}" data-a="tab" data-t="${t}">${TABS[t]}${badge(t)}</button>`).join('')}</nav>${bnav()}`}
 
 /* carta (cliente QR, vista previa y mozo) */
 function vCliente(modo){
@@ -1503,7 +1566,7 @@ ${vCuenta()}${vEquipos()}${vCobroMP()}${vArca()}${(!rol||rol==='dueno')?`<sectio
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
 function render(){
-  const app=$('#app');render2();const tf=document.getElementById('temaflot');if(tf)tf.remove();
+  const app=$('#app');document.body.classList.remove('con-bnav');render2();const tf=document.getElementById('temaflot');if(tf)tf.remove();
   if(!pantallaMode&&!clienteMode&&!app.querySelector('header.top')){const d=document.createElement('div');d.id='temaflot';d.innerHTML=botonTema(1);document.body.appendChild(d)}
 }
 function render2(){
@@ -1524,7 +1587,8 @@ function render2(){
   if(rol&&!persona()&&S.equipo&&S.equipo.length){rol=null;personaId=null}
   if(!rol||!ROLES[rol]){rol=null;app.innerHTML=vLogin();return}
   const tabs=ROLES[rol].tabs;if(!tabs.includes(tab))tab=tabs[0];
-  app.innerHTML=header()+`<main>${V[tab]()}</main>`;
+  const nueva=TAB_ANT!==tab;TAB_ANT=tab;
+  app.innerHTML=header()+`<main class="${nueva?'entra':''}">${V[tab]()}</main>`;document.body.classList.add('con-bnav');
   if(tab==='mesas')document.querySelectorAll('[data-qr]').forEach(el=>{
     if(window.QRCode){try{new QRCode(el,{text:el.dataset.qr,width:240,height:240,correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='QR no disponible'}}else el.textContent='QR no disponible sin conexión';
   });
@@ -1562,7 +1626,7 @@ function carritoModal(){
 const A={
   closeOv(b,e){if(e.target===b)closeModal()},
   close(){closeModal()},
-  tab(b){tab=b.dataset.t;render();scrollTo(0,0)},
+  tab(b){tab=b.dataset.t;MAS=false;render();scrollTo(0,0)},
   async logout(){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}if(EQ){try{await NB.pinSalir()}catch(e){}conectar()}render()},
   abrirMesa(b){location.hash='mesa-'+b.dataset.n},
   salirCliente(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);clienteMode=null;render()},
@@ -1708,7 +1772,12 @@ ${c.cert?`<p style="margin-top:10px">✓ Certificado cargado · vence ${new Date
     modal(`<h2>⭐ ${esc(c.nombre||c.tel)} · ${(c.puntos||0).toLocaleString('es-AR')} puntos</h2>${(c.movs||[]).slice().reverse().slice(0,25).map(m=>`<div class="row" style="font-size:14px"><span>${new Date(m.ts).toLocaleDateString('es-AR')} · ${esc(m.motivo)}</span><b class="${m.n<0?'badt':'ok'}">${m.n>0?'+':''}${m.n}</b></div>`).join('')||'<p class="muted">Sin movimientos.</p>'}
 ${dueno?`<form data-f="ptsAjuste" class="inline" style="margin-top:10px"><input type="hidden" name="tel" value="${esc(c.tel)}"><label>Sumar o restar puntos<input name="n" inputmode="numeric" placeholder="Ej: 500 o -200" required></label><label>Motivo<input name="motivo" placeholder="Ej: regalo de cumpleaños" required></label><button>Aplicar</button></form>`:''}
 <div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`)},
-  tema(){const n=document.documentElement.dataset.tema==='claro'?'oscuro':'claro';document.documentElement.dataset.tema=n;ls('taca-tema',n);const m=document.querySelector('meta[name=theme-color]');if(m)m.content=n==='claro'?'#ffffff':'#0f172a';render()},
+  mas2(){MAS=!MAS;render()},
+  masCerrar(){MAS=false;render()},
+  async instalar(){const e=window.__instalar;if(e){e.prompt();try{const r=await e.userChoice;if(r.outcome==='accepted'){window.__instalar=null;toast('¡Listo! ta-ca quedó en tu pantalla de inicio')}}catch(x){}render();return}
+    if(esIOS())return modal(`<h3>Instalar ta-ca en el iPhone</h3><ol class="pasos"><li>Abrí esta página en <b>Safari</b>.</li><li>Tocá el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li><li>Elegí <b>Agregar a inicio</b> y después <b>Agregar</b>.</li></ol><p class="muted">Te queda el ícono de ta-ca y se abre a pantalla completa, como cualquier app.</p><div class="btns"><button class="primary" data-a="closeOv">Entendido</button></div>`);
+    modal(`<h3>Instalar ta-ca</h3><ol class="pasos"><li>Abrí el menú del navegador (los <b>tres puntitos ⋮</b> arriba a la derecha).</li><li>Tocá <b>Instalar aplicación</b> o <b>Agregar a la pantalla principal</b>.</li></ol><p class="muted">Te queda el ícono de ta-ca y se abre a pantalla completa.</p><div class="btns"><button class="primary" data-a="closeOv">Entendido</button></div>`)},
+  tema(){MAS=false;const n=document.documentElement.dataset.tema==='claro'?'oscuro':'claro';document.documentElement.dataset.tema=n;ls('taca-tema',n);const m=document.querySelector('meta[name=theme-color]');if(m)m.content=n==='claro'?'#ffffff':'#0f172a';render()},
   repVista(b){REP.vista=b.dataset.v;render()},
   repPer(b){REP.per=b.dataset.p;if(REP.per!=='elegir'){REP.datos=null;REP.clave=''}render()},
   repExcel(){const R=REP.datos,r=REP.rango;if(!R)return;const h=new Date(+r.b-1),f=d=>fechaISO(d);excelPeriodo(R,`${r.a.toLocaleDateString('es-AR')} al ${h.toLocaleDateString('es-AR')}`,`ventas-${(S.negocio||'local').replace(/[^\w-]+/g,'-')}-${f(r.a)}-al-${f(h)}.xlsx`)},
