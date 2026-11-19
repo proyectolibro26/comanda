@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
       id = 'mm_' + crypto.randomBytes(9).toString('base64url');
       await sb('POST', 'taca_mp_mesa', [{ id, local_id: local, mesa, pedidos: ids, total }]);
     }
-    const volver = r => `${BASE}/?l=${encodeURIComponent(local)}&mesa=${mesa}&mpmesa=${r}`;
+    const volver = r => `${BASE}/app?l=${encodeURIComponent(local)}&mesa=${mesa}&mpmesa=${r}`;
     const pref = await mpCon(token, '/checkout/preferences', {
       method: 'POST', body: {
         items: [{ id: 'mesa-' + mesa, title: `Mesa ${mesa} · ${String(d.negocio || 'Consumo').slice(0, 60)}`, quantity: 1, unit_price: total, currency_id: 'ARS' }],

@@ -2,7 +2,7 @@
 const { sb, leerEstado, verificador, oauthToken, guardarCuenta, listo, REDIRECT, BASE } = require('./_mpl');
 
 module.exports = async (req, res) => {
-  const volver = (r, local) => { res.statusCode = 302; res.setHeader('Location', `${BASE}/?mpcuenta=${r}`); res.end(); };
+  const volver = (r, local) => { res.statusCode = 302; res.setHeader('Location', `${BASE}/app?mpcuenta=${r}`); res.end(); };
   if (!listo()) return volver('error');
   const q = req.query || {};
   let st = null;

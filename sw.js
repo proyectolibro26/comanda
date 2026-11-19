@@ -2,8 +2,8 @@
 // La página y nucleo.js: primero la red (así siempre llega la última versión) y si no hay, la copia guardada.
 // Librerías y tipografías de otros sitios: la copia guardada, y se actualiza por detrás.
 // Nunca se guardan /api ni Supabase: esos datos los maneja la app con su propia cola de cambios.
-const CACHE = 'taca-v8';
-const BASE = ['/', '/nucleo.js', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png'];
+const CACHE = 'taca-v9';
+const BASE = ['/app', '/nucleo.js', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png'];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
@@ -25,12 +25,12 @@ self.addEventListener('fetch', e => {
   const u = new URL(r.url);
   if (u.pathname.startsWith('/api/') || /supabase\.(co|in)$/.test(u.hostname) || u.hostname.endsWith('mercadopago.com') || u.hostname.endsWith('mercadopago.com.ar')) return;
   const propio = u.origin === self.location.origin;
-  if (propio && (r.mode === 'navigate' || u.pathname === '/' || u.pathname === '/nucleo.js')) {
-    const clave = r.mode === 'navigate' && (u.pathname === '/' || u.pathname === '/index.html') ? '/' : u.pathname;
+  if (propio && (r.mode === 'navigate' || u.pathname === '/nucleo.js')) {
+    const clave = r.mode === 'navigate' && /^\/app(\/|\/index\.html)?$/.test(u.pathname) ? '/app' : u.pathname;
     e.respondWith(fetch(r).then(res => {
       if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(clave, copia)); }
       return res;
-    }).catch(() => caches.match(clave).then(x => x || caches.match('/'))));
+    }).catch(() => caches.match(clave).then(x => x || (clave.startsWith('/app') ? caches.match('/app') : Response.error()))));
     return;
   }
   if (!propio && /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(u.hostname)) {

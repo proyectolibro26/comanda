@@ -1,14 +1,164 @@
 {
   "functions": {
-    "api/*.js": { "includeFiles": "nucleo.js" }
+    "api/*.js": {
+      "includeFiles": "nucleo.js"
+    }
   },
   "rewrites": [
-    { "source": "/api/alerta", "destination": "/api/sistema?r=alerta" },
-    { "source": "/api/respaldo", "destination": "/api/sistema?r=respaldo" },
-    { "source": "/api/estado", "destination": "/api/sistema?r=estado" },
-    { "source": "/api/wa-suscribir", "destination": "/api/sistema?r=wa-suscribir" }
+    {
+      "source": "/api/alerta",
+      "destination": "/api/sistema?r=alerta"
+    },
+    {
+      "source": "/api/respaldo",
+      "destination": "/api/sistema?r=respaldo"
+    },
+    {
+      "source": "/api/estado",
+      "destination": "/api/sistema?r=estado"
+    },
+    {
+      "source": "/api/wa-suscribir",
+      "destination": "/api/sistema?r=wa-suscribir"
+    }
   ],
   "crons": [
-    { "path": "/api/respaldo", "schedule": "0 7 * * *" }
+    {
+      "path": "/api/respaldo",
+      "schedule": "0 7 * * *"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "error"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "token_hash"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "code"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "l"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "mesa"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "app"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "mock"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "demo"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "crear"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "mpcuenta"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "mpmesa"
+        }
+      ],
+      "destination": "/app",
+      "permanent": false
+    },
+    {
+      "source": "/venta",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/venta/",
+      "destination": "/",
+      "permanent": true
+    }
   ]
 }
