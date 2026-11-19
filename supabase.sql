@@ -696,3 +696,52 @@ returns jsonb language sql stable security definer set search_path = public as $
     from taca_historial h where h.local_id = p_id and h.ts >= p_desde and h.ts < p_hasta) end;
 $$;
 grant execute on function public.taca_reporte(text, timestamptz, timestamptz) to authenticated;
+
+-- ============ Factura electrónica ARCA ============
+-- Certificado de Roman Web (uno para homologación y otro para producción). La llave privada la genera el servidor
+-- y queda acá: ninguna función pública la devuelve.
+create table if not exists public.taca_arca_config (
+  env        text primary key check (env in ('homo', 'prod')),
+  cuit       text not null,
+  key_pem    text,
+  csr_pem    text,
+  cert_pem   text,
+  activo     boolean not null default false,
+  actualizado timestamptz not null default now()
+);
+create table if not exists public.taca_arca_ta (
+  env     text primary key,
+  token   text not null,
+  sign    text not null,
+  expira  timestamptz not null
+);
+create table if not exists public.taca_facturas (
+  id        bigserial primary key,
+  local_id  text not null references public.taca_locales(id) on delete cascade,
+  cobro_id  text,
+  env       text not null,
+  tipo      integer not null,
+  pto       integer not null,
+  nro       bigint not null,
+  cae       text not null,
+  total     numeric not null,
+  data      jsonb not null,
+  creado    timestamptz not null default now(),
+  unique (local_id, env, tipo, pto, nro)
+);
+create index if not exists taca_facturas_cobro on public.taca_facturas(local_id, cobro_id);
+alter table public.taca_arca_config enable row level security;
+alter table public.taca_arca_ta     enable row level security;
+alter table public.taca_facturas    enable row level security;
+revoke all on public.taca_arca_config, public.taca_arca_ta, public.taca_facturas from anon, authenticated;
+grant select, insert, update on public.taca_arca_config, public.taca_arca_ta, public.taca_facturas to service_role;
+grant usage, select on sequence public.taca_facturas_id_seq to service_role;
+
+-- Para el servidor: de qué local es un equipo vinculado y quién está adentro.
+create or replace function public.taca_eq_info(p_token text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('local', e.local_id, 'rol', taca_eq_rol(e), 'persona', e.persona_id)
+    from taca_equipos e where e.token_hash = encode(extensions.digest(coalesce(p_token, ''), 'sha256'), 'hex') and e.activo;
+$$;
+revoke execute on function public.taca_eq_info(text) from public, anon, authenticated;
+grant execute on function public.taca_eq_info(text), public.taca_guardar_servidor(text, jsonb, integer) to service_role;
