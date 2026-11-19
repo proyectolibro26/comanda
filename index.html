@@ -603,7 +603,7 @@ function bloqueado(){const p=infoPlan();return !!(p&&p.est==='bloqueado'&&enNube
 function diasPrueba(){const i=SY.info;if(!i||i.plan!=='prueba'||!i.prueba_hasta)return null;return Math.ceil((new Date(i.prueba_hasta)-Date.now())/864e5)}
 /* precios: se cambian acá y en la página de venta */
 const PLANES=[
-  {id:'local',nombre:'Local',precio:49900,bajada:'Todo para atender, cobrar y controlar el stock.',items:['QR en las mesas: el pedido va directo a cocina y caja','Salón, mozos, cocina y barra en vivo','Caja con turnos, cierre a ciegas y saldo solo para el dueño','Stock por receta, mermas, compras y proveedores','Cierre del día, reportes e ingeniería de menú','Reservas, mostrador y para llevar','Equipos y personas sin límite']},
+  {id:'local',nombre:'Local',precio:49900,bajada:'Todo para atender, cobrar y controlar el stock.',items:['QR en las mesas: el pedido va directo a cocina y caja','Salón, mozos, cocina y barra en vivo','Caja con turnos, cierre a ciegas y saldo solo para el dueño','Stock por receta, mermas, compras y proveedores','Cierre del día, reportes y Excel para el contador','Factura electrónica ARCA desde la caja','Sistema de puntos para que tus clientes vuelvan','Reservas, mostrador y para llevar','Equipos y personas sin límite']},
   {id:'encendido',nombre:'Encendido',precio:89900,destacado:true,bajada:'Todo lo de Local, más pedidos y reservas por WhatsApp.',items:['Todo lo del plan Local','Bot de WhatsApp que toma pedidos, delivery y reservas','Te cargamos la carta y las recetas','Soporte prioritario, también de noche']}];
 const CONTACTO_PAGO={email:'lucastavano2020@gmail.com',whatsapp:'5493412609941'};
 function linkPago(plan){const pl=PLANES.find(x=>x.id===plan)||PLANES[0];const txt=`Hola Roman Web, quiero el plan ${pl.nombre} de ta-ca (${fmt(pl.precio)}/mes) para mi local "${S.negocio||''}" (código ${LID}).`;
@@ -987,22 +987,25 @@ ${S.egresos.map(e=>`<div class="row"><span>${esc(e.concepto)} <small style="disp
 function cobroModal(key){
   const peds=pedidosDeGrupo(key);if(!peds.length)return;
   const g=grupos().find(x=>x.key===key);
-  if(!CB||CB.key!==key)CB={key,nombre:g.nombre,subtotal:peds.reduce((a,p)=>a+p.total,0),desc:0,prop:0,pagos:{efectivo:'',mp:'',tarjeta:'',transferencia:''}};
+  if(!CB||CB.key!==key){const pw=peds.find(p=>p.tel);CB={key,nombre:g.nombre,subtotal:peds.reduce((a,p)=>a+p.total,0),desc:0,prop:0,pagos:{efectivo:'',mp:'',tarjeta:'',transferencia:''},tel:pw?telN(pw.tel):'',usarPts:peds.some(p=>p.usarPuntos),wa:peds.some(p=>p.origen==='whatsapp')}}
   const max=rol==='dueno'?100:S.descMax;
   modal(`<h2>Cobrar · ${esc(g.nombre)}</h2>
 ${peds.map(p=>p.items.map(i=>`<div class="row"><span>${itemTxt(i)}</span><span>${fmt(i.precio*i.cant)}</span></div>`).join('')+(p.envio?`<div class="row"><span>Envío</span><span>${fmt(p.envio)}</span></div>`:'')).join('')}
 <div class="inline" style="margin-top:10px"><label>Descuento % <small style="display:inline">(máx. ${max}%)</small><input data-cb="desc" inputmode="decimal" value="${CB.desc||''}" placeholder="0"></label>
 <div><small>Propina</small><div class="seg">${[0,10,15].map(x=>`<button class="${CB.prop===x?'on':''}" data-a="cbProp" data-p="${x}">${x?x+'%':'Sin'}</button>`).join('')}</div></div></div>
+${fid().activo?`<div class="inline" style="margin-top:8px"><label>⭐ Puntos · teléfono del cliente<input data-cb="tel" inputmode="tel" value="${esc(CB.tel||'')}" placeholder="Opcional: 341 555-1234" list="cbtels"></label><datalist id="cbtels">${Object.values(S.clientes).slice(0,300).map(c=>`<option value="${esc(c.tel)}">${esc(c.nombre||'')}</option>`).join('')}</datalist></div><div id="cbpts">${cbPtsHTML()}</div>`:''}
 <p class="muted" style="margin:10px 0 6px;font-size:13px">Cómo paga (se puede dividir entre varios medios):</p>
 <div class="pagos">${Object.entries(MEDIO).map(([m,t])=>`<label style="margin:0">${t}<input data-cb="pago-${m}" inputmode="decimal" value="${CB.pagos[m]}" placeholder="0"></label>`).join('')}</div>
 <div class="btns">${Object.entries(MEDIO).map(([m,t])=>`<button class="small" data-a="cbTodo" data-m="${m}">Todo en ${t}</button>`).join('')}</div>
 <div class="cbsum" id="cbsum">${cbResumen()}</div>
 <div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cbOk">Confirmar cobro</button></div>`);
 }
-function cbCalc(){const max=rol==='dueno'?100:S.descMax;const desc=Math.min(Math.max(pdec(CB.desc),0),100);const total=Math.round(CB.subtotal*(1-desc/100));const propina=Math.round(total*CB.prop/100);
-  const pagado=Object.values(CB.pagos).reduce((a,x)=>a+pnum(x),0);return{desc,max,total,descuento:CB.subtotal-total,propina,aPagar:total+propina,pagado,falta:total+propina-pagado}}
+function cbTel(){const t=telN(CB.tel);if(!t)return'';if(S.clientes[t])return t;const k=t.length>=8&&Object.keys(S.clientes).find(k=>k.endsWith(t.slice(-8)));if(k)return k;const u=t.replace(/^0/,'');return u.length===10?'549'+u:u}
+function cbPtsHTML(){const t=cbTel();if(!t)return'';const c=S.clientes[t],p=ptsDe(t),f=fid(),x=cbCalc();return`<p style="margin:6px 0;font-size:14px">${c&&c.nombre?`<b>${esc(c.nombre)}</b> · `:''}tiene <b>${p} puntos</b>${p>=f.minimo?` · <label style="display:inline"><input type="checkbox" data-cb="usarPts" ${CB.usarPts?'checked':''}> usar ${Math.min(p,x.total+x.pts)} (−${fmt(Math.min(p,x.total+x.pts))})</label>`:p?` · se usan desde ${f.minimo}`:''} · con este cobro suma <b>${ptsPor(x.total)}</b></p>`}
+function cbCalc(){const max=rol==='dueno'?100:S.descMax;const desc=Math.min(Math.max(pdec(CB.desc),0),100);const bruto=Math.round(CB.subtotal*(1-desc/100));const t=fid().activo&&CB.tel?cbTel():'';const pts=CB.usarPts&&t&&ptsDe(t)>=fid().minimo?Math.min(ptsDe(t),bruto):0;const total=bruto-pts;const propina=Math.round(total*CB.prop/100);
+  const pagado=Object.values(CB.pagos).reduce((a,x)=>a+pnum(x),0);return{desc,max,total,pts,descuento:CB.subtotal-bruto,propina,aPagar:total+propina,pagado,falta:total+propina-pagado}}
 function cbResumen(){const x=cbCalc();return`<div class="row"><span>Subtotal</span><span>${fmt(CB.subtotal)}</span></div>${x.descuento?`<div class="row"><span>Descuento ${x.desc}%</span><span>−${fmt(x.descuento)}</span></div>`:''}${x.propina?`<div class="row"><span>Propina ${CB.prop}%</span><span>${fmt(x.propina)}</span></div>`:''}
-<div class="row big"><b>A cobrar</b><b>${fmt(x.aPagar)}</b></div><div class="row"><span>${x.falta>0?'Falta':'Vuelto'}</span><b class="${x.falta>0?'badt':'ok'}">${fmt(Math.abs(x.falta))}</b></div>${x.desc>x.max?`<p class="badt" style="margin:4px 0 0">El descuento máximo para tu usuario es ${x.max}%.</p>`:''}`}
+${x.pts?`<div class="row"><span>⭐ Puntos usados</span><span>−${fmt(x.pts)}</span></div>`:''}<div class="row big"><b>A cobrar</b><b>${fmt(x.aPagar)}</b></div><div class="row"><span>${x.falta>0?'Falta':'Vuelto'}</span><b class="${x.falta>0?'badt':'ok'}">${fmt(Math.abs(x.falta))}</b></div>${x.desc>x.max?`<p class="badt" style="margin:4px 0 0">El descuento máximo para tu usuario es ${x.max}%.</p>`:''}`}
 
 /* stock y compras */
 function sugerido(i){const q=Math.max(i.min*3-i.stock,i.min);return i.u==='u'?Math.ceil(q):Math.ceil(q*10)/10}
@@ -1208,10 +1211,21 @@ function cerrarTurnoCon(m){
 }
 
 function vClientes(){
-  const l=Object.values(S.clientes).sort((a,b)=>b.gastado-a.gastado);
-  return`<div class="ptitle"><div><h1>Clientes</h1><small>Se arma solo con cada pedido por WhatsApp: nombre, dirección, qué pide y cuánto gastó. El bot los saluda por el nombre y les ofrece "lo de siempre".</small></div></div>
-<section class="card">${l.length?`<div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th class="n">Pedidos</th><th class="n">Gastó</th><th>Último</th><th>Lo de siempre</th></tr></thead><tbody>
-${l.map(c=>`<tr><td><b>${esc(c.nombre)}</b> ${c.pedidos>=3?'<span class="chip ok">Frecuente</span>':''}</td><td>${esc(c.tel)}</td><td>${esc(c.dir)}</td><td class="n">${c.pedidos}</td><td class="n">${fmt(c.gastado)}</td><td>${new Date(c.ult).toLocaleDateString('es-AR')} ${hm(c.ult)}</td><td><small>${(c.ultItems||[]).map(l=>l.cant+'× '+esc((plato(l.id)||{}).nombre||'')).join(', ')}</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Todavía no hay clientes. Hacé un pedido por WhatsApp o cargá ventas de ejemplo.</p>'}</section>`;
+  const l=Object.values(S.clientes).sort((a,b)=>b.gastado-a.gastado),f=fid(),dueno=!rol||rol==='dueno';
+  const circ=l.reduce((a,c)=>a+(c.puntos||0),0),mes=new Date();mes.setDate(1);mes.setHours(0,0,0,0);
+  const canjes=l.reduce((a,c)=>a+(c.movs||[]).filter(m=>m.n<0&&m.ts>=+mes&&/^Canje/.test(m.motivo)).reduce((x,m)=>x-m.n,0),0);
+  const vuelven=l.filter(c=>(c.pedidos||0)>=2).sort((a,b)=>(b.pedidos||0)-(a.pedidos||0)).slice(0,5);
+  return`<div class="ptitle"><div><h1>Clientes</h1><small>Se arma solo con cada pedido por WhatsApp y con cada cobro donde cargás el teléfono: nombre, dirección, qué pide, cuánto gastó y sus puntos.</small></div></div>
+${dueno?`<section class="card"><h2>⭐ Sistema de puntos ${f.activo?'<span class="chip ok">activo</span>':'<span class="chip">apagado</span>'}</h2>
+<p class="muted" style="margin-top:0;font-size:14px">Tus clientes suman puntos con cada compra y los usan como descuento en el próximo pedido: así vuelven. 1 punto = ${fmt(1)}.</p>
+<form data-f="fidGuardar" class="inline"><label style="max-width:150px">Encendido<select name="activo"><option value="1" ${f.activo?'selected':''}>Sí</option><option value="0" ${!f.activo?'selected':''}>No</option></select></label>
+<label style="max-width:230px">Puntos por cada ${fmt(1000)}<input name="porMil" inputmode="numeric" value="${f.porMil}"></label><label style="max-width:200px">Se usan desde (puntos)<input name="minimo" inputmode="numeric" value="${f.minimo}"></label><button class="primary">Guardar</button></form>
+<small class="muted">Con ${f.porMil} puntos por cada ${fmt(1000)} le devolvés el ${String(Math.round(f.porMil/10*10)/10).replace('.',',')}% de lo que gasta. Ej.: un pedido de ${fmt(32000)} suma ${Math.floor(32*f.porMil)} puntos.</small>
+${f.activo?`<div class="kpis" style="margin-top:12px"><div class="kpi"><small>Puntos en manos de clientes</small><b>${circ.toLocaleString('es-AR')}</b><small>= ${fmt(circ)} en descuentos futuros</small></div><div class="kpi"><small>Canjeados este mes</small><b>${fmt(canjes)}</b></div><div class="kpi"><small>Clientes con puntos</small><b>${l.filter(c=>c.puntos>0).length}</b></div></div>
+${vuelven.length?`<p style="margin:10px 0 4px"><b>Los que más vuelven:</b> ${vuelven.map(c=>`${esc(c.nombre||c.tel)} (${c.pedidos})`).join(' · ')}</p>`:''}
+<p class="muted" style="font-size:13px;margin-bottom:0">Por WhatsApp el bot les avisa cuántos puntos tienen y los pueden usar escribiendo <b>PUNTOS</b>. En la caja, al cobrar, cargás el teléfono y tildás <b>usar puntos</b>.</p>`:''}</section>`:''}
+<section class="card">${l.length?`<div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th class="n">Pedidos</th><th class="n">Gastó</th>${f.activo?'<th class="n">Puntos</th>':''}<th>Último</th><th>Lo de siempre</th></tr></thead><tbody>
+${l.map(c=>`<tr><td><b>${esc(c.nombre||'—')}</b> ${c.pedidos>=3?'<span class="chip ok">Frecuente</span>':''}</td><td>${esc(c.tel)}</td><td>${esc(c.dir||'')}</td><td class="n">${c.pedidos||0}</td><td class="n">${fmt(c.gastado||0)}</td>${f.activo?`<td class="n"><button class="link" data-a="verPuntos" data-tel="${esc(c.tel)}">⭐ ${(c.puntos||0).toLocaleString('es-AR')}</button></td>`:''}<td>${c.ult?new Date(c.ult).toLocaleDateString('es-AR')+' '+hm(c.ult):''}</td><td><small>${(c.ultItems||[]).map(l=>l.cant+'× '+esc((plato(l.id)||{}).nombre||'')).join(', ')}</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Todavía no hay clientes. Llegan solos con los pedidos por WhatsApp, o cargando el teléfono al cobrar.</p>'}</section>`;
 }
 
 /* cierre y reportes */
@@ -1547,6 +1561,13 @@ const A={
     const vuelto=-x.falta;if(vuelto>0.5){if(pagos.efectivo<vuelto)return toast('El vuelto solo se puede dar sobre efectivo',1);pagos.efectivo-=vuelto}
     const peds=pedidosDeGrupo(CB.key),nombre=CB.nombre;
     const cb=registrarCobro(peds,{nombre,subtotal:CB.subtotal,descPct:x.desc,descuento:x.descuento,propina:x.propina,total:x.total,pagos});
+    const tel=fid().activo&&CB.tel?cbTel():'';
+    if(tel){const gana=ptsPor(x.total),c0=S.clientes[tel],volvio=c0&&(c0.pedidos||0)>=1;
+      if(x.pts)moverPuntos(tel,-x.pts,'Canje en '+nombre,cb.id);if(gana)moverPuntos(tel,gana,'Compra en '+nombre,cb.id);
+      const c=S.clientes[tel];if(!CB.wa){c.pedidos=(c.pedidos||0)+1;c.gastado=(c.gastado||0)+x.total;c.ult=Date.now()}
+      cb.cliente=tel;cb.puntos={usados:x.pts,ganados:gana};if(x.pts)audit('Canje de puntos',`${c.nombre||tel}: ${x.pts} puntos en ${nombre}`,x.pts);save();
+      if(volvio)setTimeout(()=>toast(`⭐ ¡${c.nombre||'Tu cliente'} volvió! ${c.pedidos}º pedido · sumó ${gana} puntos (tiene ${c.puntos||0})`),900);
+      if(CB.wa&&enNube()&&NB.waEnviar)NB.waEnviar(LID,tel,`¡Gracias${c.nombre?', '+c.nombre.split(' ')[0]:''}! 🙌${x.pts?` Usaste ${x.pts} puntos.`:''}${gana?` Sumaste *${gana} puntos* ⭐`:''}\nTenés *${c.puntos||0} puntos* (${fmt(c.puntos||0)} para tu próximo pedido).`).catch(()=>{})}
     closeModal();render();toast(`Cobrado ✓${vuelto>0.5?' · vuelto '+fmt(vuelto):''}`);
     if(arcaListo())A.facturar({dataset:{id:cb.id}},null,true);
   },
@@ -1555,7 +1576,7 @@ const A={
     ps.forEach(anular);audit('Anulación',`Cuenta abierta ${ps.map(p=>'#'+p.num).join(', ')} · ${m}`,t);save();closeModal();render();toast('Cuenta anulada, stock devuelto')},
   anularCobro(b){const fc=(S.cobros.find(x=>x.id===b.dataset.id)||{}).factura;modal(`<h2>¿Anular este cobro?</h2><p class="muted">Se quita la venta y la mercadería vuelve al stock.</p>${fc&&!fc.nc?`<p class="badt">Este cobro tiene ${esc(fc.nombre)} ${nroCbte(fc)}. Anulala también con una nota de crédito (tocá la factura en la lista de cobros).</p>`:''}<label>Motivo<input id="motivo" placeholder="Obligatorio"></label><div class="btns"><button class="ghost" data-a="close">No</button><button class="primary" data-a="anularCobroOk" data-id="${b.dataset.id}">Sí, anular</button></div>`)},
   anularCobroOk(b){const m=($('#motivo')||{}).value||'';if(m.trim().length<3)return toast('Escribí el motivo',1);const c=S.cobros.find(c=>c.id===b.dataset.id);if(!c)return;
-    c.anulado=true;c.pedidos.forEach(id=>{const p=S.pedidos.find(p=>p.id===id);if(p)anular(p)});audit('Anulación',`Cobro ${c.grupo} · ${m}`,c.total);save();closeModal();render()},
+    c.anulado=true;c.pedidos.forEach(id=>{const p=S.pedidos.find(p=>p.id===id);if(p)anular(p)});if(c.cliente&&c.puntos){moverPuntos(c.cliente,(c.puntos.usados||0)-(c.puntos.ganados||0),'Anulación de '+c.grupo,c.id)}audit('Anulación',`Cobro ${c.grupo} · ${m}`,c.total);save();closeModal();render()},
   editApertura(){modal(`<h2>Apertura de caja</h2><form data-f="apertura"><label>Efectivo inicial (cambio)<input name="monto" inputmode="decimal" value="${S.apertura}" required></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
   ingreso(b){const i=insumo(b.dataset.id);modal(`<h2>Compra de mercadería</h2><p class="muted">${esc(i.nombre)} · stock actual ${num(i.stock)} ${i.u}</p><form data-f="ingreso"><input type="hidden" name="id" value="${i.id}">
 <div class="inline"><label>Cantidad que entra (${i.u})<input name="cant" inputmode="decimal" required></label><label>Costo por ${i.u}<input name="costo" inputmode="decimal" value="${i.costo}"></label></div>
@@ -1616,6 +1637,10 @@ ${c.cert?`<p style="margin-top:10px">✓ Certificado cargado · vence ${new Date
   admArcaEnv(b){ARCAENV=b.dataset.e;A.admArcaVer()},
   admArcaBajar(b){const c=(ARCAADM||[]).find(x=>x.env===b.dataset.e);if(c&&c.pedido)descargar(new Blob([c.pedido],{type:'application/pkcs10'}),`roman-web-${b.dataset.e}.csr`)},
   async admArcaActivar(b){try{await NB.arca({accion:'activar',env:b.dataset.e});ARI=null;toast('Listo ✓');A.admArca()}catch(e){toast(e.message,1)}},
+  verPuntos(b){const c=S.clientes[b.dataset.tel];if(!c)return;const dueno=!rol||rol==='dueno';
+    modal(`<h2>⭐ ${esc(c.nombre||c.tel)} · ${(c.puntos||0).toLocaleString('es-AR')} puntos</h2>${(c.movs||[]).slice().reverse().slice(0,25).map(m=>`<div class="row" style="font-size:14px"><span>${new Date(m.ts).toLocaleDateString('es-AR')} · ${esc(m.motivo)}</span><b class="${m.n<0?'badt':'ok'}">${m.n>0?'+':''}${m.n}</b></div>`).join('')||'<p class="muted">Sin movimientos.</p>'}
+${dueno?`<form data-f="ptsAjuste" class="inline" style="margin-top:10px"><input type="hidden" name="tel" value="${esc(c.tel)}"><label>Sumar o restar puntos<input name="n" inputmode="numeric" placeholder="Ej: 500 o -200" required></label><label>Motivo<input name="motivo" placeholder="Ej: regalo de cumpleaños" required></label><button>Aplicar</button></form>`:''}
+<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`)},
   repVista(b){REP.vista=b.dataset.v;render()},
   repPer(b){REP.per=b.dataset.p;if(REP.per!=='elegir'){REP.datos=null;REP.clave=''}render()},
   repExcel(){const R=REP.datos,r=REP.rango;if(!R)return;const h=new Date(+r.b-1),f=d=>fechaISO(d);excelPeriodo(R,`${r.a.toLocaleDateString('es-AR')} al ${h.toLocaleDateString('es-AR')}`,`ventas-${(S.negocio||'local').replace(/[^\w-]+/g,'-')}-${f(r.a)}-al-${f(h)}.xlsx`)},
@@ -1745,6 +1770,8 @@ const F={
     catch(e){if(b){b.disabled=false;b.textContent='🧾 Probar de nuevo'}toast(e.message,1)}},
   async admArcaCsr(d){try{const r=await NB.arca({accion:'csr',env:d.env,cuit:d.cuit});ARCAADM=await NB.arca({accion:'estado'});A.admArcaVer();toast('Pedido generado ✓')}catch(e){toast(e.message,1)}},
   async admArcaCert(d){try{const r=await NB.arca({accion:'cert',env:d.env,cert:d.cert});ARCAADM=await NB.arca({accion:'estado'});A.admArcaVer();toast(r.prueba&&r.prueba.ok?'Certificado guardado y probado con ARCA ✓':'Certificado guardado. ARCA respondió: '+((r.prueba&&r.prueba.error)||'sin respuesta'),!(r.prueba&&r.prueba.ok))}catch(e){toast(e.message,1)}},
+  fidGuardar(d){const pm=Math.max(0,Math.min(500,parseInt(d.porMil,10)||0)),mn=Math.max(0,parseInt(d.minimo,10)||0);S.fidelidad={activo:d.activo==='1',porMil:pm,minimo:mn};audit('Sistema de puntos',`${d.activo==='1'?'Encendido':'Apagado'} · ${pm} puntos por cada $1.000 · se usan desde ${mn}`);save();render();toast('Guardado ✓')},
+  ptsAjuste(d){const n=parseInt(String(d.n).replace(/[^\d-]/g,''),10);if(!n)return toast('Escribí cuántos puntos',1);const c=S.clientes[d.tel];if(!c)return;moverPuntos(d.tel,n,'Ajuste: '+d.motivo.trim());audit('Ajuste de puntos',`${c.nombre||d.tel}: ${n>0?'+':''}${n} · ${d.motivo.trim()}`,Math.abs(n));save();A.verPuntos({dataset:{tel:d.tel}});render();toast('Puntos actualizados ✓')},
   repFechas(d){if(d.hasta<d.desde)return toast('La fecha final tiene que ser después de la inicial',1);REP.desde=d.desde;REP.hasta=d.hasta;REP.datos=null;REP.clave='';render()},
   async vincular(d){AUTH.ocupado=true;render();try{const r=await NB.eqVincular(d.codigo);AUTH.ocupado=false;if(!r||!r.ok){AUTH.aviso=esc((r&&r.error)||'No se pudo vincular');return render()}
       ls('taca-eq',JSON.stringify({t:r.token,l:r.local,e:r.nombre,n:r.negocio}));ls('taca-modo',null);ls('taca-local',null);ls(K+'-sync',null);location.reload()}
@@ -1827,7 +1854,7 @@ function demoVentas(){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b,e)});
 document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f||!F[f])return;e.preventDefault();F[f](Object.fromEntries(new FormData(e.target)),e.target)});
 document.addEventListener('input',e=>{
-  const k=e.target.dataset.cb;if(k&&CB){if(k==='desc')CB.desc=e.target.value;else CB.pagos[k.slice(5)]=e.target.value;$('#cbsum').innerHTML=cbResumen()}
+  const k=e.target.dataset.cb;if(k&&CB){if(k==='desc')CB.desc=e.target.value;else if(k==='tel')CB.tel=e.target.value;else if(k==='usarPts')CB.usarPts=e.target.checked;else CB.pagos[k.slice(5)]=e.target.value;$('#cbsum').innerHTML=cbResumen();if(k!=='usarPts'&&$('#cbpts'))$('#cbpts').innerHTML=cbPtsHTML()}
   if(E&&e.target.closest('.mod')&&(e.target.dataset.e||e.target.dataset.er)){readE();const ec=$('#ecost');if(ec)ec.innerHTML=eCosto()}
 });
 document.addEventListener('change',e=>{

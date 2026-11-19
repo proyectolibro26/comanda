@@ -112,6 +112,15 @@ function parsear(t){
 function cartaTxt(){const ps=activos(),cats=[...new Set(ps.map(p=>p.cat))];return'📋 *Nuestra carta*\n'+cats.map(c=>`\n*${c}*\n`+ps.filter(p=>p.cat===c).map(p=>`• ${p.nombre} — ${fmt(p.precio)}${disp(p)<=0?' (agotado)':''}`).join('\n')).join('\n')+`\n\n🛵 Envío: ${fmt(S.envio)}`}
 function resumenItems(lines){const sub=lines.reduce((a,l)=>a+lineInfo(l).precio*l.cant,0);return lines.map(l=>`• ${l.cant}× ${plato(l.id).nombre} — ${fmt(lineInfo(l).precio*l.cant)}`).join('\n')+`\n• Envío — ${fmt(S.envio)}\n*Total: ${fmt(sub+S.envio)}*`}
 function cliente(){return S.clientes[S.wa.tel]}
+/* puntos (fidelización): por cada $1.000 suma N puntos; 1 punto = $1 de descuento */
+function fid(){return Object.assign({activo:false,porMil:20,minimo:500},S.fidelidad||{})}
+function ptsPor(monto){const f=fid();return f.activo?Math.floor((+monto||0)/1000*(+f.porMil||0)):0}
+function ptsDe(tel){const c=tel&&S.clientes[tel];return c?Math.max(0,Math.floor(c.puntos||0)):0}
+const telN=t=>String(t||'').replace(/\D/g,'');
+// mueve puntos de un cliente y deja el movimiento anotado
+function moverPuntos(tel,n,motivo,ref){if(!n||!tel)return;const c=S.clientes[tel]=S.clientes[tel]||{tel,nombre:'',dir:'',pedidos:0,gastado:0,ult:Date.now()};
+  c.puntos=Math.max(0,Math.floor((c.puntos||0)+n));c.movs=(c.movs||[]).concat([{ts:Date.now(),n:Math.round(n),motivo,ref:ref||null}]).slice(-60)}
+function totalDraft(){const d=S.wa.draft||{};return(d.lines||[]).reduce((a,l)=>a+lineInfo(l).precio*l.cant,0)+(d.envio??S.envio)}
 function pasoResumen(lines,nota){
   const f=faltante(lines);
   if(f){S.wa.step='pedido';const pl=lines.map(lineInfo).find(x=>x.receta[f.id]);return[`Uy, ${pl?'de '+pl.p.nombre:'eso'} no nos queda suficiente hoy 😕 (quedan ${pl?disp(pl.p):0}). ¿Querés cambiar algo?`]}
@@ -145,6 +154,8 @@ function botCore(txt){
   const rv=botReserva(t,txt);if(rv)return rv;
   if(/\bcancel/.test(t)){wa.step='inicio';wa.draft={};return['Listo, cancelé el pedido. Cuando quieras escribí *menú* para empezar de nuevo.']}
   if(wa.ultimo&&/^estado\b|^(como|que tal) (va|viene)\b|(como va|como viene|donde esta|que paso con|y) mi pedido|cuanto (falta|tarda|demora)|ya (sale|salio|viene|esta)\b|^y\s?\?*$/.test(t)||/^estado\b|(como va|como viene|donde esta) mi pedido/.test(t)){const p=S.pedidos.find(p=>p.id===wa.ultimo);return[p?`Tu pedido *#${p.num}* está: *${ESTADO[p.estado]}*${p.anulado?' (anulado)':''}.`:'Todavía no tenés pedidos hechos. Escribí *menú* para ver la carta.']}
+  if(wa.step!=='confirmar'&&fid().activo&&/\bpuntos?\b/.test(t)&&!/\d+\s*puntos?/.test(t)){const p=ptsDe(wa.tel),f=fid();
+    return[p?`⭐ Tenés *${p} puntos* (${fmt(p)} de descuento).${p>=f.minimo?' Podés usarlos en tu próximo pedido: cuando te muestre el resumen, escribí *PUNTOS*.':` Se pueden usar desde ${f.minimo}.`}\nPor cada ${fmt(1000)} que gastás sumás ${f.porMil} puntos.`:`Todavía no tenés puntos. Por cada ${fmt(1000)} que gastás sumás ${f.porMil} puntos, y 1 punto = ${fmt(1)} de descuento en tu próximo pedido ⭐`]}
   if(/^(menu|carta)\b/.test(t)){wa.step='pedido';return[cartaTxt(),'Escribí lo que querés, por ejemplo: *2 hamburguesas y 1 coca*']}
   if(/lo de siempre|lo mismo|repetir/.test(t)&&!/\bno\b|\bnada\b|\botra cosa\b/.test(t)){if(cl&&cl.ultItems)return pasoResumen(cl.ultItems.filter(l=>plato(l.id)),'');return['Todavía no tengo un pedido tuyo guardado 🙂 Decime qué querés, o escribí *menú*.']}
   // un saludo siempre arranca de cero (no seguir un pedido viejo a medio hacer)
@@ -211,17 +222,22 @@ Total a pagar: *${fmt(ult.total+r.total)}*.`];
     if(/otra direc|cambiar direc/.test(t)){wa.step='datos';return['Dale, pasame nombre y la dirección nueva (ej: *Juan, San Martín 1234*).']}
     const m=/^1\b|^ef|efect|cash|contado|billete/.test(t)?'efectivo':/^2\b|transf|^trans|alias|cbu/.test(t)?'transferencia':/^3\b|mercado|^mp\b|^merc/.test(t)?'mp':null;
     if(!m)return['Respondé *1*, *2* o *3* para elegir la forma de pago. Si querés sumar algo, decime qué (ej: *1 coca*).'];
-    wa.draft.medio=m;wa.step='confirmar';
-    return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.lines)}${wa.draft.nota?`\n📝 ${wa.draft.nota}`:''}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?`\nAlias: ${S.alias}`:''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
+    wa.draft.medio=m;wa.step='confirmar';const pts=ptsDe(wa.tel),f=fid();
+    return[`📝 *Resumen del pedido*\n${resumenItems(wa.draft.lines)}${wa.draft.usarPuntos?`\n⭐ Usás ${Math.min(pts,totalDraft())} puntos: −${fmt(Math.min(pts,totalDraft()))}`:''}${wa.draft.nota?`\n📝 ${wa.draft.nota}`:''}\n📍 ${wa.draft.direccion}\n💳 ${MEDIO[m]}${m==='transferencia'?`\nAlias: ${S.alias}`:''}${m==='mp'?'\nTe mandamos el link de pago al confirmar.':''}${f.activo&&pts>=f.minimo&&!wa.draft.usarPuntos?`\n\n⭐ Tenés *${pts} puntos* (${fmt(pts)}). Si querés usarlos en este pedido escribí *PUNTOS*.`:''}\n\nRespondé *SI* para confirmar o *cancelar*.`];
   }
+  if(wa.step==='confirmar'&&/^(usar )?(los )?puntos\b|usar (mis )?puntos/.test(t)){const pts=ptsDe(wa.tel),f=fid();
+    if(!f.activo||pts<f.minimo)return[f.activo?`Todavía tenés ${pts} puntos: se pueden usar desde ${f.minimo}. ¡Con este pedido sumás más! Respondé *SI* para confirmar.`:'Respondé *SI* para confirmar o *cancelar*.'];
+    wa.draft.usarPuntos=true;const u=Math.min(pts,totalDraft());return[`⭐ Listo, usás *${u} puntos*: te descontamos ${fmt(u)}.\nTotal a pagar: *${fmt(totalDraft()-u)}*\n\nRespondé *SI* para confirmar o *cancelar*.`]}
   if(wa.step==='confirmar'){
     if(/^(si|dale|ok|confirmo|de una)/.test(t)){
       const d=wa.draft,r=crearPedido({origen:'whatsapp',por:'WhatsApp',cliente:d.cliente,direccion:d.direccion,tel:wa.tel,lines:d.lines,medio:d.medio,nota:d.nota});
+      if(!r.error&&d.usarPuntos){const u=Math.min(ptsDe(wa.tel),r.total);if(u>0){r.usarPuntos=u;r.nota=[r.nota,`⭐ Usa ${u} puntos (−${fmt(u)})`].filter(Boolean).join(' · ')}}
       if(r.error){wa.step='pedido';return['Uy, justo se nos acabó algo: '+r.error+'. ¿Querés pedir otra cosa?']}
       const c=S.clientes[wa.tel]||{tel:wa.tel,pedidos:0,gastado:0};
       Object.assign(c,{nombre:d.cliente,dir:d.direccion,pedidos:c.pedidos+1,gastado:c.gastado+r.total,ult:Date.now(),ultItems:d.lines});S.clientes[wa.tel]=c;
       wa.ultimo=r.id;wa.step='inicio';wa.draft={};
-      return[`✅ ¡Pedido *#${r.num}* confirmado y enviado a la cocina!\nDemora estimada: 35 a 45 min.\nEscribí *estado* cuando quieras saber cómo va.`];
+      const gana=ptsPor(r.total-(r.usarPuntos||0));
+      return[`✅ ¡Pedido *#${r.num}* confirmado y enviado a la cocina!\nDemora estimada: 35 a 45 min.${r.usarPuntos?`\nTotal a pagar con tus puntos: *${fmt(r.total-r.usarPuntos)}*`:''}${gana?`\n⭐ Con este pedido sumás *${gana} puntos* cuando lo pagues.`:''}\nEscribí *estado* cuando quieras saber cómo va.`];
     }
     if(/^no\b/.test(t)){wa.step='inicio';wa.draft={};return['Listo, no lo confirmo. Si querés empezar de nuevo escribí *menú*.']}
     return['Respondé *SI* para confirmar o *cancelar*.'];
