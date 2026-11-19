@@ -440,6 +440,11 @@ function supaNube(sb){
     leer:id=>rpc('taca_leer',{p_id:id}),
     version:id=>rpc('taca_version',{p_id:id}),
     guardar:(id,d,v)=>rpc('taca_guardar',{p_id:id,p_data:d,p_version:v}),
+    archivar:(id,dia,d)=>rpc('taca_archivar',{p_id:id,p_dia:dia,p_data:d}),
+    historialDia:(id,hid)=>rpc('taca_historial_dia',{p_id:id,p_hid:hid}),
+    async respaldo(acc){const t=await this.auth.token();const h={Authorization:'Bearer '+t};
+      if(acc==='ahora'){const r=await fetch('/api/respaldo',{method:'POST',headers:h});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo');return j}
+      const r=await fetch('/api/respaldo?descargar=ultimo',{headers:h});if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'No se pudo descargar')}return r.blob()},
     carta:(id,m)=>rpc('taca_carta',{p_id:id,p_mesa:m}),
     cliente:(id,tipo,mesa,pedido,consumo)=>rpc('taca_cliente',{p_id:id,p_tipo:tipo,p_mesa:mesa,p_pedido:pedido||null,p_consumo:consumo||null}),
     escuchar(id,cb){ch=sb.channel('taca-'+id);ch.on('broadcast',{event:'v'},()=>cb()).subscribe()},
@@ -482,6 +487,9 @@ function mockNube(){
       db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
     leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
     version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
+    archivar:(id,dia,d)=>later(()=>{const db=get();if(!miembro(id))return{ok:false,error:'sin acceso'};db.__hist=db.__hist||[];const n=db.__hist.length+1;db.__hist.push({id:n,local:id,dia,ts:new Date().toISOString(),data:clone(d)});put(db);return{ok:true,id:n}}),
+    historialDia:(id,hid)=>later(()=>{const h=(get().__hist||[]).find(x=>x.id===+hid&&x.local===id);return h&&miembro(id)?{dia:h.dia,ts:h.ts,data:clone(h.data)}:null}),
+    respaldo:acc=>later(()=>acc==='ahora'?{ok:true,locales:Object.keys(get()).filter(k=>k[0]!=='_').length}:new Blob([JSON.stringify(get())],{type:'application/json'})),
     guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
       if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
       if(estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado')return{ok:false,error:'bloqueado'};
@@ -646,7 +654,7 @@ function vAdmin(){
 <td style="white-space:nowrap;text-align:right"><button class="small primary" data-a="admPlan" data-id="${esc(x.id)}" data-p="activo">Cobré</button> <button class="small" data-a="admPlan" data-id="${esc(x.id)}" data-p="prueba">+ prueba</button> <button class="small ghost" data-a="admMas" data-id="${esc(x.id)}" aria-label="Más acciones">⋯</button></td></tr>`};
   return`<div style="max-width:1200px;margin:0 auto;padding:18px 16px 40px">
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">${LOGO}<h1 style="margin:0;font-size:20px">Panel Roman Web</h1><span style="flex:1"></span>
-<button data-a="admWaba">📲 Cuenta de WhatsApp</button><button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
+<button data-a="admRespaldo" title="Guarda una copia de todos los locales ahora">💾 Copia ahora</button><button data-a="admDescargar" title="Descarga la última copia (se hace sola todas las madrugadas)">⬇ Último respaldo</button><button data-a="admWaba">📲 Cuenta de WhatsApp</button><button data-a="admRecargar">↻ Actualizar</button><button class="ghost" data-a="admCerrar">Volver</button></div>
 ${ADM.lista===null?`<p class="muted">${ADM.cargando?'Cargando locales…':'Sin datos.'}</p>`:`
 <div class="kpis"><div class="kpi hi"><small>Locales</small><b>${L.length}</b></div><div class="kpi acc"><small>Pagando</small><b>${cuenta('activo')}</b></div>
 <div class="kpi"><small>En prueba</small><b>${cuenta('prueba')}</b></div><div class="kpi"><small>Por vencer</small><b>${cuenta('porvencer')}</b></div>
@@ -1125,7 +1133,7 @@ ${S.insumos.map(i=>`<tr class="${i.stock<=i.min?'low':''}"><td>${esc(i.nombre)}<
 </tbody><tfoot><tr><td>Totales ($)</td><td class="n">${fmt(c.costoVendido)}</td><td class="n">${fmt(c.costoMerma)}</td><td></td><td class="n">${fmt(c.stockValor)}</td></tr></tfoot></table></div></section>
 <div><section class="card"><h2>Platos vendidos</h2>${Object.values(c.platos).sort((a,b)=>b.cant-a.cant).map(x=>`<div class="row"><span>${esc(x.nombre)}</span><b>${x.cant}</b></div>`).join('')||'<p class="muted">Sin ventas todavía.</p>'}</section>
 <section class="card"><h2>🛡 Control de movimientos</h2><small style="margin-bottom:8px">Anulaciones, descuentos, egresos, mermas, cambios de precio y arqueo: quién, cuándo y cuánto.</small>${S.audit.slice().sort((a,b)=>b.ts-a.ts).slice(0,25).map(a=>`<div class="row"><span><b>${esc(a.accion)}</b> · ${esc(a.detalle)}<small>${hm(a.ts)} · ${esc(a.por)}</small></span>${a.monto!=null?`<b>${fmt(a.monto)}</b>`:''}</div>`).join('')||'<p class="muted">Sin movimientos sensibles.</p>'}</section>
-${S.cierres.length?`<section class="card"><h2>Días anteriores</h2>${S.cierres.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(x=>`<div class="row"><span>${x.dia}</span><span>Ventas <b>${fmt(x.ventas)}</b> · Caja ${fmt(x.saldo)} · Merma ${fmt(x.merma)}</span></div>`).join('')}</section>`:''}
+${S.cierres.length?`<section class="card"><h2>Días anteriores</h2>${S.cierres.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(x=>`<div class="row"><span>${x.dia}</span><span>Ventas <b>${fmt(x.ventas)}</b> · Caja ${fmt(x.saldo)} · Merma ${fmt(x.merma)} ${x.hid?`<button class="small ghost" data-a="verDia" data-id="${x.id}">Ver detalle</button>`:''}</span></div>`).join('')}</section>`:''}
 </div></div>`;
 }
 
@@ -1168,7 +1176,7 @@ ${S.wa.msgs.map(m=>`<div class="msg ${m.from}"><div>${fmtWa(m.t)}</div><small>${
 
 /* QR y ajustes */
 /* Mercado Pago del local: el cliente paga la mesa y entra solo en caja */
-const MPM={sin:false};let MPC=null;
+const MPM={sin:false};let MPC=null,DIA=null;
 async function pagarMesaNube(b,t,pidio){
   if(b){b.disabled=true;b.textContent='Abriendo Mercado Pago…'}
   try{const r=await NB.mesaPagar(CLID,C.mesa);
@@ -1197,7 +1205,7 @@ function vMesas(){
 <div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label>
 <div class="inline"><label>Costo de envío<input data-set="envio" inputmode="decimal" value="${S.envio}"></label><label>Descuento máximo de la cajera (%)<input data-set="descMax" inputmode="decimal" value="${S.descMax}"></label></div>
 <label>Alias para transferencias<input data-set="alias" value="${esc(S.alias)}"></label></section>
-${vCuenta()}${vCobroMP()}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
+${vCuenta()}${vCobroMP()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
 }
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
@@ -1354,9 +1362,38 @@ const A={
     if(p){if(p.precio!==precio)audit('Cambio de precio',`${p.nombre}: ${fmt(p.precio)} → ${fmt(precio)}`);Object.assign(p,{nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre)],receta,mods})}
     else{p={id:uid(),nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre).split(' ')[0]],activo:true,receta,mods};S.platos.push(p);audit('Plato nuevo',p.nombre,precio)}
     save();closeModal();render();toast('Plato guardado ✓')},
+  async verDia(b){const x=S.cierres.find(c=>c.id===b.dataset.id);if(!x)return;
+    let h=null;try{h=String(x.hid)[0]==='l'?(JSON.parse(localStorage.getItem('taca-historial')||'[]').find(y=>y.id===x.hid)||null):await NB.historialDia(LID,x.hid)}catch(e){}
+    if(!h)return toast('No se encontró el detalle de ese día',1);
+    const d=h.data,hora=t=>new Date(t).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});DIA=d;
+    const medios=c=>Object.entries(c.pagos||{}).filter(([k,v])=>v).map(([k,v])=>`${MEDIO[k]||k} ${fmt(v)}`).join(' + ');
+    modal(`<h2>${esc(x.dia)} · ventas ${fmt(d.ventas)}</h2>
+<h3 style="margin:14px 0 6px">Cobros (${(d.cobros||[]).length})</h3>${(d.cobros||[]).map(c=>`<div class="row" style="font-size:14px"><span>${hora(c.ts)} · ${esc(c.grupo||'')}${c.anulado?' <span class="chip bad">anulado</span>':''}<small class="muted"> ${esc(c.por||'')}</small></span><span><b>${fmt(c.total)}</b> <small class="muted">${medios(c)}</small></span></div>`).join('')||'<p class="muted">Sin cobros.</p>'}
+<h3 style="margin:14px 0 6px">Auditoría (${(d.audit||[]).length})</h3>${(d.audit||[]).map(a=>`<div class="row" style="font-size:14px"><span>${hora(a.ts)} · <b>${esc(a.accion)}</b> <small class="muted">${esc(a.detalle||'')} · ${esc(a.por||'')}</small></span><span>${a.monto!=null?fmt(a.monto):''}</span></div>`).join('')||'<p class="muted">Sin movimientos para revisar.</p>'}
+${(d.pedidos||[]).some(p=>p.anulado)?`<h3 style="margin:14px 0 6px">Pedidos anulados</h3>${d.pedidos.filter(p=>p.anulado).map(p=>`<div class="row" style="font-size:14px"><span>#${p.num} · ${p.origen==='mesa'?'Mesa '+p.mesa:esc(p.cliente||'')}</span><span>${fmt(p.total)}</span></div>`).join('')}`:''}
+${(d.mermas||[]).length?`<h3 style="margin:14px 0 6px">Merma</h3>${d.mermas.map(m=>`<div class="row" style="font-size:14px"><span>${esc(m.nombre||m.insumo||'')} <small class="muted">${esc(m.motivo||'')}</small></span><span>${m.cant??''}</span></div>`).join('')}`:''}
+${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.map(m=>`<div class="row" style="font-size:14px"><span>${esc(m.detalle||m.concepto||'')}</span><span>${fmt(m.monto||0)}</span></div>`).join('')}`:''}
+<div class="btns"><button class="ghost" data-a="close">Cerrar</button><button data-a="csvDia">⬇ Excel para el contador</button></div>`)},
+  csvDia(){const d=DIA;if(!d)return;const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+    const filas=[['Fecha','Hora','Mesa o cliente','Atendió','Total','Efectivo','Mercado Pago','Tarjeta','Transferencia','Descuento','Propina','Anulado']].concat((d.cobros||[]).map(c=>{const t=new Date(c.ts);return[d.dia,t.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),c.grupo||'',c.por||'',c.total,(c.pagos||{}).efectivo||0,(c.pagos||{}).mp||0,(c.pagos||{}).tarjeta||0,(c.pagos||{}).transferencia||0,c.descuento||0,c.propina||0,c.anulado?'sí':'']}));
+    const blob=new Blob(['\ufeff'+filas.map(f=>f.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ventas-${String(d.dia).replace(/\//g,"-")}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)},
+  copiaDatos(){const blob=new Blob([JSON.stringify({negocio:S.negocio,exportado:new Date().toISOString(),datos:S},null,1)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ta-ca-${(S.negocio||'local').replace(/[^\w-]+/g,'-')}-${hoy().replace(/\//g,"-")}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast('Copia descargada ✓')},
+  async admRespaldo(b){b.disabled=true;try{const r=await NB.respaldo('ahora');toast(`Copia hecha ✓ (${r.locales} locales)`)}catch(e){toast(e.message,1)}b.disabled=false},
+  async admDescargar(b){b.disabled=true;try{const bl=await NB.respaldo('descargar');const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=`ta-ca-respaldo-${hoy().replace(/\//g,"-")}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}catch(e){toast(e.message,1)}b.disabled=false},
   copiar(){copiar(resumenTxt(calc()),'Resumen copiado ✓ — pegalo en WhatsApp')},
-  cerrarDia(){const c=calc();modal(`<h2>¿Cerrar el día?</h2><p class="muted">Se guarda el resumen (${fmt(c.ventas)} en ventas) y se empieza un día nuevo. El stock y las cuentas abiertas se mantienen.</p>${c.pendiente?`<p class="badt">Atención: hay ${fmt(c.pendiente)} sin cobrar.</p>`:''}${S.turno?'<p class="badt">Hay un turno de caja abierto: cerralo primero.</p>':S.arqueo?'':'<p class="badt">Todavía no se contó la caja.</p>'}<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cerrarOk">Cerrar el día</button></div>`)},
-  cerrarOk(){if(S.turno){closeModal();return toast('Antes cerrá el turno de caja abierto',1)}const c=calc();S.cierres.push({id:uid(),ts:Date.now(),dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c)});
+  cerrarDia(){const c=calc();modal(`<h2>¿Cerrar el día?</h2><p class="muted">Se guarda el detalle completo del día (${fmt(c.ventas)} en ventas, cobros y auditoría) en <b>Días anteriores</b> y se empieza un día nuevo. El stock y las cuentas abiertas se mantienen.</p>${c.pendiente?`<p class="badt">Atención: hay ${fmt(c.pendiente)} sin cobrar.</p>`:''}${S.turno?'<p class="badt">Hay un turno de caja abierto: cerralo primero.</p>':S.arqueo?'':'<p class="badt">Todavía no se contó la caja.</p>'}<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cerrarOk">Cerrar el día</button></div>`)},
+  async cerrarOk(b){if(S.turno){closeModal();return toast('Antes cerrá el turno de caja abierto',1)}const c=calc();
+    const arch={dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c),apertura:S.apertura,arqueo:S.arqueo,
+      pedidos:S.pedidos.filter(p=>p.anulado||p.cobrado),cobros:S.cobros,mermas:S.mermas,egresos:S.egresos,audit:S.audit,turnos:S.turnos};
+    let hid=null;
+    if(b){b.disabled=true;b.textContent='Guardando el historial…'}
+    try{if(enNube()){const r=await NB.archivar(LID,S.dia,arch);if(!r||!r.ok)throw new Error(r&&r.error||'')
+        ;hid=r.id}
+      else{const h=JSON.parse(localStorage.getItem('taca-historial')||'[]');hid='l'+Date.now();h.push({id:hid,dia:S.dia,data:arch});localStorage.setItem('taca-historial',JSON.stringify(h.slice(-120)))}}
+    catch(e){if(b){b.disabled=false;b.textContent='Cerrar el día'}return toast('No se pudo guardar el historial del día. Revisá internet y probá de nuevo: no se borró nada.',1)}
+    S.cierres.push({id:uid(),ts:Date.now(),dia:S.dia,ventas:c.ventas,saldo:c.saldo,merma:c.costoMerma,resumen:resumenTxt(c),hid});
     S.pedidos=S.pedidos.filter(p=>!p.anulado&&!p.cobrado);S.cobros=[];S.mermas=[];S.egresos=[];S.audit=[];S.turnos=[];S.arqueo=null;S.apertura=20000;S.dia=hoy();save();closeModal();render();toast('Día cerrado ✓')},
   waQuick(b){waSend(b.dataset.q)},
   waReset(){S.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:S.wa.tel};save();render()},

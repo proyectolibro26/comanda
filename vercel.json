@@ -1,5 +1,8 @@
 {
   "functions": {
     "api/*.js": { "includeFiles": "nucleo.js" }
-  }
+  },
+  "crons": [
+    { "path": "/api/respaldo", "schedule": "0 7 * * *" }
+  ]
 }

@@ -363,3 +363,47 @@ create table if not exists public.taca_mp_mesa (
 alter table public.taca_mp_mesa enable row level security;
 revoke all on public.taca_mp_mesa from anon, authenticated;
 grant select, insert, update, delete on public.taca_mp_cuentas, public.taca_mp_mesa to service_role;
+
+-- Historial: al cerrar el día se guarda el detalle completo (ventas, cobros, auditoría, mermas, gastos, turnos).
+-- Antes se borraba; ahora el dueño lo puede abrir desde "Días anteriores".
+create table if not exists public.taca_historial (
+  id        bigserial primary key,
+  local_id  text not null references public.taca_locales(id) on delete cascade,
+  dia       text not null,
+  ts        timestamptz not null default now(),
+  data      jsonb not null
+);
+create index if not exists taca_historial_local on public.taca_historial(local_id, ts desc);
+alter table public.taca_historial enable row level security;
+revoke all on public.taca_historial from anon, authenticated;
+grant select on public.taca_historial to service_role;
+
+create or replace function public.taca_archivar(p_id text, p_dia text, p_data jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare n bigint;
+begin
+  if not taca_es_miembro(p_id) then return jsonb_build_object('ok', false, 'error', 'sin acceso'); end if;
+  insert into taca_historial(local_id, dia, data) values (p_id, coalesce(nullif(p_dia, ''), to_char(now(), 'YYYY-MM-DD')), p_data) returning id into n;
+  return jsonb_build_object('ok', true, 'id', n);
+end $$;
+
+create or replace function public.taca_historial_dia(p_id text, p_hid bigint)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when taca_es_miembro(p_id) then
+    (select jsonb_build_object('dia', dia, 'ts', ts, 'data', data) from taca_historial where id = p_hid and local_id = p_id)
+  end;
+$$;
+grant execute on function public.taca_archivar(text, text, jsonb), public.taca_historial_dia(text, bigint) to authenticated;
+
+-- Respaldo diario de todos los locales (lo hace /api/respaldo todas las madrugadas; se guardan 30 días).
+create table if not exists public.taca_respaldos (
+  id       bigserial primary key,
+  creado   timestamptz not null default now(),
+  locales  integer not null,
+  data     jsonb not null
+);
+alter table public.taca_respaldos enable row level security;
+revoke all on public.taca_respaldos from anon, authenticated;
+grant select, insert, delete on public.taca_respaldos to service_role;
+grant usage, select on sequence public.taca_respaldos_id_seq to service_role;
+grant select on public.taca_miembros, public.taca_wa, public.taca_pagos to service_role;
