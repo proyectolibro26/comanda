@@ -3,329 +3,414 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ta-ca · Sistema para bares y restaurantes: QR, caja, stock, WhatsApp y factura ARCA</title>
-<meta name="description" content="Todo tu local en uno: QR a cocina y caja, stock por receta, reportes y Excel, WhatsApp que toma pedidos, factura electrónica ARCA y sistema de puntos. Probá 14 días gratis.">
+<title>ta-ca · Sistema para bares y restaurantes: QR, cocina, caja, stock, WhatsApp y factura ARCA</title>
+<meta name="description" content="Del QR a la caja, sin que nadie anote nada. QR en las mesas, cocina, caja, stock por receta, pedidos por WhatsApp y factura electrónica ARCA. 14 días gratis.">
 <meta property="og:title" content="ta-ca · tu local, encendido">
-<meta property="og:description" content="QR a cocina y caja, stock, reportes, WhatsApp, factura ARCA y puntos. 14 días gratis.">
+<meta property="og:description" content="Del QR a la caja, sin que nadie anote nada. 14 días gratis, sin tarjeta.">
 <meta name="theme-color" content="#0b1120">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icono-180.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230f172a'/%3E%3Crect x='8' y='20' width='48' height='24' rx='12' fill='%23c4f82a'/%3E%3Ccircle cx='44' cy='32' r='8.5' fill='%230f172a'/%3E%3C/svg%3E">
 <script>try{document.documentElement.dataset.tema=localStorage.getItem('taca-tema')||'oscuro'}catch(e){}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/unbounded.woff" as="font" type="font/woff" crossorigin>
 <style>
-:root{--acc:#4d7c0f;--accd:#3f6212;--marca:#84cc16;--sobre:#0b1120;--grad:linear-gradient(135deg,#a3e635 0%,#c4f82a 60%,#d9f99d 100%);--gtxt:linear-gradient(135deg,#3f6212,#4d7c0f,#65a30d);--teal:linear-gradient(90deg,#14b8a6,#22d3ee);--r:18px;
-  --bg:#f6f7fb;--bg2:#eef1f7;--card:#ffffff;--line:#e2e8f0;--ink:#0f172a;--muted:#5b6b82;--soft:#f1f5f9;--sombra:0 1px 2px rgba(15,23,42,.05),0 12px 32px rgba(15,23,42,.08)}
-html[data-tema=oscuro]{--acc:#c4f82a;--accd:#a3e635;--marca:#c4f82a;--gtxt:var(--grad);--bg:#0b1120;--bg2:#0e1628;--card:#121b2f;--line:#223049;--ink:#eef2f8;--muted:#9aa8bd;--soft:#18233b;--sombra:0 1px 2px rgba(0,0,0,.3),0 16px 40px rgba(0,0,0,.35)}
+@font-face{font-family:Unbounded;src:url(/assets/fonts/unbounded.woff) format("woff");font-weight:200 900;font-display:swap}
+@font-face{font-family:Inter;src:url(/assets/fonts/inter.woff) format("woff");font-weight:100 900;font-display:swap}
+:root{
+  --lima:#c4f82a;--marca:#84cc16;--sobre:#0b1120;
+  --bg:#f5f6f1;--bg2:#ecede6;--card:#ffffff;--line:#d9dccf;--line2:#e6e8df;--ink:#0b1120;--muted:#4a5568;--acc:#3f6212;--off:#c9cdc0;--offk:#ffffff;
+  --papel:#fbfaf4;--tinta:#1b1b1b;--sombra:0 1px 2px rgba(11,17,32,.06),0 8px 24px -8px rgba(11,17,32,.18);
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;color-scheme:light}
+html[data-tema=oscuro]{--marca:#c4f82a;--bg:#0b1120;--bg2:#0e1628;--card:#111a2d;--line:#223049;--line2:#1a2540;--ink:#eef2f8;--muted:#9fb0c6;--acc:#c4f82a;--off:#2a3854;--offk:#7d8ca6;
+  --sombra:0 1px 2px rgba(0,0,0,.4),0 14px 30px -12px rgba(0,0,0,.6);color-scheme:dark}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
-a{color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scrollbar-color:var(--line) var(--bg)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;caret-color:var(--acc)}
+::selection{background:var(--lima);color:var(--sobre)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:3px;border-radius:6px}
+a{color:inherit;text-underline-offset:.2em}
+h1,h2,h3{font-family:Unbounded,Inter,sans-serif;letter-spacing:-.025em;text-wrap:balance;margin:0}
+p{text-wrap:pretty}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
 .muted{color:var(--muted)}
-.tc{display:inline-flex;align-items:center;gap:.13em;font-family:Unbounded,sans-serif;font-weight:900;letter-spacing:-.04em;line-height:1;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.num{font-variant-numeric:tabular-nums}
+.ico{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+/* logo */
+.tc{display:inline-flex;align-items:center;gap:.13em;font-family:Unbounded,sans-serif;font-weight:800;letter-spacing:-.04em;line-height:1;white-space:nowrap;text-decoration:none;color:var(--ink)}
 .tc i{display:flex;justify-content:flex-end;align-items:center;width:1.04em;height:.57em;border-radius:.285em;background:var(--marca);padding:0 .07em}
-.tc i::after{content:"";width:.43em;height:.43em;border-radius:50%;background:var(--knob,var(--bg))}
+.tc i::after{content:"";width:.43em;height:.43em;border-radius:50%;background:var(--sobre)}
+
+/* interruptor: el motivo de la marca */
+.sw{--w:44px;--h:26px;position:relative;display:inline-block;width:var(--w);height:var(--h);border-radius:99px;background:var(--off);flex:none;transition:background .35s cubic-bezier(.16,1,.3,1)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:calc(var(--h) - 6px);height:calc(var(--h) - 6px);border-radius:50%;background:var(--offk);transition:transform .35s cubic-bezier(.16,1,.3,1),background .35s}
+.on>.sw,.sw.on{background:var(--lima)}
+.on>.sw::after,.sw.on::after{transform:translateX(calc(var(--w) - var(--h)));background:var(--sobre)}
+.sw.sm{--w:30px;--h:18px}
+html:not([data-tema=oscuro]) .sw{box-shadow:inset 0 0 0 1px rgba(11,17,32,.14)}
+
 /* botones */
-.btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 22px;border:1px solid var(--line);background:var(--card);color:var(--ink);transition:transform .15s,filter .15s,border-color .15s;cursor:pointer;font-size:16px}
-.btn:hover{transform:translateY(-1px);border-color:var(--acc)}
-.btn.p{background:var(--grad);border-color:transparent;color:var(--sobre);box-shadow:0 10px 26px rgba(132,204,22,.3)}
-.btn.p:hover{filter:brightness(1.07)}
-.btn.sm{padding:9px 14px;font-size:14px;border-radius:10px}
-.tema{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:16px;display:grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:600 16px/1.2 Inter,sans-serif;text-align:center;text-decoration:none;border-radius:12px;padding:15px 22px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;transition:background .2s,border-color .2s,transform .12s}
+.btn:hover{border-color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn.p{background:var(--lima);border-color:var(--lima);color:var(--sobre)}
+.btn.p:hover{background:#d4ff4f;border-color:#d4ff4f}
+.btn.sm{padding:10px 14px;font-size:14.5px;border-radius:10px}
+.btn .flecha{transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.btn:hover .flecha{transform:translateX(3px)}
+
 /* barra */
-.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
-.top.s{border-bottom-color:var(--line)}
-.top .wrap{display:flex;align-items:center;gap:18px;height:68px}
-.top .tc{font-size:24px}
-.links{display:flex;gap:22px;margin:0 auto;font-size:15px;font-weight:500}
-.links a{text-decoration:none;color:var(--muted)}.links a:hover{color:var(--acc)}
-.der{display:flex;gap:10px;align-items:center}
-.der .entrar{text-decoration:none;font-weight:600;font-size:15px;color:var(--muted)}
-@media(max-width:900px){.links{display:none}.der .entrar{display:none}.top .wrap{justify-content:space-between}}
-/* hero */
-.hero{position:relative;overflow:hidden;text-align:center;padding:70px 0 40px}
-.hero::before{content:"";position:absolute;inset:-200px 0 auto;height:620px;background:radial-gradient(700px 320px at 50% 30%,rgba(196,248,42,.14),transparent 70%);pointer-events:none}
-.pill{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 14px 6px 6px;font-size:14px;font-weight:600}
-.pill b{background:var(--grad);color:var(--sobre);border-radius:99px;padding:3px 10px;font-size:12px}
-.hero h1{font-size:clamp(38px,6.2vw,74px);line-height:1.05;letter-spacing:-.035em;font-weight:900;margin:26px auto 0;max-width:1000px}
-.og{background:var(--gtxt);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tl{background:var(--teal);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero .lead{font-size:19px;color:var(--muted);max-width:720px;margin:22px auto 0}
-.ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
-.tiny{font-size:14px}
-/* captura de la app */
-.shot{position:relative;margin:56px auto 0;max-width:1040px}
-.win{border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:var(--sombra),0 30px 80px rgba(132,204,22,.1);overflow:hidden;text-align:left}
-.win .bar{display:flex;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--soft)}
-.win .bar i{width:10px;height:10px;border-radius:50%;background:#f87171}.win .bar i:nth-child(2){background:#fbbf24}.win .bar i:nth-child(3){background:#34d399}
-.win .bar span{margin-left:10px;font-size:12px;color:var(--muted)}
-.app{display:grid;grid-template-columns:190px 1fr;min-height:360px}
-.side{border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:3px;font-size:13.5px}
-.side span{padding:8px 10px;border-radius:9px;color:var(--muted)}
-.side span.on{background:var(--grad);color:var(--sobre);font-weight:700}
-.panel{padding:18px}
-.panel h4{margin:0 0 12px;font-size:18px}
-.kp{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.kp div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
-.kp small{display:block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.kp b{font-size:20px}
-.kp .h{background:var(--grad);color:var(--sobre);border-color:transparent}.kp .h small{color:rgba(11,17,32,.7)}
-.g2{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:10px}
-.box{border:1px solid var(--line);border-radius:12px;padding:12px}
-.box h5{margin:0 0 10px;font-size:13px}
-.barras{display:flex;align-items:flex-end;gap:6px;height:110px}
-.barras i{flex:1;background:var(--grad);border-radius:5px 5px 0 0;opacity:.9}
-.fila{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
-.fila:last-child{border:0}
-.ch{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px}
-.ch.ok{background:rgba(34,197,94,.15);color:#22c55e}.ch.w{background:rgba(245,158,11,.16);color:#f59e0b}.ch.b{background:rgba(59,130,246,.16);color:#60a5fa}
-.flot{position:absolute;border:1px solid var(--line);background:var(--card);border-radius:14px;box-shadow:var(--sombra);padding:12px 14px;font-size:13px;text-align:left}
-.flot b{display:block;font-size:15px}
-.f1{right:-26px;top:84px;width:220px;animation:fl 6s ease-in-out infinite}
-.f2{left:-30px;bottom:40px;width:230px;animation:fl 7s ease-in-out infinite reverse}
-@keyframes fl{50%{transform:translateY(-10px)}}
-@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.kp{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}.flot{display:none}}
-/* franja */
-.strip{border-block:1px solid var(--line);background:var(--bg2);margin-top:60px}
-.strip .wrap{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;padding:16px 22px;font-weight:600;font-size:15px}
-.strip span::before{content:"✓";color:var(--acc);margin-right:8px;font-weight:900}
+.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line2)}
+.top .wrap{display:flex;align-items:center;gap:22px;height:66px}
+.top .tc{font-size:23px}
+.links{display:flex;gap:24px;margin-left:14px;font-size:15px}
+.links a{text-decoration:none;color:var(--muted)}.links a:hover{color:var(--ink)}
+.der{display:flex;gap:8px;align-items:center;margin-left:auto}
+.der .entrar{text-decoration:none;font-weight:600;font-size:15px;color:var(--muted);padding:8px 10px}.der .entrar:hover{color:var(--ink)}
+.icb{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.icb:hover{border-color:var(--ink)}
+.menu{display:none;position:relative}
+.menu summary{list-style:none}.menu summary::-webkit-details-marker{display:none}
+.menu .panel{position:absolute;right:0;top:48px;width:230px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sombra);padding:8px;display:grid}
+.menu .panel a{padding:11px 12px;border-radius:9px;text-decoration:none;font-weight:500}
+.menu .panel a:hover{background:var(--bg2)}
+@media(max-width:900px){.links,.der .entrar{display:none}.menu{display:block}.top .wrap{gap:10px}}
+@media(max-width:360px){.der .btn.sm{display:none}}
+
+/* portada */
+.hero{padding:72px 0 0}
+.hero h1{font-size:clamp(36px,6.2vw,80px);font-weight:800;line-height:1.03;max-width:14ch}
+.hero h1 em{font-style:normal;color:var(--acc)}
+.hero .lead{font-size:clamp(18px,1.6vw,21px);color:var(--muted);max-width:56ch;margin:26px 0 0}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px;align-items:center}
+.nota-c{font-size:15px;color:var(--muted);margin:14px 0 0}
+
+/* tablero: la demo de la portada */
+.tablero{margin:64px 0 0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);border:1px solid var(--line);border-radius:22px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+.llaves{padding:26px 26px 22px}
+.llaves .tit{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.llaves .tit b{font-family:Unbounded,sans-serif;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.llaves .tit button{font:500 14px Inter,sans-serif;color:var(--muted);background:none;border:0;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:.25em}
+.llave{display:flex;align-items:center;gap:16px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line2);padding:14px 2px;color:inherit;font:inherit;cursor:pointer}
+.llave:first-of-type{border-top:0}
+.llave span{flex:1;min-width:0}
+.llave b{display:block;font-weight:600;font-size:16px}
+.llave small{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+.llave:hover b{color:var(--acc)}
+.impresora{background:var(--bg2);border-left:1px solid var(--line);padding:26px;display:flex;flex-direction:column;align-items:center}
+.impresora .boca{width:100%;max-width:340px;height:12px;border-radius:8px;background:var(--ink);opacity:.9}
+.papelw{width:calc(100% - 28px);max-width:312px;margin-top:-4px;filter:drop-shadow(0 10px 14px rgba(0,0,0,.22))}
+.ticket{background:var(--papel);color:var(--tinta);font:13.5px/1.55 var(--mono);padding:18px 18px 24px;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
+.ticket .cab{text-align:center;border-bottom:1px dashed #9a9a92;padding-bottom:10px;margin-bottom:8px}
+.ticket .cab b{font-family:Unbounded,sans-serif;font-size:17px;letter-spacing:-.03em}
+.renglon{display:grid;grid-template-rows:1fr;transition:grid-template-rows .45s cubic-bezier(.16,1,.3,1),opacity .35s}
+.renglon>div{overflow:hidden;min-height:0}
+.renglon>div>div,.renglon small{padding:0}
+.renglon>div{border-bottom:1px dotted #c8c7bd}
+.renglon .in{padding:5px 0}
+.renglon.apagado{grid-template-rows:0fr;opacity:0}
+.renglon.apagado>div{border-color:transparent}
+.renglon .r{display:flex;justify-content:space-between;gap:10px}
+.renglon small{display:block;color:#5c5c55;font-size:12px}
+.ticket .pie{text-align:center;margin-top:12px;font-size:12px;color:#5c5c55}
+@media(max-width:860px){.tablero{grid-template-columns:1fr}.impresora{border-left:0;border-top:1px solid var(--line)}}
+
 /* secciones */
-section{padding:96px 0}
-.sh{text-align:center;max-width:760px;margin:0 auto 46px}
-.kick{display:inline-block;color:var(--acc);font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
-.sh h2{font-size:clamp(30px,4vw,46px);line-height:1.12;letter-spacing:-.03em;margin:0;font-weight:900}
-.sh p{font-size:18px;margin:14px 0 0}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.step{border:1px solid var(--line);background:var(--card);border-radius:var(--r);padding:26px;box-shadow:var(--sombra);position:relative}
-.step .n{width:42px;height:42px;border-radius:12px;background:var(--grad);color:var(--sobre);font-weight:900;display:grid;place-items:center;font-size:18px;margin-bottom:16px}
-.step h3{margin:0 0 8px;font-size:20px}
-.step p{margin:0}
-/* funciones */
-.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.f{border:1px solid var(--line);background:var(--card);border-radius:var(--r);padding:26px;box-shadow:var(--sombra);transition:transform .2s,border-color .2s}
-.f:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--acc) 55%,var(--line))}
-.ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:22px;margin-bottom:16px;color:#fff}
-.c1{background:linear-gradient(135deg,#65a30d,#a3e635)}.c2{background:linear-gradient(135deg,#0ea5e9,#22d3ee)}.c3{background:linear-gradient(135deg,#8b5cf6,#c084fc)}.c4{background:linear-gradient(135deg,#16a34a,#4ade80)}.c5{background:linear-gradient(135deg,#e11d48,#fb7185)}.c6{background:linear-gradient(135deg,#ca8a04,#facc15)}
-.f h3{margin:0 0 8px;font-size:20px}
-.f p{margin:0;color:var(--muted)}
-.f .k{margin-top:16px;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.f ul{margin:8px 0 0;padding:0;list-style:none;font-size:14.5px}
-.f li{padding:3px 0}.f li::before{content:"•";color:var(--acc);font-weight:900;margin-right:8px}
-.f.big{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
-.wa{background:#0b141a;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:14px}
-.wa div{background:#202c33;color:#e9edef;border-radius:10px;padding:8px 11px;max-width:86%;align-self:flex-start}
-.wa .me{background:#005c4b;align-self:flex-end}
-@media(max-width:900px){.steps,.feat{grid-template-columns:1fr}.f.big{grid-column:auto;grid-template-columns:1fr}}
-/* integraciones */
-.ints{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px;margin:0 auto}
-.int{display:flex;gap:14px;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:14px;padding:16px 18px}
-.int .l{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-weight:900;font-size:17px;flex-shrink:0}
-.int b{display:block}.int small{color:var(--muted);font-size:13px}
-@media(max-width:800px){.ints{grid-template-columns:1fr}}
-/* comparación */
-.vs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.vs .c{border:1px solid var(--line);border-radius:var(--r);padding:28px;background:var(--card)}
-.vs .si{border:2px solid var(--marca);box-shadow:0 18px 50px rgba(132,204,22,.15)}
-.vs h3{margin:0 0 14px;font-size:22px}
-.vs ul{margin:0;padding:0;list-style:none}.vs li{padding:7px 0 7px 28px;position:relative}
-.vs .no li::before{content:"✕";position:absolute;left:0;color:#f87171;font-weight:900}
-.vs .si li::before{content:"✓";position:absolute;left:0;color:var(--acc);font-weight:900}
-@media(max-width:800px){.vs{grid-template-columns:1fr}}
+section{padding:112px 0 0}
+.sh{max-width:760px;margin:0 0 44px}
+.sh h2{font-size:clamp(28px,3.6vw,46px);font-weight:700;line-height:1.1}
+.sh p{font-size:19px;color:var(--muted);margin:16px 0 0;max-width:58ch}
+
+/* lo que te hacen pasar */
+.pares{border-top:1px solid var(--line)}
+.par{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:20px 0;border-bottom:1px solid var(--line)}
+.par>div{display:flex;gap:14px;align-items:flex-start}
+.par .sw{margin-top:3px}
+.par .no{color:var(--muted)}
+.par .si b{font-weight:600}
+.par-cab{display:grid;grid-template-columns:1fr 1fr;gap:28px;font-family:Unbounded,sans-serif;font-size:14px;font-weight:600;padding-bottom:12px}
+.par-cab span:first-child{color:var(--muted)}
+@media(max-width:760px){.par{grid-template-columns:1fr;gap:10px}.par-cab{display:none}}
+
+/* las tres que nos hacen distintos */
+.tres{display:grid;grid-template-columns:1.15fr 1fr;gap:22px}
+.bloque{border:1px solid var(--line);border-radius:20px;background:var(--card);padding:30px;box-shadow:var(--sombra);display:flex;flex-direction:column;gap:16px}
+.bloque h3{font-size:clamp(21px,2vw,26px);font-weight:700;line-height:1.15}
+.bloque p{margin:0;color:var(--muted)}
+.bloque.wa{grid-row:span 2}
+.chat{background:#0b141a;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:15px;margin-top:auto}
+.chat div{background:#202c33;color:#e9edef;border-radius:12px 12px 12px 4px;padding:9px 12px;max-width:85%;align-self:flex-start}
+.chat .yo{background:#005c4b;align-self:flex-end;border-radius:12px 12px 4px 12px}
+.chat small{display:block;text-align:right;font-size:11px;color:#aebac1;margin-top:2px}
+.chat .yo small{color:#c3ece0}
+.carta{display:grid;margin-top:auto}
+.plato{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line2)}
+.plato span{flex:1}
+.plato .pr{font-weight:600}
+.plato.sin span{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.plato em{font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+.factura{margin-top:auto;font:13px/1.55 var(--mono);background:var(--papel);color:var(--tinta);border-radius:6px;padding:14px 16px;display:grid;gap:2px}
+.factura .r{display:flex;justify-content:space-between;gap:10px}
+.factura b{font-family:Inter,sans-serif}
+@media(max-width:860px){.tres{grid-template-columns:1fr}.bloque.wa{grid-row:auto}}
+
+/* y además */
+.ademas{display:grid;grid-template-columns:repeat(3,1fr);gap:0 40px}
+.item{border-top:1px solid var(--line);padding:22px 0 26px}
+.item h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;letter-spacing:-.01em;display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.item p{margin:0;color:var(--muted);font-size:16px}
+.funciona{margin:40px 0 0;font-size:18px;max-width:70ch}
+.funciona b{font-weight:600}
+@media(max-width:900px){.ademas{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.ademas{grid-template-columns:1fr}}
+
 /* precios */
-.tog{display:flex;justify-content:center;gap:4px;margin:0 auto 28px;border:1px solid var(--line);border-radius:12px;padding:4px;width:max-content;background:var(--card)}
-.tog button{border:0;background:none;color:var(--muted);font:600 15px Inter,sans-serif;padding:9px 16px;border-radius:9px;cursor:pointer}
-.tog button.on{background:var(--grad);color:var(--sobre)}
-.tog small{font-size:12px;opacity:.9}
-.plans{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px;margin:0 auto}
-.plan{border:1px solid var(--line);background:var(--card);border-radius:22px;padding:30px;display:flex;flex-direction:column;position:relative;box-shadow:var(--sombra)}
-.plan h3{margin:0;font-size:24px}
-.plan .pr{margin:18px 0 2px;display:flex;align-items:baseline;gap:6px}.plan .pr b{font-size:42px;letter-spacing:-.03em}
-.plan .an{min-height:22px;font-size:14px}
-.plan ul{margin:18px 0 24px;padding:0;list-style:none;flex:1}.plan li{padding:6px 0 6px 28px;position:relative}
-.plan li::before{content:"✓";position:absolute;left:0;color:var(--acc);font-weight:900}
-.plan.dest{background:var(--grad);color:var(--sobre);border-color:transparent;box-shadow:0 26px 70px rgba(132,204,22,.3)}
-.plan.dest .muted{color:rgba(11,17,32,.72)}
-.plan.dest li::before{color:var(--sobre)}
-.plan.dest .btn{background:#0b1120;color:#c4f82a;border-color:#0b1120;box-shadow:none}
-.badge{position:absolute;top:-13px;right:22px;background:#0f172a;color:#fff;font-size:12px;font-weight:800;border-radius:99px;padding:5px 12px;letter-spacing:.04em}
-.nota{text-align:center;margin-top:20px;font-size:14px}
-@media(max-width:800px){.plans{grid-template-columns:1fr}}
+.tog{display:inline-flex;gap:4px;border:1px solid var(--line);border-radius:12px;padding:4px;background:var(--card);margin-bottom:26px}
+.tog button{border:0;background:none;color:var(--muted);font:600 15px Inter,sans-serif;padding:10px 16px;border-radius:9px;cursor:pointer}
+.tog button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.tog small{font-weight:500;opacity:.85}
+.planes{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:940px}
+.plan{border:1px solid var(--line);background:var(--card);border-radius:22px;padding:32px;display:flex;flex-direction:column;box-shadow:var(--sombra)}
+.plan.dest{border:2px solid var(--lima);padding:31px}
+.plan .nom{display:flex;align-items:center;gap:4px 12px;justify-content:space-between;flex-wrap:wrap}
+.plan h3{font-size:24px;font-weight:700}
+.plan .eleg{font-size:13.5px;font-weight:600;color:var(--acc)}
+.plan .desc{margin:8px 0 0;color:var(--muted);min-height:3.2em}
+.plan .pr{margin:22px 0 0;display:flex;align-items:baseline;gap:6px}
+.plan .pr b{font-family:Unbounded,sans-serif;font-size:40px;font-weight:700;letter-spacing:-.03em}
+.plan .an{min-height:24px;font-size:14.5px;color:var(--muted)}
+.plan ul{margin:20px 0 28px;padding:0;list-style:none;flex:1}
+.plan li{display:flex;gap:12px;padding:7px 0;align-items:flex-start}
+.plan li .sw{margin-top:4px}
+.nota{margin-top:22px;font-size:15px;color:var(--muted);max-width:70ch}
+@media(max-width:800px){.planes{grid-template-columns:1fr}.plan .desc{min-height:0}}
+
 /* preguntas */
-.faq{max-width:820px;margin:0 auto;display:grid;gap:10px}
-.faq details{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:4px 20px}
-.faq summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:10px}
-.faq summary::after{content:"+";color:var(--acc);font-size:22px;line-height:1;font-weight:700}
-.faq details[open] summary::after{content:"–"}
-.faq p{margin:0 0 16px;color:var(--muted)}
-/* llamado final */
-.final{background:var(--grad);color:var(--sobre);text-align:center;padding:80px 22px}
-.final h2{font-size:clamp(30px,4.4vw,50px);letter-spacing:-.03em;margin:0;font-weight:900}
-.final p{font-size:19px;opacity:.95;margin:14px 0 28px}
-.final .btn{background:#0b1120;color:#c4f82a;border-color:#0b1120}
-.final .btn.g{background:transparent;color:var(--sobre);border-color:rgba(11,17,32,.45)}
+.faq{max-width:840px}
+.faq details:first-child{border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{cursor:pointer;font-weight:600;font-size:18px;padding:20px 0;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .sw{--w:34px;--h:20px}
+.faq details[open] summary .sw{background:var(--lima)}
+.faq details[open] summary .sw::after{transform:translateX(14px);background:var(--sobre)}
+.faq p{margin:0 0 22px;color:var(--muted);max-width:68ch}
+
+/* final */
+.final{padding:120px 0 110px}
+.final .wrap{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end}
+.final h2{font-size:clamp(32px,5vw,62px);font-weight:800;line-height:1.05;max-width:14ch}
+.final p{font-size:19px;color:var(--muted);margin:18px 0 0}
+.encender{display:flex;align-items:center;gap:18px;text-decoration:none;color:var(--ink);font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;padding:14px 28px 14px 14px;border:1px solid var(--line);border-radius:99px;background:var(--card);box-shadow:var(--sombra)}
+.encender .sw{--w:84px;--h:48px}
+.encender:hover .sw,.encender:focus-visible .sw{background:var(--lima)}
+.encender:hover .sw::after,.encender:focus-visible .sw::after{transform:translateX(36px);background:var(--sobre)}
+.final .demo{display:block;margin-top:14px;text-align:right;color:var(--muted);font-size:15px;padding:6px 0}
+@media(max-width:760px){.final .wrap{grid-template-columns:1fr;align-items:start}.final .demo{text-align:left}.encender{font-size:19px}}
+
 /* pie */
-footer{padding:56px 0 30px;background:var(--bg2);border-top:1px solid var(--line)}
-.cols{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:26px}
-.cols h4{font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 12px}
-.cols a{display:block;text-decoration:none;color:var(--muted);font-size:14.5px;padding:3px 0}.cols a:hover{color:var(--acc)}
-.cols p{font-size:14px;margin:12px 0 0}
-.legal{border-top:1px solid var(--line);margin-top:36px;padding-top:20px;font-size:13px;text-align:center}
-@media(max-width:800px){.cols{grid-template-columns:1fr 1fr}.cols>div:first-child{grid-column:1/-1}}
-/* aparecer al bajar */
-.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s,transform .6s}
-.reveal.v{opacity:1;transform:none}
-@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.f1,.f2{animation:none}}
-#waflot{position:fixed;right:18px;bottom:18px;z-index:50;background:#25D366;color:#fff;border-radius:999px;padding:12px 18px;font:700 15px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+footer{border-top:1px solid var(--line);padding:40px 0 34px;font-size:15px}
+footer .fila{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center}
+footer .tc{font-size:24px;margin-right:auto}
+footer a{color:var(--muted);text-decoration:none;padding:4px 0}footer a:hover{color:var(--ink)}
+footer .legal{margin-top:22px;font-size:13.5px;color:var(--muted)}
+
+/* WhatsApp flotante: aparece cuando la portada ya pasó */
+#waflot{position:fixed;right:18px;bottom:18px;z-index:50;width:56px;height:56px;border-radius:50%;background:#25D366;color:#0b1120;display:grid;place-items:center;box-shadow:0 6px 18px -4px rgba(0,0,0,.45);transform:translateY(90px);opacity:0;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s}
+#waflot.ver{transform:none;opacity:1}
+#waflot .ico{width:28px;height:28px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 
-<nav class="top" id="nav"><div class="wrap">
-  <a class="tc" href="#" aria-label="ta-ca">ta<i></i>ca</a>
-  <div class="links"><a href="#funciones">Funciones</a><a href="#como">Cómo funciona</a><a href="#integraciones">Integraciones</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
-  <div class="der"><button class="tema" id="tema" aria-label="Cambiar entre modo oscuro y claro">☀️</button><a class="entrar" href="/">Iniciar sesión</a><a class="btn p sm" href="/?crear=1">Empezar gratis</a></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+  <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5 5.6 16A8 8 0 1 1 8.4 18.6Z"/><path d="M9.2 9.2c.3 1.6 1.9 3.6 3.6 4.4l1.1-1.1 2 .8c-.2 1.1-1.2 1.6-2.2 1.4-2.6-.5-5-2.9-5.4-5.5-.2-1 .4-2 1.4-2.2l.8 2Z"/></symbol>
+</svg>
+
+<nav class="top" aria-label="Principal"><div class="wrap">
+  <a class="tc" href="#" aria-label="ta-ca, inicio">ta<i></i>ca</a>
+  <div class="links"><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
+  <div class="der">
+    <button class="icb" id="tema" type="button" aria-label="Cambiar entre modo oscuro y claro"><svg class="ico"><use href="#i-sol"/></svg></button>
+    <a class="entrar" href="/">Iniciar sesión</a>
+    <a class="btn p sm" href="/?crear=1">Empezar gratis</a>
+    <details class="menu"><summary class="icb" aria-label="Abrir menú"><svg class="ico"><use href="#i-menu"/></svg></summary>
+      <div class="panel"><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a><a href="/">Iniciar sesión</a><a href="/?demo=1">Ver la demo</a></div></details>
+  </div>
 </div></nav>
 
+<main>
 <header class="hero"><div class="wrap">
-  <div class="pill"><b>Nuevo</b> Factura electrónica ARCA y sistema de puntos</div>
-  <h1>Todo tu local en uno<br><span class="og">QR + cocina + caja</span><br><span class="tl">+ stock + reportes +</span><br><span class="og">WhatsApp</span> + <span>factura ARCA.</span></h1>
-  <p class="lead">El cliente escanea el QR, el pedido llega a cocina y la venta queda en caja. Controlás el stock plato por plato, cerrás el día en un minuto y WhatsApp toma pedidos por vos.</p>
-  <div class="ctas"><a class="btn p" href="/?crear=1">Empezar gratis</a><a class="btn" href="/?demo=1">Ver demo en vivo ›</a></div>
-  <p class="tiny muted" style="margin-top:14px">14 días gratis · sin tarjeta · sin permanencia</p>
+  <h1>Del QR a la caja, sin que <em>nadie anote nada.</em></h1>
+  <p class="lead">ta-ca conecta las mesas, la cocina, la caja y el stock de tu bar. El cliente pide desde el QR, la comanda sale en cocina, la venta queda en caja y la factura de ARCA sale con un toque.</p>
+  <div class="ctas"><a class="btn p" href="/?crear=1">Empezar gratis <svg class="ico flecha"><use href="#i-flecha"/></svg></a><a class="btn" href="/?demo=1">Ver la demo</a></div>
+  <p class="nota-c">14 días gratis. Sin tarjeta y sin permanencia.</p>
 
-  <div class="shot reveal" aria-hidden="true">
-    <div class="win">
-      <div class="bar"><i></i><i></i><i></i><span>ta-ca · La Esquina</span></div>
-      <div class="app">
-        <div class="side"><span class="on">📊 Cierre y reportes</span><span>🪑 Salón</span><span>💵 Caja</span><span>📝 Tomar pedido</span><span>👨‍🍳 Cocina y barra</span><span>📦 Stock y compras</span><span>👥 Clientes</span><span>💬 WhatsApp</span></div>
-        <div class="panel">
-          <h4>Hoy en tu local</h4>
-          <div class="kp"><div class="h"><small>Ventas</small><b>$341.900</b></div><div><small>Ticket promedio</small><b>$22.793</b></div><div><small>Mesas abiertas</small><b>4</b></div><div><small>Puntos canjeados</small><b>$1.240</b></div></div>
-          <div class="g2">
-            <div class="box"><h5>Ventas por hora</h5><div class="barras"><i style="height:20%"></i><i style="height:34%"></i><i style="height:28%"></i><i style="height:52%"></i><i style="height:80%"></i><i style="height:100%"></i><i style="height:72%"></i><i style="height:46%"></i></div></div>
-            <div class="box"><h5>Cocina</h5><div class="fila"><span>Mesa 4 · 2× Hamburguesa</span><span class="ch w">Preparando</span></div><div class="fila"><span>Delivery · Martina</span><span class="ch b">Nuevo</span></div><div class="fila"><span>Mesa 7 · Milanesa</span><span class="ch ok">Listo</span></div><div class="fila"><span>Para llevar · Nico</span><span class="ch ok">Listo</span></div></div>
-          </div>
-        </div>
-      </div>
+  <div class="tablero" id="tablero">
+    <div class="llaves">
+      <div class="tit"><b>Encendé tu local</b><button type="button" id="otravez">Ver de nuevo</button></div>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="qr"><span><b>QR en la mesa</b><small>El cliente pide y paga desde el celular</small></span><i class="sw"></i></button>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="cocina"><span><b>Cocina y barra</b><small>Cada sector ve lo suyo, con la mesa en grande</small></span><i class="sw"></i></button>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="caja"><span><b>Caja</b><small>La venta ya está cargada cuando vas a cobrar</small></span><i class="sw"></i></button>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="stock"><span><b>Stock por receta</b><small>Cada plato descuenta sus insumos</small></span><i class="sw"></i></button>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="wa"><span><b>WhatsApp</b><small>El bot toma pedidos y reservas por vos</small></span><i class="sw"></i></button>
+      <button class="llave on" type="button" role="switch" aria-checked="true" data-r="arca"><span><b>Factura ARCA</b><small>Con CAE y QR, sin otro sistema</small></span><i class="sw"></i></button>
     </div>
-    <div class="flot f1">🧾 <b>Factura B 00003-00000128</b><span class="muted">CAE aprobado por ARCA</span></div>
-    <div class="flot f2">⭐ <b>¡Martina volvió!</b><span class="muted">3º pedido del mes · sumó 640 puntos</span></div>
+    <div class="impresora">
+      <div class="boca"></div>
+      <div class="papelw"><div class="ticket" aria-label="Comanda de ejemplo">
+        <div class="cab"><b>La Esquina</b><br>jue 19/11 · 21:14</div>
+        <div class="renglon" data-r="qr"><div><div class="in"><div class="r"><span>MESA 4</span><span>desde el QR</span></div></div></div></div>
+        <div class="renglon" data-r="cocina"><div><div class="in"><div class="r"><span>2× Hamburguesa doble</span><span>cocina</span></div><div class="r"><span>1× Gaseosa 500</span><span>barra</span></div></div></div></div>
+        <div class="renglon" data-r="caja"><div><div class="in"><div class="r"><b>TOTAL</b><b class="num">$23.000</b></div><small>Mercado Pago · cobrado</small></div></div></div>
+        <div class="renglon" data-r="stock"><div><div class="in"><div class="r"><span>Stock</span><span class="num">pan −2 · carne −4</span></div><small>quedan 18 hamburguesas</small></div></div></div>
+        <div class="renglon" data-r="wa"><div><div class="in"><div class="r"><span>WhatsApp</span><span>pedido #31</span></div><small>Martina: “lo de siempre”</small></div></div></div>
+        <div class="renglon" data-r="arca"><div><div class="in"><div class="r"><span>Factura B</span><span class="num">0003-00000128</span></div><small class="num">CAE 74321908845512 · aprobado</small></div></div></div>
+        <div class="pie">— tu local, encendido —</div>
+      </div></div>
+    </div>
   </div>
 </div></header>
 
-<div class="strip"><div class="wrap"><span>App para el celular</span><span>Celular, tablet o compu</span><span>Sigue andando si se corta internet</span><span>Sin permanencia</span><span>Soporte por WhatsApp</span></div></div>
-
-<section id="funciones"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Funciones</div><h2>Todo lo que pasa en tu local, en un solo lugar</h2><p class="muted">Sin módulos que se pagan aparte: viene todo incluido.</p></div>
-  <div class="feat">
-    <div class="f reveal"><div class="ic c1">📱</div><h3>Carta QR a cocina</h3><p>El cliente pide desde la mesa y el pedido entra directo a cocina y a la caja.</p><div class="k">Clave</div><ul><li>Solo muestra lo que hay en stock</li><li>Llama al mozo y pide la cuenta</li><li>Paga con Mercado Pago desde el celular</li></ul></div>
-    <div class="f reveal"><div class="ic c2">📦</div><h3>Stock por receta</h3><p>Cada venta descuenta los insumos de la receta. Si algo se termina, el plato se apaga solo.</p><div class="k">Clave</div><ul><li>Merma con motivo</li><li>Compras por proveedor</li><li>Lista de qué reponer</li></ul></div>
-    <div class="f reveal"><div class="ic c3">📊</div><h3>Reportes y Excel</h3><p>Cierre del día en un minuto y reportes por semana o mes, comparados con el período anterior.</p><div class="k">Clave</div><ul><li>Ventas por hora, día y medio de pago</li><li>Platos más vendidos</li><li>Excel listo para el contador</li></ul></div>
-    <div class="f big reveal"><div><div class="ic c4">💬</div><h3>WhatsApp que toma pedidos</h3><p>El bot contesta, arma el delivery o la reserva y lo manda a cocina. Entiende errores de tipeo, se acuerda de "lo de siempre" y te pasa la conversación cuando piden hablar con una persona.</p></div>
-      <div class="wa"><div>Hola! Dos hambur y una coquita para delivery</div><div class="me">¡Listo! 2× Hamburguesa + 1× Gaseosa · $23.000. ¿Cómo pagás?</div><div>Efectivo. Uso mis puntos</div><div class="me">⭐ Usás 1.240 puntos. Pedido #31 en cocina 🔥 Llega en 35-45 min.</div></div></div>
-    <div class="f reveal"><div class="ic c5">🧾</div><h3>Factura electrónica ARCA</h3><p>Al cobrar, un toque y sale la factura con CAE y el QR de ARCA. Sin pagar otro sistema.</p><div class="k">Clave</div><ul><li>Factura A, B o C</li><li>Nota de crédito</li><li>Monotributo y responsable inscripto</li></ul></div>
-    <div class="f reveal"><div class="ic c6">⭐</div><h3>Sistema de puntos</h3><p>Tus clientes suman puntos con cada compra y los usan en el próximo pedido. Así vuelven.</p><div class="k">Clave</div><ul><li>Por WhatsApp o en la caja</li><li>Aviso cuando un cliente vuelve</li><li>Vos elegís cuánto devolver</li></ul></div>
-    <div class="f reveal"><div class="ic c1">🔒</div><h3>Caja con turnos</h3><p>Cada cajera abre y cierra su turno. El saldo esperado lo ve solo el dueño.</p><div class="k">Clave</div><ul><li>Cierre a ciegas</li><li>Pago dividido y propina</li><li>Auditoría de todo lo que se toca</li></ul></div>
-    <div class="f reveal"><div class="ic c2">🧑‍🍳</div><h3>Mozos, cocina y salón</h3><p>El salón en vivo, comandas por sector y avisos cuando el plato está listo.</p><div class="k">Clave</div><ul><li>Pantalla de cocina y barra</li><li>Comandas en impresora térmica</li><li>Pantalla de pedidos para la TV</li></ul></div>
-    <div class="f reveal"><div class="ic c3">👥</div><h3>Tu equipo, seguro</h3><p>Cada persona entra con su PIN y ve solo lo suyo. Los equipos se vinculan con un código, sin tu contraseña.</p><div class="k">Clave</div><ul><li>Permisos controlados en el servidor</li><li>Copia de seguridad todas las noches</li><li>Funciona sin internet</li></ul></div>
+<section id="pasar"><div class="wrap">
+  <div class="sh"><h2>Lo que otros sistemas te hacen pasar</h2><p>Lo escuchamos de cada dueño con el que hablamos. Por eso ta-ca funciona así:</p></div>
+  <div class="par-cab" aria-hidden="true"><span>Con otros sistemas</span><span>Con ta-ca</span></div>
+  <div class="pares">
+    <div class="par"><div class="no"><i class="sw sm"></i><span>Venden platos que ya no hay y te enterás en cocina.</span></div><div class="si"><i class="sw sm on"></i><span><b>Si se termina un insumo, el plato se apaga solo</b>, en el QR y para el mozo.</span></div></div>
+    <div class="par"><div class="no"><i class="sw sm"></i><span>El mozo no ve el stock cuando toma el pedido.</span></div><div class="si"><i class="sw sm on"></i><span><b>Stock en vivo</b> en todos los equipos del local.</span></div></div>
+    <div class="par"><div class="no"><i class="sw sm"></i><span>Mesas, WhatsApp o factura se pagan como módulos aparte.</span></div><div class="si"><i class="sw sm on"></i><span><b>Un precio con todo incluido</b>, también la factura ARCA.</span></div></div>
+    <div class="par"><div class="no"><i class="sw sm"></i><span>Aumentos sorpresa y soporte que de noche no atiende.</span></div><div class="si"><i class="sw sm on"></i><span><b>Soporte por WhatsApp</b>, también en el horario del servicio.</span></div></div>
+    <div class="par"><div class="no"><i class="sw sm"></i><span>Instalaciones, equipos especiales y técnicos que cobran.</span></div><div class="si"><i class="sw sm on"></i><span><b>Abrís el link y listo.</b> Usás los equipos que ya tenés.</span></div></div>
   </div>
 </div></section>
 
-<section id="como" style="padding-top:0"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Cómo funciona</div><h2>Del QR a la caja, sin que nadie anote nada</h2></div>
-  <div class="steps">
-    <div class="step reveal"><div class="n">1</div><h3>El cliente escanea</h3><p class="muted">Ve la carta con fotos, precios y lo que hay en stock, arma su pedido y lo manda.</p></div>
-    <div class="step reveal"><div class="n">2</div><h3>Llega a cocina y barra</h3><p class="muted">Cada sector ve lo suyo, con la mesa en grande y el tiempo que lleva esperando.</p></div>
-    <div class="step reveal"><div class="n">3</div><h3>Queda en caja</h3><p class="muted">La venta ya está cargada. Cobrás como quieras, facturás y el stock se descuenta solo.</p></div>
+<section id="distinto"><div class="wrap">
+  <div class="sh"><h2>Tres cosas que tu sistema actual no hace</h2></div>
+  <div class="tres">
+    <article class="bloque wa">
+      <h3>WhatsApp que toma pedidos</h3>
+      <p>El bot contesta, arma el delivery o la reserva y lo manda a cocina. Entiende errores de tipeo, se acuerda de “lo de siempre” y te pasa la conversación cuando alguien pide hablar con una persona.</p>
+      <div class="chat" aria-label="Conversación de ejemplo">
+        <div>Hola! Dos hambur y una coquita para delivery<small>21:02</small></div>
+        <div class="yo">¡Listo! 2× Hamburguesa + 1× Gaseosa · $23.000. ¿Cómo pagás?<small>21:02</small></div>
+        <div>Efectivo. Uso mis puntos<small>21:03</small></div>
+        <div class="yo">Usás 1.240 puntos. Pedido #31 en cocina. Llega en 35-45 min.<small>21:03</small></div>
+      </div>
+    </article>
+    <article class="bloque">
+      <h3>El plato se apaga solo</h3>
+      <p>Cada venta descuenta los insumos de la receta. Cuando algo se termina, el plato desaparece del QR y del mozo antes de que lo pidan.</p>
+      <div class="carta" aria-label="Carta de ejemplo">
+        <div class="plato"><span>Hamburguesa doble</span><b class="pr num">$9.500</b><i class="sw sm on"></i></div>
+        <div class="plato sin"><span>Milanesa napolitana</span><em>sin stock</em><i class="sw sm"></i></div>
+        <div class="plato"><span>Papas con cheddar</span><b class="pr num">$6.800</b><i class="sw sm on"></i></div>
+      </div>
+    </article>
+    <article class="bloque">
+      <h3>Factura ARCA en un toque</h3>
+      <p>Al cobrar tocás “Facturar” y sale la factura A, B o C con CAE y el QR de ARCA. Nota de crédito incluida.</p>
+      <div class="factura" aria-label="Factura de ejemplo">
+        <div class="r"><b>Factura B</b><span class="num">0003-00000128</span></div>
+        <div class="r"><span>Total</span><span class="num">$23.000</span></div>
+        <div class="r"><span>CAE</span><span class="num">74321908845512</span></div>
+      </div>
+    </article>
   </div>
 </div></section>
 
-<section id="integraciones" style="padding-top:0"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Integraciones</div><h2>Conectado con lo que ya usás</h2><p class="muted">Sin migraciones ni equipos especiales.</p></div>
-  <div class="ints">
-    <div class="int reveal"><span class="l" style="background:rgba(0,158,227,.15);color:#009ee3">M</span><span><b>Mercado Pago</b><small>Cobro en la mesa y abonos</small></span></div>
-    <div class="int reveal"><span class="l" style="background:rgba(37,211,102,.15);color:#25d366">W</span><span><b>WhatsApp</b><small>Pedidos, reservas y avisos</small></span></div>
-    <div class="int reveal"><span class="l" style="background:rgba(59,130,246,.15);color:#60a5fa">A</span><span><b>ARCA</b><small>Factura electrónica A, B y C</small></span></div>
-    <div class="int reveal"><span class="l" style="background:rgba(148,163,184,.18);color:#94a3b8">I</span><span><b>Impresora térmica</b><small>Cualquier modelo de 80 mm</small></span></div>
-    <div class="int reveal"><span class="l" style="background:rgba(34,197,94,.15);color:#22c55e">X</span><span><b>Excel</b><small>Ventas para tu contador</small></span></div>
-    <div class="int reveal"><span class="l" style="background:rgba(132,204,22,.16);color:#84cc16">TV</span><span><b>Pantalla del local</b><small>"Tu pedido está listo"</small></span></div>
+<section id="ademas" style="padding-top:88px"><div class="wrap">
+  <div class="sh"><h2>Y todo lo de todos los días</h2></div>
+  <div class="ademas">
+    <div class="item"><h3><i class="sw sm on"></i>Caja con turnos</h3><p>Cada cajera abre y cierra su turno con cierre a ciegas. El saldo esperado lo ve solo el dueño.</p></div>
+    <div class="item"><h3><i class="sw sm on"></i>Cierre y reportes</h3><p>Cerrás el día en un minuto. Semana o mes comparados, y el Excel listo para el contador.</p></div>
+    <div class="item"><h3><i class="sw sm on"></i>Puntos para tus clientes</h3><p>Suman con cada compra y los usan en el próximo pedido, en la caja o por WhatsApp.</p></div>
+    <div class="item"><h3><i class="sw sm on"></i>Salón, mozos y cocina</h3><p>Mesas en vivo, comandas por sector, impresora térmica y pantalla de “tu pedido está listo”.</p></div>
+    <div class="item"><h3><i class="sw sm on"></i>Tu equipo, con su PIN</h3><p>Cada persona ve solo lo suyo. Copia de seguridad todas las noches.</p></div>
+    <div class="item"><h3><i class="sw sm on"></i>Si se corta internet</h3><p>Tu equipo sigue cargando y todo se sube solo al volver. El QR del cliente usa sus propios datos.</p></div>
   </div>
+  <p class="funciona">Funciona con <b>Mercado Pago</b>, <b>WhatsApp</b>, <b>ARCA</b>, cualquier impresora térmica de 80 mm y <b>Excel</b>. En el celular, la tablet o la compu que ya tenés, y se instala como app.</p>
 </div></section>
 
-<section style="padding-top:0"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Por qué ta-ca</div><h2>Lo que los dueños nos dicen que les falla</h2></div>
-  <div class="vs">
-    <div class="c no reveal"><h3>Otros sistemas</h3><ul><li>Venden platos que ya no hay y te enterás en cocina.</li><li>El mozo no ve el stock cuando toma el pedido.</li><li>Mesas, WhatsApp o factura se pagan como módulos aparte.</li><li>Aumentos sorpresa y soporte que de noche no atiende.</li><li>Instalaciones, equipos especiales y técnicos que cobran.</li></ul></div>
-    <div class="c si reveal"><h3>ta-ca</h3><ul><li>Si se termina un insumo, el plato se apaga solo en el QR y para el mozo.</li><li>Stock en vivo en todos los equipos del local.</li><li>Un precio con todo incluido, también la factura ARCA.</li><li>Soporte por WhatsApp, también en el horario del servicio.</li><li>Abrís el link y listo. Usás los equipos que ya tenés.</li></ul></div>
+<section id="precios"><div class="wrap">
+  <div class="sh"><h2>Un abono, todo incluido</h2><p>Empezás con 14 días gratis. Sin tarjeta y sin permanencia.</p></div>
+  <div class="tog" role="group" aria-label="Forma de pago"><button type="button" aria-pressed="true" data-per="mes">Mensual</button><button type="button" aria-pressed="false" data-per="anio">Anual <small>2 meses gratis</small></button></div>
+  <div class="planes">
+    <div class="plan"><div class="nom"><h3>Local</h3></div><p class="desc">Todo para atender, cobrar y controlar el stock.</p>
+      <div class="pr"><b class="num" data-m="49900">$49.900</b><span class="muted">/ mes</span></div><div class="an" data-an="49900"></div>
+      <ul><li><i class="sw sm on"></i>QR en las mesas a cocina y caja</li><li><i class="sw sm on"></i>Salón, mozos, cocina y barra en vivo</li><li><i class="sw sm on"></i>Caja con turnos y saldo solo para el dueño</li><li><i class="sw sm on"></i>Stock por receta, merma, compras y proveedores</li><li><i class="sw sm on"></i>Cierre del día, reportes y Excel</li><li><i class="sw sm on"></i>Factura electrónica ARCA</li><li><i class="sw sm on"></i>Sistema de puntos</li><li><i class="sw sm on"></i>Reservas, mostrador y para llevar</li><li><i class="sw sm on"></i>Personas y equipos sin límite</li></ul>
+      <a class="btn" href="/?crear=1&amp;plan=local">Empezar gratis con Local</a></div>
+    <div class="plan dest"><div class="nom"><h3>Encendido</h3><span class="eleg">El que más eligen</span></div><p class="desc">Todo lo de Local, más pedidos y reservas por WhatsApp.</p>
+      <div class="pr"><b class="num" data-m="89900">$89.900</b><span class="muted">/ mes</span></div><div class="an" data-an="89900"></div>
+      <ul><li><i class="sw sm on"></i>Todo lo del plan Local</li><li><i class="sw sm on"></i>Bot de WhatsApp para pedidos, delivery y reservas</li><li><i class="sw sm on"></i>Puntos y avisos por WhatsApp a tus clientes</li><li><i class="sw sm on"></i>Te cargamos la carta y las recetas</li><li><i class="sw sm on"></i>Soporte prioritario, también de noche</li></ul>
+      <a class="btn p" href="/?crear=1&amp;plan=encendido">Empezar gratis con Encendido</a></div>
   </div>
+  <p class="nota">Precios finales en pesos argentinos. Pagás con Mercado Pago o transferencia. Si un mes no pagás, tus datos quedan guardados.</p>
 </div></section>
 
-<section id="precios" style="padding-top:0"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Precios</div><h2>Un abono, todo incluido</h2><p class="muted">Empezás con 14 días gratis. Sin tarjeta y sin permanencia.</p></div>
-  <div class="tog" role="group" aria-label="Forma de pago"><button class="on" data-per="mes">Mensual</button><button data-per="anio">Anual <small>2 meses gratis</small></button></div>
-  <div class="plans">
-    <div class="plan reveal"><h3>Local</h3><p class="muted" style="margin:6px 0 0">Todo para atender, cobrar y controlar el stock.</p>
-      <div class="pr"><b data-m="49900">$49.900</b><span class="muted">/ mes</span></div><div class="an muted" data-an="49900"></div>
-      <ul><li>QR en las mesas a cocina y caja</li><li>Salón, mozos, cocina y barra en vivo</li><li>Caja con turnos y saldo solo para el dueño</li><li>Stock por receta, merma, compras y proveedores</li><li>Cierre del día, reportes y Excel para el contador</li><li>Factura electrónica ARCA desde la caja</li><li>Sistema de puntos para que tus clientes vuelvan</li><li>Reservas, mostrador y para llevar</li><li>Personas y equipos sin límite</li></ul>
-      <a class="btn" href="/?crear=1">Empezar gratis</a></div>
-    <div class="plan dest reveal"><span class="badge">RECOMENDADO</span><h3>Encendido</h3><p class="muted" style="margin:6px 0 0">Todo lo de Local, más pedidos y reservas por WhatsApp.</p>
-      <div class="pr"><b data-m="89900">$89.900</b><span class="muted">/ mes</span></div><div class="an muted" data-an="89900"></div>
-      <ul><li>Todo lo del plan Local</li><li>Bot de WhatsApp para pedidos, delivery y reservas</li><li>Puntos y avisos por WhatsApp a tus clientes</li><li>Te cargamos la carta y las recetas</li><li>Soporte prioritario, también de noche</li></ul>
-      <a class="btn" href="/?crear=1">Empezar gratis</a></div>
-  </div>
-  <p class="nota muted">Precios finales en pesos argentinos. Pagás con Mercado Pago o transferencia. Si un mes no pagás, tus datos quedan guardados.</p>
-</div></section>
-
-<section id="preguntas" style="padding-top:0"><div class="wrap">
-  <div class="sh reveal"><div class="kick">Preguntas</div><h2>Lo que siempre nos preguntan</h2></div>
+<section id="preguntas"><div class="wrap">
+  <div class="sh"><h2>Lo que siempre nos preguntan</h2></div>
   <div class="faq">
-    <details><summary>¿Tengo que instalar algo o comprar equipos?</summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
-    <details><summary>¿Hay app para el celular?</summary><p>Sí. Entrás desde el celular, tocás "Instalar ta-ca" y te queda el ícono en la pantalla de inicio. Se abre a pantalla completa, con el menú abajo como cualquier app, y sin pasar por Play Store ni App Store. Funciona en Android, iPhone, tablet y compu.</p></details>
-    <details><summary>¿Cuánto tardo en empezar?</summary><p>Unos minutos: creás la cuenta, ponés el nombre del local y la cantidad de mesas, y elegís arrancar con una carta de ejemplo o la tuya. Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
-    <details><summary>¿Hace factura electrónica?</summary><p>Sí. Al cobrar tocás "Facturar" y sale la Factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal: te guiamos paso a paso.</p></details>
-    <details><summary>¿Qué pasa si se corta internet?</summary><p>Seguís trabajando: cada equipo guarda lo que hacés y lo sube solo cuando vuelve la conexión. Lo que no anda sin internet es el QR de los clientes, porque usa los datos de su celular.</p></details>
-    <details><summary>¿Cómo funciona el sistema de puntos?</summary><p>Vos elegís cuántos puntos da cada compra (por ejemplo, 2%). El cliente los suma al pagar y los usa como descuento en el próximo pedido, en la caja o escribiendo PUNTOS en WhatsApp.</p></details>
-    <details><summary>¿La cajera puede ver cuánta plata hay en caja?</summary><p>No. Cada cajera abre y cierra su turno contando la plata, pero el saldo esperado y la diferencia los ve solo el dueño.</p></details>
-    <details><summary>¿Qué pasa cuando terminan los 14 días?</summary><p>Elegís un plan y seguís igual, con todo lo que cargaste. Si no elegís, tenés 3 días más de margen y después el local queda en pausa con tus datos guardados.</p></details>
-    <details><summary>¿Puedo dar de baja cuando quiera?</summary><p>Sí. No hay permanencia ni contrato: pagás mes a mes, o por año si querés los 2 meses gratis.</p></details>
+    <details><summary>¿Tengo que instalar algo o comprar equipos?<i class="sw"></i></summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés, y se puede instalar como app desde el mismo navegador. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
+    <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>Unos minutos: creás la cuenta, ponés el nombre del local y la cantidad de mesas, y elegís arrancar con una carta de ejemplo o la tuya. Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
+    <details><summary>¿Hace factura electrónica?<i class="sw"></i></summary><p>Sí. Al cobrar tocás “Facturar” y sale la factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal y te guiamos paso a paso.</p></details>
+    <details><summary>¿Qué pasa si se corta internet?<i class="sw"></i></summary><p>Tu equipo sigue trabajando: cada celular o compu guarda lo que hacés y lo sube solo cuando vuelve la conexión. El QR de los clientes sigue andando con los datos de su propio celular.</p></details>
+    <details><summary>¿Cómo funciona el sistema de puntos?<i class="sw"></i></summary><p>Vos elegís cuántos puntos da cada compra (por ejemplo, 2%). El cliente los suma al pagar y los usa como descuento en el próximo pedido, en la caja o escribiendo PUNTOS en WhatsApp.</p></details>
+    <details><summary>¿La cajera puede ver cuánta plata hay en caja?<i class="sw"></i></summary><p>No. Cada cajera abre y cierra su turno contando la plata, pero el saldo esperado y la diferencia los ve solo el dueño.</p></details>
+    <details><summary>¿Qué pasa cuando terminan los 14 días?<i class="sw"></i></summary><p>Elegís un plan y seguís igual, con todo lo que cargaste. Si no elegís, tenés 3 días más de margen y después el local queda en pausa con tus datos guardados.</p></details>
+    <details><summary>¿Puedo dar de baja cuando quiera?<i class="sw"></i></summary><p>Sí. No hay permanencia ni contrato: pagás mes a mes, o por año si querés los 2 meses gratis.</p></details>
   </div>
 </div></section>
 
-<div class="final reveal">
-  <h2>Probalo con tu carta y tus mesas</h2>
-  <p>14 días gratis, sin tarjeta. Si no te cambia el servicio, no pagás nada.</p>
-  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><a class="btn" href="/?crear=1">Empezar ahora</a><a class="btn g" href="/?demo=1">Ver la demo</a></div>
-</div>
+<section class="final"><div class="wrap">
+  <div><h2>Probalo con tu carta y tus mesas.</h2><p>14 días gratis, sin tarjeta. Si no te cambia el servicio, no pagás nada.</p></div>
+  <div><a class="encender" href="/?crear=1"><i class="sw"></i>Encendé tu local</a><a class="demo" href="/?demo=1">o mirá la demo primero</a></div>
+</div></section>
+</main>
 
 <footer><div class="wrap">
-  <div class="cols">
-    <div><a class="tc" href="#" aria-label="ta-ca" style="font-size:28px;display:inline-flex;padding:0">ta<i></i>ca</a><p class="muted">Sistema de gestión todo en uno para bares, restaurantes, cervecerías y cafés.</p></div>
-    <div><h4>Producto</h4><a href="#funciones">Funciones</a><a href="#precios">Precios</a><a href="/?demo=1">Demo en vivo</a><a href="/?crear=1">Probar gratis</a></div>
-    <div><h4>Empresa</h4><a href="https://romanweb.tech" target="_blank" rel="noopener">Roman Web</a><a href="/">Iniciar sesión</a></div>
-    <div><h4>Soporte</h4><a href="https://wa.me/5493412609941?text=Hola%2C%20quiero%20consultar%20por%20ta-ca" target="_blank" rel="noopener">WhatsApp +54 9 341 260-9941</a><a href="mailto:lucastavano2020@gmail.com?subject=Consulta%20por%20ta-ca">Email</a></div>
-    <div><h4>Legal</h4><a href="/terminos">Términos</a><a href="/privacidad">Privacidad</a></div>
+  <div class="fila">
+    <a class="tc" href="#" aria-label="ta-ca, volver arriba">ta<i></i>ca</a>
+    <a href="/">Iniciar sesión</a><a href="/?demo=1">Demo</a><a href="https://wa.me/5493412609941?text=Hola%2C%20quiero%20consultar%20por%20ta-ca" target="_blank" rel="noopener">WhatsApp +54 9 341 260-9941</a><a href="/terminos">Términos</a><a href="/privacidad">Privacidad</a>
   </div>
-  <div class="legal muted">© 2026 ta-ca · un producto de Roman Web · Lucas Alexis Tavano · CUIT 20-35382779-1 · Rosario, Argentina</div>
+  <p class="legal">© 2026 ta-ca · un producto de <a href="https://romanweb.tech" target="_blank" rel="noopener">Roman Web</a> · Lucas Alexis Tavano · CUIT 20-35382779-1 · Rosario, Argentina</p>
 </div></footer>
 
-<a id="waflot" href="https://wa.me/5493412609941?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20de%20ta-ca" target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp">💬 WhatsApp</a>
+<a id="waflot" href="https://wa.me/5493412609941?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20de%20ta-ca" target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"><svg class="ico"><use href="#i-wa"/></svg></a>
 
 <script>
 const fmt=n=>'$'+Math.round(n).toLocaleString('es-AR');
+// precios mensual / anual
 document.querySelectorAll('.tog button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tog button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tog button').forEach(x=>x.setAttribute('aria-pressed',x===b));
   const anual=b.dataset.per==='anio';
   document.querySelectorAll('[data-m]').forEach(el=>{const m=+el.dataset.m;el.textContent=fmt(anual?m*10/12:m)});
-  document.querySelectorAll('[data-an]').forEach(el=>{const m=+el.dataset.an;el.textContent=anual?`${fmt(m*10)} por año · te ahorrás ${fmt(m*2)}`:''});
+  document.querySelectorAll('[data-an]').forEach(el=>{const m=+el.dataset.an;el.textContent=anual?`Se cobra ${fmt(m*10)} una vez por año · ahorrás ${fmt(m*2)}`:''});
 });
-const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('s',scrollY>10),{passive:true});
-const io='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)}}),{threshold:.12}):null;
-document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.add('v'));
+// tema
 const tb=document.getElementById('tema');
-function pintarTema(){const o=document.documentElement.dataset.tema!=='claro';tb.textContent=o?'☀️':'🌙';tb.title=o?'Pasar a modo claro':'Pasar a modo oscuro';document.querySelector('meta[name=theme-color]').content=o?'#0b1120':'#f6f7fb'}
+function pintarTema(){const o=document.documentElement.dataset.tema!=='claro';tb.querySelector('use').setAttribute('href',o?'#i-sol':'#i-luna');tb.setAttribute('aria-label',o?'Pasar a modo claro':'Pasar a modo oscuro');document.querySelector('meta[name=theme-color]').content=o?'#0b1120':'#f5f6f1'}
 tb.onclick=()=>{const n=document.documentElement.dataset.tema==='claro'?'oscuro':'claro';document.documentElement.dataset.tema=n;try{localStorage.setItem('taca-tema',n)}catch(e){}pintarTema()};
 pintarTema();
+// menú del celular: se cierra al elegir
+document.querySelectorAll('.menu .panel a').forEach(a=>a.addEventListener('click',()=>{a.closest('details').open=false}));
+// tablero: cada llave prende su renglón de la comanda
+const llaves=[...document.querySelectorAll('.llave')];
+function poner(l,on){l.classList.toggle('on',on);l.setAttribute('aria-checked',on);document.querySelectorAll(`.renglon[data-r="${l.dataset.r}"]`).forEach(r=>r.classList.toggle('apagado',!on))}
+llaves.forEach(l=>l.addEventListener('click',()=>poner(l,!l.classList.contains('on'))));
+const quieto=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function encender(){if(quieto){llaves.forEach(l=>poner(l,true));return}llaves.forEach(l=>poner(l,false));llaves.forEach((l,i)=>setTimeout(()=>poner(l,true),450+i*420))}
+document.getElementById('otravez').onclick=encender;
+// arranca una sola vez, cuando el tablero entra en pantalla (sin JS queda todo encendido)
+const tab=document.getElementById('tablero');
+if('IntersectionObserver' in window&&!quieto){const io=new IntersectionObserver(e=>{if(e[0].isIntersecting){io.disconnect();encender()}},{threshold:.35});io.observe(tab)}
+// WhatsApp flotante: solo después de la portada
+const wa=document.getElementById('waflot'),hero=document.querySelector('.hero');
+if('IntersectionObserver' in window){new IntersectionObserver(e=>wa.classList.toggle('ver',!e[0].isIntersecting),{threshold:0}).observe(hero)}else wa.classList.add('ver');
 </script>
 </body>
 </html>
