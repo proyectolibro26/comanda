@@ -272,7 +272,8 @@ const NUBE={url:'https://ktoicklowsblqmerqqdo.supabase.co',key:'sb_publishable_h
 const QS=new URLSearchParams(location.search);
 function QS_PRE(k){try{return new URLSearchParams(location.search).get(k)}catch(e){return null}}
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
-let LID=ls('taca-local')||'';           // local al que está conectado este equipo del personal
+let EQ=null;try{EQ=JSON.parse(ls('taca-eq')||'null')}catch(e){EQ=null}  // equipo vinculado con código (sin la cuenta del dueño)
+let LID=EQ?EQ.l:(ls('taca-local')||'');           // local al que está conectado este equipo del personal
 if(QS_PRE('demo')==='1')ls('taca-modo','demo');else if(QS_PRE('crear')==='1')ls('taca-modo',null);
 if(ls('taca-modo')==='demo')LID='';
 const CLID=QS.get('l')||'';            // local del QR (celular del cliente)
@@ -326,34 +327,42 @@ function fusionar(remoto,ver){
   S=m;SY.base=clone(remoto);SY.ver=ver;saveLocal();persistSync();renderSafe();
 }
 async function push(){
-  if(!enNube()||SY.pushing||!SY.base)return;SY.pushing=true;
+  if(!enNube()||SY.pushing||!SY.base||SY.sinPin)return;SY.pushing=true;
   try{
     for(let i=0;i<8;i++){
       if(!makeDiff(SY.base,S)){SY.pend=false;break}
       const snap=clone(S),r=await NB.guardar(LID,snap,SY.ver);
-      if(r.ok){SY.ver=r.version;SY.base=snap;persistSync();NB.avisar();estadoNube('ok')}
+      if(r.ok){SY.ver=r.version;sinPines(snap);sinPines(S);SY.base=snap;persistSync();NB.avisar();estadoNube('ok')}
+      else if(r.error==='pin'||r.error==='desvinculado'){SY.pushing=false;conectar();if(r.error==='pin')toast('Se cerró tu turno en este equipo: volvé a entrar con tu PIN',1);return}
       else if(r.error){if(r.error==='bloqueado'){SY.info=Object.assign({},SY.info,{estado:'bloqueado'});renderSafe()}else toast(r.error,1);break}
       else fusionar(r.data,r.version);
     }
   }catch(e){estadoNube('off');setTimeout(push,4000)}
   finally{SY.pushing=false}
 }
+function sinPines(d){(d&&d.equipo||[]).forEach(p=>{delete p.pin})}
+function desvincular(msg){ls('taca-eq',null);['taca-local',K+'-sync'].forEach(k=>ls(k,null));try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}if(msg)ls('taca-aviso',msg);location.reload()}
 async function pull(){
   if(!enNube()||!SY.base)return;if(SY.pushing){setTimeout(pull,300);return}
-  try{const r=await NB.leer(LID);estadoNube('ok');if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
+  try{const r=await NB.leer(LID);estadoNube('ok');if(r&&(r.desvinculado||r.sinPin))return conectar();if(!r||r.version<=SY.ver)return;fusionar(r.data,r.version);if(makeDiff(SY.base,S))push()}
   catch(e){estadoNube('off')}
 }
 function ponerInfo(r){const antes=SY.info&&SY.info.estado;SY.info={plan:r.plan,prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.whatsapp||null,estado:r.estado||estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)};SY.infoTs=Date.now();
   if(SY.esperaPago&&SY.info.plan==='activo'&&SY.info.estado==='ok'&&(SY.info.pagado_hasta||'')!==SY.esperaPago.antes){SY.esperaPago=null;toast('¡Pago confirmado! Gracias por elegir ta-ca 🔥');renderSafe()}
   if(antes&&antes!==SY.info.estado){if(antes==='bloqueado')toast('¡Tu local está activo otra vez! 🔥');renderSafe();if(SY.info.estado!=='bloqueado')push()}}
 async function refrescarInfo(){try{const r=await NB.leer(LID);if(!r)return;ponerInfo(r);if(r.version>SY.ver)fusionar(r.data,r.version)}catch(e){}}
-async function revisar(){if(!enNube())return;if(SY.esperaPago&&Date.now()-SY.esperaPago.ts>3e5)SY.esperaPago=null;if(SY.info&&Date.now()-(SY.infoTs||0)>(SY.esperaPago?4e3:SY.info.estado==='bloqueado'?15e3:3e5))refrescarInfo();try{const v=await NB.version(LID);estadoNube('ok');if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
+async function revisar(){if(!enNube())return;if(SY.esperaPago&&Date.now()-SY.esperaPago.ts>3e5)SY.esperaPago=null;if(SY.info&&Date.now()-(SY.infoTs||0)>(SY.esperaPago?4e3:SY.info.estado==='bloqueado'?15e3:3e5))refrescarInfo();try{const v=await NB.version(LID);estadoNube('ok');if(EQ&&(v===-2||(v===-1&&!SY.sinPin))){conectar();return}if(SY.sinPin)return;if(v>SY.ver)pull();else if(makeDiff(SY.base,S))push()}catch(e){estadoNube('off')}}
 async function conectar(){
   try{
     if(!enNube())return;
     const r=await NB.leer(LID);
+    if(r&&r.desvinculado)return desvincular('Este equipo fue desconectado del local. Pedile al dueño un código nuevo.');
     if(!r){toast('No tenés acceso a ese local',1);LID='';ls('taca-local',null);AUTH.locales=null;despuesDeEntrar();return}
     ponerInfo(r);
+    if(r.sinPin){if(rol){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}}
+      S=completar(r.data);SY.base=clone(r.data);SY.ver=-1;SY.sinPin=true;estadoNube('ok');renderSafe();
+      if(!SY.escucha){SY.escucha=true;NB.escuchar(LID,()=>pull());setInterval(revisar,5000)}return}
+    if(SY.sinPin){SY.sinPin=false;SY.base=null}
     if(!SY.base){S=completar(r.data);SY.base=clone(r.data);SY.ver=r.version;saveLocal();persistSync();renderSafe()}
     else if(r.version>SY.ver){fusionar(r.data,r.version);push()}
     else if(makeDiff(SY.base,S))push();
@@ -437,9 +446,16 @@ function supaNube(sb){
       const j=await r.json().catch(()=>({}));if(!r.ok||!j.url)return{error:j.error||'No se pudo abrir Mercado Pago'};return j},
     adminPlan:(id,plan,dias,nota)=>rpc('taca_admin_plan',{p_id:id,p_plan:plan,p_dias:dias||0,p_nota:nota??null}),
     crearLocal:(n,d)=>rpc('taca_crear_local',{p_nombre:n,p_data:d}),
-    leer:id=>rpc('taca_leer',{p_id:id}),
-    version:id=>rpc('taca_version',{p_id:id}),
-    guardar:(id,d,v)=>rpc('taca_guardar',{p_id:id,p_data:d,p_version:v}),
+    leer:id=>EQ?rpc('taca_eq_leer',{p_token:EQ.t}):rpc('taca_leer',{p_id:id}),
+    version:id=>EQ?rpc('taca_eq_version',{p_token:EQ.t}):rpc('taca_version',{p_id:id}),
+    guardar:(id,d,v)=>EQ?rpc('taca_eq_guardar',{p_token:EQ.t,p_data:d,p_version:v}):rpc('taca_guardar',{p_id:id,p_data:d,p_version:v}),
+    async pin(id,pin){if(EQ)return rpc('taca_eq_pin',{p_token:EQ.t,p_pin:pin});const p=await rpc('taca_pin_verificar',{p_id:id,p_pin:pin});return p?{ok:true,persona:p}:{ok:false,error:'PIN incorrecto'}},
+    pinSalir:()=>EQ?rpc('taca_eq_salir',{p_token:EQ.t}):Promise.resolve(),
+    pinLibre:(id,pin,salvo)=>rpc('taca_pin_libre',{p_id:id,p_pin:pin,p_salvo:salvo||''}),
+    eqCodigo:(id,nombre)=>rpc('taca_eq_codigo',{p_id:id,p_nombre:nombre}),
+    eqVincular:codigo=>rpc('taca_eq_vincular',{p_codigo:codigo}),
+    eqLista:id=>rpc('taca_eq_lista',{p_id:id}),
+    eqQuitar:(id,eid)=>rpc('taca_eq_quitar',{p_id:id,p_eid:eid}),
     archivar:(id,dia,d)=>rpc('taca_archivar',{p_id:id,p_dia:dia,p_data:d}),
     historialDia:(id,hid)=>rpc('taca_historial_dia',{p_id:id,p_hid:hid}),
     async respaldo(acc){const t=await this.auth.token();const h={Authorization:'Bearer '+t};
@@ -451,11 +467,18 @@ function supaNube(sb){
     avisar(){if(ch)ch.send({type:'broadcast',event:'v',payload:{}}).catch(()=>{})}
   };
 }
+// Mismo criterio que taca_filtrar / taca_fusionar_rol del servidor (lo usa el servidor de prueba)
+const CLAVES_DUENO=['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio'];
+function filtrarRol(d,r){if(r==='dueno')return d;const x=clone(d);x.cierres=[];x.audit=[];return x}
+function fusionarRol(o,n,r){if(r==='dueno')return n;const x=clone(n);CLAVES_DUENO.forEach(k=>{if(k in o)x[k]=clone(o[k]);else delete x[k]});
+  const ia=new Set((o.audit||[]).map(a=>a.id));x.audit=(o.audit||[]).concat((n.audit||[]).filter(a=>!ia.has(a.id)));
+  const ic=new Set((n.cobros||[]).map(c=>c.id));x.cobros=(n.cobros||[]).concat((o.cobros||[]).filter(c=>!ic.has(c.id)));return x}
 // Servidor de prueba dentro del navegador (?mock=1): imita las funciones SQL para probar varios equipos a la vez.
 function mockNube(){
   const DB='taca-mock-db',get=()=>JSON.parse(ls(DB)||'{}'),put=x=>ls(DB,JSON.stringify(x));
   const US='taca-mock-users',users=()=>JSON.parse(ls(US)||'{}'),ses=()=>{try{return JSON.parse(sessionStorage.getItem('taca-mock-sesion')||ls('taca-mock-sesion'))}catch(e){return null}};
   const miembro=id=>{const r=get()[id],u=ses();return !!(r&&u&&(r.miembros||[]).includes(u.id))};
+  const eqRol=(db,e)=>{if(!e||!e.persona||!(e.hasta>Date.now()))return null;const p=((db[e.local].data.equipo)||[]).find(x=>x.id===e.persona);return p?p.rol:null};
   const cbs=[];
   const bc=('BroadcastChannel' in window)?new BroadcastChannel('taca-mock'):null;
   const later=f=>new Promise((ok,ko)=>setTimeout(()=>{try{ok(f())}catch(e){ko(e)}},20+Math.random()*60));
@@ -485,16 +508,37 @@ function mockNube(){
     misLocales:()=>later(()=>{const u=ses();if(!u)return[];const db=get();return Object.entries(db).filter(([,r])=>(r.miembros||[]).includes(u.id)).map(([id,r])=>({id,nombre:r.data.negocio,rol:'dueno',plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}))}),
     crearLocal:(n,d)=>later(()=>{const u=ses();if(!u)return{ok:false,error:'Iniciá sesión primero'};const db=get(),id=norm(n).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+uid().slice(0,6);
       db[id]={data:d,version:1,miembros:[u.id],creado:new Date().toISOString(),actualizado:new Date().toISOString(),prueba_hasta:new Date(Date.now()+14*864e5).toISOString()};put(db);return{ok:true,id}}),
-    leer:id=>later(()=>{const r=get()[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
-    version:id=>later(()=>{const r=get()[id];return r&&miembro(id)?r.version:null}),
+    leer:id=>later(()=>{const db=get();if(EQ){const e=(db.__eq||[]).find(x=>x.t===EQ.t&&x.activo);if(!e)return{desvinculado:true};const r=db[e.local],ro=eqRol(db,e);
+      return{data:ro?filtrarRol(r.data,ro):{negocio:r.data.negocio,setup:true,equipo:(r.data.equipo||[]).map(x=>({id:x.id,nombre:x.nombre,rol:x.rol}))},version:ro?r.version:-1,sinPin:!ro,rol:ro,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}}
+      const r=db[id];return r&&miembro(id)?{data:clone(r.data),version:r.version,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,abono:r.abono||null,mp_estado:r.mp_estado||null,whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,estado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)}:null}),
+    version:id=>later(()=>{const db=get();if(EQ){const e=(db.__eq||[]).find(x=>x.t===EQ.t&&x.activo);if(!e)return -2;return eqRol(db,e)?db[e.local].version:-1}const r=db[id];return r&&miembro(id)?r.version:null}),
     archivar:(id,dia,d)=>later(()=>{const db=get();if(!miembro(id))return{ok:false,error:'sin acceso'};db.__hist=db.__hist||[];const n=db.__hist.length+1;db.__hist.push({id:n,local:id,dia,ts:new Date().toISOString(),data:clone(d)});put(db);return{ok:true,id:n}}),
     historialDia:(id,hid)=>later(()=>{const h=(get().__hist||[]).find(x=>x.id===+hid&&x.local===id);return h&&miembro(id)?{dia:h.dia,ts:h.ts,data:clone(h.data)}:null}),
     respaldo:acc=>later(()=>acc==='ahora'?{ok:true,locales:Object.keys(get()).filter(k=>k[0]!=='_').length}:new Blob([JSON.stringify(get())],{type:'application/json'})),
-    guardar:(id,d,v)=>later(()=>{const db=get(),r=db[id];
-      if(!r||!miembro(id))return{ok:false,error:'sin acceso'};
+    guardar:(id,d,v)=>later(()=>{const db=get();
+      if(EQ){const e=(db.__eq||[]).find(x=>x.t===EQ.t&&x.activo);if(!e)return{ok:false,error:'desvinculado'};const ro=eqRol(db,e);if(!ro)return{ok:false,error:'pin'};id=e.local}
+      const r=db[id];
+      if(!r||(!EQ&&!miembro(id)))return{ok:false,error:'sin acceso'};
+      const ro=EQ?eqRol(db,db.__eq.find(x=>x.t===EQ.t)):'dueno';
       if(estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado')return{ok:false,error:'bloqueado'};
-      if(r.version!==v)return{ok:false,data:r.data,version:r.version};
+      if(r.version!==v)return{ok:false,data:filtrarRol(r.data,ro),version:r.version};
+      d=fusionarRol(r.data,d,ro);if(ro!=='dueno')d.equipo=clone(r.data.equipo||[]);
+      r.pines=r.pines||{};const ids=new Set((d.equipo||[]).map(x=>x.id));
+      (d.equipo||[]).forEach(x=>{if(/^\d{4,6}$/.test(x.pin||'')&&!Object.entries(r.pines).some(([pid,pp])=>pid!==x.id&&ids.has(pid)&&pp===x.pin))r.pines[x.id]=x.pin;delete x.pin});
       r.data=d;r.version++;r.actualizado=new Date().toISOString();put(db);return{ok:true,version:r.version}}),
+    pin:(id,pin)=>later(()=>{const db=get();let e=null;
+      if(EQ){e=(db.__eq||[]).find(x=>x.t===EQ.t&&x.activo);if(!e)return{ok:false,error:'desvinculado'};id=e.local}
+      else if(!miembro(id))return{ok:false,error:'sin acceso'};
+      const r=db[id],pid=Object.entries(r.pines||{}).find(([k,v])=>v===pin&&(r.data.equipo||[]).some(x=>x.id===k));
+      const p=pid&&(r.data.equipo||[]).find(x=>x.id===pid[0]);if(!p)return{ok:false,error:'PIN incorrecto'};
+      if(e){e.persona=p.id;e.hasta=Date.now()+16*36e5;put(db)}return{ok:true,persona:clone(p)}}),
+    pinSalir:()=>later(()=>{if(!EQ)return;const db=get(),e=(db.__eq||[]).find(x=>x.t===EQ.t);if(e){e.persona=null;put(db)}}),
+    pinLibre:(id,pin,salvo)=>later(()=>{const r=get()[id];return !Object.entries((r&&r.pines)||{}).some(([k,v])=>v===pin&&k!==salvo&&(r.data.equipo||[]).some(x=>x.id===k))}),
+    eqCodigo:(id,nombre)=>later(()=>{if(!miembro(id))return{ok:false,error:'sin acceso'};const db=get(),c=Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();db.__cod=db.__cod||{};db.__cod[c.replace('-','')]={local:id,nombre,exp:Date.now()+9e5};put(db);return{ok:true,codigo:c}}),
+    eqVincular:codigo=>later(()=>{const db=get(),k=String(codigo).toUpperCase().replace(/[^A-Z0-9]/g,''),c=(db.__cod||{})[k];if(!c||c.usado||c.exp<Date.now())return{ok:false,error:'El código no es válido o ya venció. Pedile uno nuevo al dueño.'};c.usado=true;
+      const t='t'+uid()+uid();db.__eq=db.__eq||[];db.__eq.push({id:db.__eq.length+1,t,local:c.local,nombre:c.nombre,activo:true,creado:new Date().toISOString()});put(db);return{ok:true,token:t,local:c.local,nombre:c.nombre,negocio:db[c.local].data.negocio}}),
+    eqLista:id=>later(()=>(get().__eq||[]).filter(e=>e.local===id&&e.activo).map(e=>({id:e.id,nombre:e.nombre,creado:e.creado,persona:e.persona&&e.hasta>Date.now()?((get()[id].data.equipo||[]).find(x=>x.id===e.persona)||{}).nombre:null}))),
+    eqQuitar:(id,eid)=>later(()=>{const db=get(),e=(db.__eq||[]).find(x=>x.id===+eid&&x.local===id);if(e){e.activo=false;e.persona=null;put(db)}return{ok:true}}),
     carta:(id,m)=>later(()=>{const r=get()[id];if(!r)return null;const d=r.data;
       return{version:r.version,pausado:estadoPlan(r.plan,r.prueba_hasta,r.pagado_hasta)==='bloqueado',negocio:d.negocio,mesas:d.mesas,platos:d.platos,insumos:d.insumos.map(i=>({id:i.id,stock:i.stock})),
         pedidos:d.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===m&&!p.cobrado&&!p.anulado),llamados:(d.llamados||[]).filter(l=>l.mesa===m)}}),
@@ -515,6 +559,7 @@ function mockNube(){
 /* ---------- cuentas: registro, locales y primeros pasos ---------- */
 const AUTH={user:null,cargando:true,locales:null,aviso:'',vista:'entrar',recuperando:/type=recovery/.test(location.hash+location.search),ocupado:false};
 if(QS_PRE('crear')==='1')AUTH.vista='crear';
+if(ls('taca-aviso')){AUTH.aviso=String(ls('taca-aviso')).replace(/[<>&]/g,'');ls('taca-aviso',null)}
 let personaId=null;try{personaId=sessionStorage.getItem('taca-persona')}catch(e){}
 let W=null; // asistente de primeros pasos
 function modoDemo(){return !NB||ls('taca-modo')==='demo'}
@@ -572,6 +617,7 @@ async function arrancarCuentas(){
     if(QS_PRE('pago')){history.replaceState(null,'',location.pathname+(QS_PRE('mock')?'?mock=1':''));setTimeout(()=>toast('Estamos confirmando tu pago con Mercado Pago… puede tardar unos minutos.'),800)}
     if(NB&&NB._acreditar)setTimeout(()=>NB._acreditar(),1200)}}catch(e){}
   if(modoDemo()||cloudClient()){AUTH.cargando=false;return}
+  if(EQ){AUTH.user={id:'equipo',email:EQ.e||'Equipo',equipo:true};AUTH.cargando=false;conectar();render();return}
   try{AUTH.user=await NB.auth.sesion()}catch(e){AUTH.user=null}
   AUTH.cargando=false;
   NB.auth.onCambio((ev,u)=>{if(ev==='PASSWORD_RECOVERY'){AUTH.recuperando=true}
@@ -581,7 +627,7 @@ async function arrancarCuentas(){
   if(AUTH.user){verAdmin();if(LID)conectar();else despuesDeEntrar()}
   render();
 }
-function verAdmin(){if(NB&&NB.esAdmin&&AUTH.user)NB.esAdmin().then(a=>{if(!!a!==!!AUTH.admin){AUTH.admin=!!a;renderSafe()}}).catch(()=>{})}
+function verAdmin(){if(NB&&NB.esAdmin&&AUTH.user&&!EQ)NB.esAdmin().then(a=>{if(!!a!==!!AUTH.admin){AUTH.admin=!!a;renderSafe()}}).catch(()=>{})}
 async function despuesDeEntrar(){
   verAdmin();
   if(LID){conectar();return}
@@ -612,10 +658,11 @@ function vInicio(){
   else if(v==='crear')cuerpo=`<h2>Probá ta-ca 14 días gratis</h2><p class="muted" style="margin:0 0 6px;font-size:14px">Sin tarjeta. Cancelás cuando quieras.</p>
 <form data-f="registro"><input name="local" placeholder="Nombre de tu local" autocomplete="organization" required><input name="email" type="email" placeholder="Tu email" autocomplete="email" required><input name="clave" type="password" minlength="6" placeholder="Contraseña (mín. 6)" autocomplete="new-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Creando…':'Crear mi cuenta'}</button><p class="muted" style="font-size:12px;margin:2px 0 0">Al crear tu cuenta aceptás los <a href="/terminos" target="_blank">Términos</a> y la <a href="/privacidad" target="_blank">Política de privacidad</a>.</p></form>
 <p style="font-size:14px">¿Ya tenés cuenta? <button class="link" data-a="authVista" data-v="entrar">Entrá</button></p>`;
+  else if(v==='equipo')cuerpo=`<h2>Soy del equipo de un local</h2><p class="muted" style="margin:0 0 6px;font-size:14px">Pedile al dueño un código: lo saca en <b>QR y ajustes › Equipos del local › Vincular un equipo</b>.</p><form data-f="vincular"><input name="codigo" placeholder="Código (ej. K7P2-9QXM)" autocomplete="off" autocapitalize="characters" required style="text-align:center;letter-spacing:.15em;font-size:20px"><button class="primary" ${oc}>${AUTH.ocupado?'Vinculando…':'Vincular este equipo'}</button></form><p style="font-size:14px"><button class="link" data-a="authVista" data-v="entrar">Soy el dueño: entrar con mi cuenta</button></p>`;
   else if(v==='olvide')cuerpo=`<h2>Recuperar contraseña</h2><form data-f="olvide"><input name="email" type="email" placeholder="Tu email" autocomplete="email" required><button class="primary" ${oc}>Mandarme un link</button></form><p style="font-size:14px"><button class="link" data-a="authVista" data-v="entrar">Volver</button></p>`;
   else cuerpo=`<h2>Entrá a tu local</h2><form data-f="entrar"><input name="email" type="email" placeholder="Email" autocomplete="email" required><input name="clave" type="password" placeholder="Contraseña" autocomplete="current-password" required><button class="primary" ${oc}>${AUTH.ocupado?'Entrando…':'Entrar'}</button></form>
 <p style="font-size:14px;margin-bottom:4px"><button class="link" data-a="authVista" data-v="olvide">Me olvidé la contraseña</button></p>
-<p style="font-size:14px;margin-top:4px">¿Todavía no usás ta-ca? <button class="link" data-a="authVista" data-v="crear">Probalo 14 días gratis</button></p>`;
+<p style="font-size:14px;margin-top:4px">¿Todavía no usás ta-ca? <button class="link" data-a="authVista" data-v="crear">Probalo 14 días gratis</button></p><p style="font-size:14px;margin-top:4px">¿Trabajás en un local? <button class="link" data-a="authVista" data-v="equipo">Entrá con el código del dueño</button></p>`;
   return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">tu local, encendido</p>
 ${AUTH.aviso?`<p class="hint" style="margin-top:14px">${AUTH.aviso}</p>`:''}<div style="text-align:left;margin-top:16px" class="auth">${cuerpo}</div>
 ${AUTH.recuperando?'':'<p style="margin-top:18px"><button class="ghost small" data-a="entrarDemo">Ver la demo sin registrarme</button></p>'}</div></div>`;
@@ -689,9 +736,18 @@ ${W.equipo.map((x,i)=>`<div class="row"><span><b>${esc(x.nombre)}</b> · ${ROLES
 <div class="btns" style="margin-top:16px"><button class="ghost" data-a="wPaso" data-p="3">← Volver</button><button class="primary" data-a="wFin">${W.equipo.length?'Terminar':'Terminar, lo sumo después'} ✓</button></div>`;
   return`<div class="login"><div class="card" style="max-width:520px;text-align:left"><div style="text-align:center">${LOGO}<p class="tagline" style="margin-top:4px">Primeros pasos · ${esc(S.negocio)}</p></div>${barra}${c}</div></div>`;
 }
+async function pinOk(pin,salvo){if(!pinLibre(pin,salvo))return false;if(enNube()&&!EQ&&NB.pinLibre){try{return !!(await NB.pinLibre(LID,pin,salvo))}catch(e){return true}}return true}
 function pinLibre(pin,salvo){return /^\d{4,6}$/.test(pin)&&!(S.equipo||[]).some(p=>p.pin===pin&&p.id!==salvo)&&!(W&&W.equipo.some(p=>p.pin===pin))&&!(W&&W.pin===pin&&!salvo)}
 
 /* equipo y cuenta (en Ajustes) */
+let EQL=null;
+function vEquipos(){
+  if(!enNube()||EQ||!NB.eqLista)return'';
+  if(!EQL||EQL.local!==LID){EQL={local:LID,cargando:true};NB.eqLista(LID).then(l=>{EQL={local:LID,l:l||[]};renderSafe()}).catch(()=>{EQL={local:LID,l:[],error:true};renderSafe()})}
+  const l=EQL.l||[];
+  return`<section class="card"><h2>📲 Equipos del local</h2><p class="muted" style="margin-top:0;font-size:14px">Las tablets y celulares del personal se vinculan con un código, <b>sin tu email ni tu contraseña</b>. Cada persona entra con su PIN y ve solo lo de su puesto. Si perdés un equipo, lo desconectás desde acá.</p>
+${EQL.cargando?'<p class="muted">Cargando…</p>':l.map(e=>`<div class="row"><span><b>${esc(e.nombre)}</b><small class="muted"> ${e.persona?'· ahora: '+esc(e.persona):'· sin nadie adentro'}</small></span><button class="small ghost bad" data-a="eqDesconectar" data-id="${e.id}" data-n="${esc(e.nombre)}">Desconectar</button></div>`).join('')||'<p class="muted" style="font-size:14px">Todavía no vinculaste ningún equipo.</p>'}
+<div class="btns"><button class="primary" data-a="eqVincularNuevo">+ Vincular un equipo</button></div></section>`}
 function vEquipo(){
   return`<section class="card"><h2>👥 Equipo</h2><p class="muted" style="margin-top:0;font-size:14px">Cada persona entra con su PIN. Caja no ve el saldo; mozo y cocina solo ven lo suyo.</p>
 ${(S.equipo||[]).map(p=>`<div class="row"><span><b>${esc(p.nombre)}</b></span><span style="display:flex;gap:6px;align-items:center"><select data-eqrol="${p.id}" style="width:auto;padding:4px 8px">${Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${p.rol===k?'selected':''}>${k==='dueno'?'Dueño / encargado':r.nombre}</option>`).join('')}</select><button class="small" data-a="eqPin" data-id="${p.id}">PIN</button><button class="small ghost bad" data-a="eqQuitar" data-id="${p.id}" aria-label="Quitar a ${esc(p.nombre)}">✕</button></span></div>`).join('')}
@@ -700,11 +756,13 @@ ${(S.equipo||[]).map(p=>`<div class="row"><span><b>${esc(p.nombre)}</b></span><s
 function vCuenta(){
   if(modoDemo())return NB?`<section class="card"><h2>Estás en la demo</h2><p class="muted" style="margin-top:0">Los datos de la demo quedan solo en este equipo. Para usar ta-ca en tu local, creá tu cuenta: 14 días gratis.</p><div class="btns"><button class="primary" data-a="salirDemo">Crear mi cuenta</button></div></section>`:'';
   const d=diasPrueba();
+  if(EQ)return`<section class="card"><h2>📲 Este equipo ${chipNube()}</h2><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div><div class="row"><span>Equipo</span><b>${esc(EQ.e||'')}</b></div>
+<p class="muted" style="font-size:14px">Está vinculado con un código del dueño. No tiene la contraseña de la cuenta.</p><div class="btns"><button class="ghost bad" data-a="desvincularEste">Desvincular este equipo</button></div></section>`;
   return`<section class="card"><h2>☁️ Cuenta ${chipNube()}</h2>
 <div class="row"><span>Cuenta</span><b>${esc(AUTH.user?AUTH.user.email:'')}</b></div><div class="row"><span>Local</span><b>${esc(S.negocio)}</b></div>
 ${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`${SY.info.abono?'Plan '+(PLANES.find(x=>x.id===SY.info.abono)||{nombre:SY.info.abono}).nombre+' · ':''}al día hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
   return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div>${SY.info.mp_estado?`<div class="row"><span>Mercado Pago</span><b>${{authorized:'Débito automático activo ✓',pending:'Esperando que cargues la tarjeta',paused:'Pausado',cancelled:'Dado de baja'}[SY.info.mp_estado]||esc(SY.info.mp_estado)}</b></div>`:''}<div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
-<p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo: abrí ta-ca en ese equipo, entrá con este email y contraseña y elegí el local. Después cada persona usa su PIN.</p>
+<p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo usá <b>📲 Equipos del local › Vincular un equipo</b>: así no tenés que poner tu contraseña en esos equipos.</p>
 <div class="btns"><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
 
@@ -796,9 +854,9 @@ function ingenieria(c){
 
 /* ---------- vistas ---------- */
 function vLogin(){const demo=modoDemo();return`<div class="login"><div class="card">${LOGO}<p class="tagline" style="margin-top:4px">${esc(S.negocio)}</p>
-${demo?'':'<p style="margin:14px 0 4px;font-weight:700">PIN del equipo</p><p class="muted" style="margin:0 0 8px;font-size:13px">Son los 4 a 6 números que elegiste al crear el local. No es la contraseña de tu cuenta.</p>'}<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="PIN" maxlength="6" pattern="[0-9]{4,6}" title="Solo números, de 4 a 6" oninput="this.value=this.value.replace(/\\D/g,'')" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>${demo?'':'<p style="font-size:13px;margin:6px 0"><button class="link" data-a="olvidePin">¿Olvidaste tu PIN?</button></p>'}
+${demo?'':'<p style="margin:14px 0 4px;font-weight:700">PIN del equipo</p><p class="muted" style="margin:0 0 8px;font-size:13px">Son los 4 a 6 números que elegiste al crear el local. No es la contraseña de tu cuenta.</p>'}<form data-f="login"><input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" placeholder="PIN" maxlength="6" pattern="[0-9]{4,6}" title="Solo números, de 4 a 6" oninput="this.value=this.value.replace(/\\D/g,'')" required autofocus style="text-align:center;font-size:22px;letter-spacing:.3em"><button class="primary">Entrar</button></form>${demo?'':EQ?'<p class="muted" style="font-size:13px;margin:6px 0">¿Te olvidaste el PIN? Pedile al dueño que te ponga uno nuevo.</p>':'<p style="font-size:13px;margin:6px 0"><button class="link" data-a="olvidePin">¿Olvidaste tu PIN?</button></p>'}
 ${demo?`<p class="hint">Demo · PIN de prueba: Dueño 1234 · Cajera 0000 · Mozo 2222 · Cocina 1111</p><p><button class="ghost" data-a="abrirMesa" data-n="1">📱 Ver la carta como cliente (Mesa 1)</button></p>${NB?'<p style="font-size:14px"><button class="link" data-a="salirDemo">Salir de la demo y crear mi cuenta</button></p>':''}`
-:`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
+:EQ?`<p style="font-size:13px;color:var(--muted)">📲 ${esc(EQ.e||'Equipo')} · <button class="link" data-a="desvincularEste">Desvincular</button></p>`:`<p style="font-size:13px;color:var(--muted)">${esc(AUTH.user?AUTH.user.email:'')} · <button class="link" data-a="cambiarLocal">Cambiar de local</button> · <button class="link" data-a="cerrarSesion">Cerrar sesión</button></p>`}</div></div>`}
 
 function badge(t){
   let n=0;
@@ -1205,7 +1263,7 @@ function vMesas(){
 <div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label>
 <div class="inline"><label>Costo de envío<input data-set="envio" inputmode="decimal" value="${S.envio}"></label><label>Descuento máximo de la cajera (%)<input data-set="descMax" inputmode="decimal" value="${S.descMax}"></label></div>
 <label>Alias para transferencias<input data-set="alias" value="${esc(S.alias)}"></label></section>
-${vCuenta()}${vCobroMP()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
+${vCuenta()}${vEquipos()}${vCobroMP()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
 }
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
@@ -1266,7 +1324,7 @@ const A={
   closeOv(b,e){if(e.target===b)closeModal()},
   close(){closeModal()},
   tab(b){tab=b.dataset.t;render();scrollTo(0,0)},
-  logout(){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}render()},
+  async logout(){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}if(EQ){try{await NB.pinSalir()}catch(e){}conectar()}render()},
   abrirMesa(b){location.hash='mesa-'+b.dataset.n},
   salirCliente(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);clienteMode=null;render()},
   mas(b){const p=plato(b.dataset.id);if(p.mods.length){pendingMods=p.id;
@@ -1410,6 +1468,11 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   desconectar(){modal(`<h2>¿Desconectar este equipo?</h2><p class="muted">Este equipo deja de sincronizar con el local <b>${esc(LID)}</b>. Los datos en la nube no se borran.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="desconectarOk">Desconectar</button></div>`)},
   desconectarOk(){try{localStorage.removeItem('taca-local');localStorage.removeItem(K+'-sync')}catch(e){}location.reload()},
   authVista(b){AUTH.vista=b.dataset.v;AUTH.aviso='';render()},
+  eqVincularNuevo(){modal(`<h2>Vincular un equipo</h2><form data-f="eqCodigo"><label>¿Qué equipo es?<input name="nombre" placeholder="Ej: Tablet cocina, Celular de Juan" maxlength="40" required></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Sacar código</button></div></form>`)},
+  eqDesconectar(b){modal(`<h2>Desconectar ${esc(b.dataset.n)}</h2><p class="muted">Ese equipo deja de entrar al local al instante. Para volver a usarlo, lo vinculás con un código nuevo.</p><div class="btns"><button class="ghost" data-a="close">Volver</button><button class="bad" data-a="eqDesconectarOk" data-id="${b.dataset.id}">Desconectar</button></div>`)},
+  async eqDesconectarOk(b){try{await NB.eqQuitar(LID,+b.dataset.id);audit('Equipo','Se desconectó un equipo vinculado');save();EQL=null;closeModal();render();toast('Equipo desconectado')}catch(e){toast(errMsg(e),1)}},
+  desvincularEste(){modal(`<h2>Desvincular este equipo</h2><p class="muted">Para volver a usarlo vas a necesitar un código nuevo del dueño.</p><div class="btns"><button class="ghost" data-a="close">Volver</button><button class="bad" data-a="desvincularOk">Desvincular</button></div>`)},
+  async desvincularOk(){try{await NB.pinSalir()}catch(e){}desvincular()},
   entrarDemo(){ls('taca-modo','demo');location.reload()},
   salirDemo(){ls('taca-modo',null);try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}location.hash='';location.reload()},
   elegirLocal(b){elegirLocal(b.dataset.id)},
@@ -1423,7 +1486,7 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   waVer(b){WAV=b.dataset.tel;render()},
   verPlanes(){modal(`<h2>Planes de ta-ca</h2>${vPlanes()}<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`,true)},
   async yaPague(b){b.disabled=true;b.textContent='Revisando…';await refrescarInfo();if(bloqueado()){toast('Todavía figura sin pagar. Si ya pagaste, en un rato se activa.',1);render()}},
-  cerrarSesion(){AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
+  cerrarSesion(){if(EQ)return A.desvincularEste();AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
   admAbrir(){AUTH.panel=true;closeModal();cargarAdmin()},
   admCerrar(){AUTH.panel=false;render()},
   admRecargar(){cargarAdmin()},
@@ -1474,6 +1537,12 @@ const F={
     if(m&&choque(d.fecha,d.hora,m))return toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);
     S.reservas.push({id:uid(),nombre:d.nombre.trim(),tel:d.tel.trim(),personas:per,fecha:d.fecha,hora:d.hora,mesa:m,nota:d.nota.trim(),estado:'confirmada',ts:Date.now(),por:yo()});
     rFecha=d.fecha;save();render();toast('Reserva guardada ✓')},
+  async vincular(d){AUTH.ocupado=true;render();try{const r=await NB.eqVincular(d.codigo);AUTH.ocupado=false;if(!r||!r.ok){AUTH.aviso=esc((r&&r.error)||'No se pudo vincular');return render()}
+      ls('taca-eq',JSON.stringify({t:r.token,l:r.local,e:r.nombre,n:r.negocio}));ls('taca-modo',null);ls('taca-local',null);ls(K+'-sync',null);location.reload()}
+    catch(e){AUTH.ocupado=false;AUTH.aviso=esc(errMsg(e));render()}},
+  async eqCodigo(d){try{const r=await NB.eqCodigo(LID,d.nombre.trim());if(!r||!r.ok)throw new Error((r&&r.error)||'No se pudo');EQL=null;
+      modal(`<h2>Código para ${esc(d.nombre.trim())}</h2><p style="text-align:center;font:800 34px/1.2 Unbounded,sans-serif;letter-spacing:.08em;margin:10px 0">${esc(r.codigo)}</p><ol style="font-size:14px;line-height:1.6;padding-left:18px"><li>En ese equipo abrí <b>${esc(location.host)}</b></li><li>Tocá <b>“¿Trabajás en un local? Entrá con el código del dueño”</b></li><li>Escribí el código. Vale <b>15 minutos</b> y una sola vez.</li></ol><p class="muted" style="font-size:13px">Después, cada persona entra en ese equipo con su PIN.</p><div class="btns"><button class="primary" data-a="close">Listo</button></div>`)}
+    catch(e){toast(errMsg(e),1)}},
   async entrar(d){AUTH.ocupado=true;AUTH.aviso='';render();try{AUTH.user=await NB.auth.entrar(d.email.trim(),d.clave);AUTH.ocupado=false;despuesDeEntrar();render()}catch(e){AUTH.ocupado=false;render();toast(errMsg(e),1)}},
   async registro(d){const nombre=d.local.trim();if(nombre.length<2)return toast('Poné el nombre del local',1);AUTH.ocupado=true;render();
     try{const r=await NB.auth.registrar(d.email.trim(),d.clave);AUTH.ocupado=false;ls('taca-pendiente',nombre);
@@ -1486,7 +1555,7 @@ const F={
   w1(d){S.negocio=d.negocio.trim()||S.negocio;S.tipo=d.tipo;S.mesas=Math.max(0,Math.min(60,parseInt(d.mesas)||0));S.envio=Math.max(0,pnum(d.envio));S.alias=d.alias.trim();W.paso=2;save();render()},
   w2(d){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);W.nombre=d.nombre.trim()||'Dueño';W.pin=d.pin;W.paso=3;render()},
   w4(d,f){if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);if(d.pin===W.pin||W.equipo.some(p=>p.pin===d.pin))return toast('Ese PIN ya lo usa otra persona',1);W.equipo.push({nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});render()},
-  eqNuevo(d){if(!d.nombre.trim())return;if(!pinLibre(d.pin))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);S.equipo.push({id:uid(),nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});audit('Equipo',`Se sumó ${d.nombre.trim()} (${ROLES[d.rol].nombre})`);save();render();toast('Persona sumada ✓')},
+  async eqNuevo(d){if(!d.nombre.trim())return;if(!(await pinOk(d.pin)))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);S.equipo.push({id:uid(),nombre:d.nombre.trim(),rol:d.rol,pin:d.pin});audit('Equipo',`Se sumó ${d.nombre.trim()} (${ROLES[d.rol].nombre})`);save();render();toast('Persona sumada ✓')},
   async olvidePin(d){
     if(d.pin!==d.pin2)return toast('Los PIN no coinciden',1);
     if(!/^\d{4,6}$/.test(d.pin))return toast('El PIN tiene que ser de 4 a 6 números',1);
@@ -1494,11 +1563,17 @@ const F={
     let locs=[];try{locs=AUTH.locales=await NB.misLocales()}catch(e){return toast(errMsg(e),1)}
     const r=(locs||[]).find(x=>x.id===LID);if(!r||r.rol!=='dueno')return toast('Solo el dueño del local puede recuperar el PIN',1);
     const p=(S.equipo||[]).find(x=>x.rol==='dueno');if(!p)return toast('No hay un dueño cargado en el equipo',1);
-    if(!pinLibre(d.pin,p.id))return toast('Ese PIN ya lo usa otra persona del equipo',1);
+    if(!(await pinOk(d.pin,p.id)))return toast('Ese PIN ya lo usa otra persona del equipo',1);
     p.pin=d.pin;audit('Equipo',`Recuperó el PIN de ${p.nombre} con la cuenta ${AUTH.user.email}`);save();closeModal();
     rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render();toast('PIN nuevo guardado ✓ Ya entraste')},
-  eqPin(d){if(!pinLibre(d.pin,d.id))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);const p=S.equipo.find(x=>x.id===d.id);if(p){p.pin=d.pin;audit('Equipo',`Cambió el PIN de ${p.nombre}`);save()}closeModal();render();toast('PIN cambiado ✓')},
-  login(d){const p=(S.equipo||[]).find(x=>x.pin===String(d.pin).trim());if(p){rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;render()}else toast('PIN incorrecto',1)},
+  async eqPin(d){if(!(await pinOk(d.pin,d.id)))return toast(/^\d{4,6}$/.test(d.pin)?'Ese PIN ya lo usa otra persona':'El PIN tiene que ser de 4 a 6 números',1);const p=S.equipo.find(x=>x.id===d.id);if(p){p.pin=d.pin;audit('Equipo',`Cambió el PIN de ${p.nombre}`);save()}closeModal();render();toast('PIN cambiado ✓')},
+  async login(d){const pin=String(d.pin).trim();let p=null;
+    if(enNube()&&NB.pin){try{const r=await NB.pin(LID,pin);if(r&&r.ok)p=r.persona;else if(r&&r.error==='desvinculado')return desvincular('Este equipo fue desconectado del local.');else return toast((r&&r.error)||'PIN incorrecto',1)}
+      catch(e){p=(S.equipo||[]).find(x=>x.pin&&x.pin===pin)||null;if(!p)return toast(/fetch|network/i.test(String(e&&e.message))?'Sin conexión, probá de nuevo':'PIN incorrecto',1)}}
+    else p=(S.equipo||[]).find(x=>x.pin===pin);
+    if(!p)return toast('PIN incorrecto',1);
+    rol=p.rol;personaId=p.id;try{sessionStorage.setItem('comanda-rol',rol);sessionStorage.setItem('taca-persona',p.id)}catch(e){}tab=null;
+    if(EQ){SY.base=null;await conectar()}render()},
   wa(d,f){const t=d.t;f.reset();waSend(t)},
   abrirTurno(d){const m=pnum(d.monto);if(!(m>=0))return toast('Monto inválido',1);if(!S.turnos.length&&!S.cobros.length)S.apertura=m;S.turno={id:uid(),cajera:yo(),apertura:m,inicio:Date.now()};audit('Apertura de turno',yo(),m);save();render();toast('Turno abierto ✓')},
   cerrarTurno(d){const m=pnum(d.monto);if(!(m>=0)||String(d.monto).trim()==='')return toast('Cargá el efectivo contado',1);const t=cerrarTurnoCon(m);save();closeModal();render();toast(rol==='dueno'&&t.diferencia?`Turno cerrado · ${t.diferencia>0?'sobran':'faltan'} ${fmt(Math.abs(t.diferencia))}`:'Turno cerrado ✓')},

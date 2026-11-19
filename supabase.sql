@@ -407,3 +407,273 @@ revoke all on public.taca_respaldos from anon, authenticated;
 grant select, insert, delete on public.taca_respaldos to service_role;
 grant usage, select on sequence public.taca_respaldos_id_seq to service_role;
 grant select on public.taca_miembros, public.taca_wa, public.taca_pagos to service_role;
+
+-- ============ Permisos de verdad: PIN en el servidor y equipos vinculados ============
+-- Los PIN ya no viajan a los equipos: se guardan cifrados acá y se verifican en el servidor.
+-- La tablet de la cajera o del mozo ya no entra con el email y la contraseña del dueño: se vincula
+-- con un código de un solo uso y cada persona entra con su PIN. Lo que ve y lo que puede cambiar
+-- depende de su rol, y eso lo decide el servidor.
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.taca_pines (
+  local_id   text not null references public.taca_locales(id) on delete cascade,
+  persona_id text not null,
+  hash       text not null,
+  primary key (local_id, persona_id)
+);
+create table if not exists public.taca_equipos (
+  id            bigserial primary key,
+  local_id      text not null references public.taca_locales(id) on delete cascade,
+  nombre        text not null,
+  token_hash    text not null unique,
+  creado        timestamptz not null default now(),
+  ultimo        timestamptz,
+  activo        boolean not null default true,
+  persona_id    text,
+  rol           text,
+  sesion_hasta  timestamptz,
+  intentos      integer not null default 0,
+  bloqueo_hasta timestamptz
+);
+create table if not exists public.taca_codigos (
+  codigo  text primary key,
+  local_id text not null references public.taca_locales(id) on delete cascade,
+  nombre  text not null,
+  expira  timestamptz not null,
+  usado   boolean not null default false
+);
+alter table public.taca_pines   enable row level security;
+alter table public.taca_equipos enable row level security;
+alter table public.taca_codigos enable row level security;
+revoke all on public.taca_pines, public.taca_equipos, public.taca_codigos from anon, authenticated;
+
+-- Guarda los PIN que vengan en data->equipo (cifrados) y devuelve los datos sin ningún PIN.
+create or replace function public.taca_pines_guardar(p_id text, d jsonb)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare e jsonb; otro boolean;
+begin
+  if d->'equipo' is null or jsonb_typeof(d->'equipo') <> 'array' then return d; end if;
+  for e in select x from jsonb_array_elements(d->'equipo') x loop
+    if (e->>'pin') ~ '^[0-9]{4,6}$' and coalesce(e->>'id', '') <> '' then
+      select exists (select 1 from taca_pines p where p.local_id = p_id and p.persona_id <> e->>'id'
+                       and p.hash = extensions.crypt(e->>'pin', p.hash)
+                       and exists (select 1 from jsonb_array_elements(d->'equipo') y where y->>'id' = p.persona_id)) into otro;
+      if not otro then
+        insert into taca_pines(local_id, persona_id, hash) values (p_id, e->>'id', extensions.crypt(e->>'pin', extensions.gen_salt('bf', 8)))
+        on conflict (local_id, persona_id) do update set hash = excluded.hash;
+      end if;
+    end if;
+  end loop;
+  return jsonb_set(d, '{equipo}', (select coalesce(jsonb_agg(x - 'pin' order by o), '[]'::jsonb)
+                                     from jsonb_array_elements(d->'equipo') with ordinality t(x, o)));
+end $$;
+
+-- Busca a la persona del equipo con ese PIN (solo personas que siguen en el equipo).
+create or replace function public.taca_pin_persona(p_id text, p_pin text)
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
+  select x from taca_locales l, jsonb_array_elements(coalesce(l.data->'equipo', '[]'::jsonb)) x
+   where l.id = p_id and exists (select 1 from taca_pines p where p.local_id = p_id and p.persona_id = x->>'id'
+                                   and p.hash = extensions.crypt(p_pin, p.hash))
+   limit 1;
+$$;
+
+-- Lo que ve cada rol. El dueño ve todo; el resto no ve el historial de cierres ni la auditoría.
+create or replace function public.taca_filtrar(d jsonb, p_rol text)
+returns jsonb language sql immutable as $$
+  select case when p_rol = 'dueno' then d else (d - 'cierres') || jsonb_build_object('audit', '[]'::jsonb, 'cierres', '[]'::jsonb) end;
+$$;
+
+-- Lo que puede cambiar cada rol. Si no es dueño: no toca la configuración ni el equipo, la auditoría
+-- solo suma (no se borra ni se edita) y ningún cobro desaparece.
+create or replace function public.taca_fusionar_rol(o jsonb, n jsonb, p_rol text)
+returns jsonb language plpgsql immutable as $$
+declare k text; r jsonb := n;
+begin
+  if p_rol = 'dueno' then return n; end if;
+  foreach k in array array['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio'] loop
+    if o ? k then r := jsonb_set(r, array[k], o->k); else r := r - k; end if;
+  end loop;
+  r := jsonb_set(r, '{audit}', coalesce(o->'audit', '[]'::jsonb) || coalesce((
+         select jsonb_agg(x) from jsonb_array_elements(coalesce(n->'audit', '[]'::jsonb)) x
+          where not exists (select 1 from jsonb_array_elements(coalesce(o->'audit', '[]'::jsonb)) y where y->>'id' = x->>'id')), '[]'::jsonb));
+  r := jsonb_set(r, '{cobros}', coalesce(n->'cobros', '[]'::jsonb) || coalesce((
+         select jsonb_agg(y) from jsonb_array_elements(coalesce(o->'cobros', '[]'::jsonb)) y
+          where not exists (select 1 from jsonb_array_elements(coalesce(n->'cobros', '[]'::jsonb)) x where x->>'id' = y->>'id')), '[]'::jsonb));
+  return r;
+end $$;
+
+-- El dueño (con su cuenta) también guarda los PIN cifrados.
+create or replace function public.taca_guardar(p_id text, p_data jsonb, p_version integer)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r taca_locales%rowtype; d jsonb;
+begin
+  if not taca_es_miembro(p_id) then return jsonb_build_object('ok', false, 'error', 'sin acceso'); end if;
+  select * into r from taca_locales where id = p_id for update;
+  if taca_estado_plan(r.plan, r.prueba_hasta, r.pagado_hasta) = 'bloqueado' then
+    return jsonb_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  if r.version <> p_version then
+    return jsonb_build_object('ok', false, 'data', r.data, 'version', r.version);
+  end if;
+  d := taca_pines_guardar(p_id, p_data);
+  update taca_locales set data = d, version = r.version + 1, updated_at = now(),
+         nombre = coalesce(nullif(d->>'negocio', ''), nombre) where id = p_id;
+  return jsonb_build_object('ok', true, 'version', r.version + 1);
+end $$;
+
+-- PIN en un equipo con la cuenta del dueño.
+create or replace function public.taca_pin_verificar(p_id text, p_pin text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when taca_es_miembro(p_id) then taca_pin_persona(p_id, p_pin) end;
+$$;
+create or replace function public.taca_pin_libre(p_id text, p_pin text, p_salvo text)
+returns boolean language sql stable security definer set search_path = public, extensions as $$
+  select taca_es_miembro(p_id) and not exists (
+    select 1 from taca_pines p, taca_locales l, jsonb_array_elements(coalesce(l.data->'equipo', '[]'::jsonb)) x
+     where l.id = p_id and p.local_id = p_id and x->>'id' = p.persona_id and p.persona_id <> coalesce(p_salvo, '')
+       and p.hash = extensions.crypt(p_pin, p.hash));
+$$;
+
+-- Vincular un equipo: el dueño pide un código, el equipo lo canjea por una llave propia.
+create or replace function public.taca_eq_codigo(p_id text, p_nombre text)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare c text; abc text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; i int;
+begin
+  if not taca_es_miembro(p_id) then return jsonb_build_object('ok', false, 'error', 'sin acceso'); end if;
+  c := '';
+  for i in 1..8 loop c := c || substr(abc, 1 + (get_byte(extensions.gen_random_bytes(1), 0) % 32), 1); end loop;
+  insert into taca_codigos(codigo, local_id, nombre, expira) values (c, p_id, left(coalesce(nullif(trim(p_nombre), ''), 'Equipo'), 40), now() + interval '15 minutes');
+  return jsonb_build_object('ok', true, 'codigo', substr(c, 1, 4) || '-' || substr(c, 5, 4));
+end $$;
+
+create or replace function public.taca_eq_vincular(p_codigo text)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare c taca_codigos%rowtype; t text; code text := upper(regexp_replace(coalesce(p_codigo, ''), '[^A-Za-z0-9]', '', 'g'));
+begin
+  select * into c from taca_codigos where codigo = code for update;
+  if not found or c.usado or c.expira < now() then
+    perform pg_sleep(0.5);
+    return jsonb_build_object('ok', false, 'error', 'El código no es válido o ya venció. Pedile uno nuevo al dueño.');
+  end if;
+  update taca_codigos set usado = true where codigo = code;
+  t := encode(extensions.gen_random_bytes(32), 'hex');
+  insert into taca_equipos(local_id, nombre, token_hash) values (c.local_id, c.nombre, encode(extensions.digest(t, 'sha256'), 'hex'));
+  return jsonb_build_object('ok', true, 'token', t, 'local', c.local_id, 'nombre', c.nombre,
+                            'negocio', (select coalesce(data->>'negocio', nombre) from taca_locales where id = c.local_id));
+end $$;
+
+create or replace function public.taca_eq_de(p_token text)
+returns taca_equipos language sql stable security definer set search_path = public, extensions as $$
+  select * from taca_equipos where token_hash = encode(extensions.digest(coalesce(p_token, ''), 'sha256'), 'hex') and activo;
+$$;
+
+create or replace function public.taca_eq_pin(p_token text, p_pin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare e taca_equipos%rowtype; p jsonb;
+begin
+  e := taca_eq_de(p_token);
+  if e.id is null then return jsonb_build_object('ok', false, 'error', 'desvinculado'); end if;
+  if e.bloqueo_hasta is not null and e.bloqueo_hasta > now() then
+    return jsonb_build_object('ok', false, 'error', 'Demasiados intentos. Esperá unos minutos.');
+  end if;
+  p := taca_pin_persona(e.local_id, p_pin);
+  if p is null then
+    update taca_equipos set intentos = case when intentos + 1 >= 8 then 0 else intentos + 1 end,
+           bloqueo_hasta = case when intentos + 1 >= 8 then now() + interval '10 minutes' else bloqueo_hasta end
+     where id = e.id;
+    return jsonb_build_object('ok', false, 'error', 'PIN incorrecto');
+  end if;
+  update taca_equipos set persona_id = p->>'id', rol = p->>'rol', sesion_hasta = now() + interval '16 hours',
+         intentos = 0, bloqueo_hasta = null, ultimo = now() where id = e.id;
+  return jsonb_build_object('ok', true, 'persona', p);
+end $$;
+
+create or replace function public.taca_eq_salir(p_token text)
+returns void language sql security definer set search_path = public as $$
+  update taca_equipos set persona_id = null, rol = null, sesion_hasta = null where id = (taca_eq_de(p_token)).id;
+$$;
+
+-- Sesión vigente del equipo: rol de la persona que entró con su PIN (y que sigue en el equipo con ese rol).
+create or replace function public.taca_eq_rol(e taca_equipos)
+returns text language sql stable security definer set search_path = public as $$
+  select case when e.id is not null and e.sesion_hasta > now() then
+    (select x->>'rol' from taca_locales l, jsonb_array_elements(coalesce(l.data->'equipo', '[]'::jsonb)) x
+      where l.id = e.local_id and x->>'id' = e.persona_id limit 1) end;
+$$;
+
+create or replace function public.taca_eq_leer(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare e taca_equipos%rowtype; r taca_locales%rowtype; ro text;
+begin
+  e := taca_eq_de(p_token);
+  if e.id is null then return jsonb_build_object('desvinculado', true); end if;
+  select * into r from taca_locales where id = e.local_id;
+  update taca_equipos set ultimo = now() where id = e.id;
+  ro := taca_eq_rol(e);
+  return jsonb_build_object(
+    'data', case when ro is null then jsonb_build_object('negocio', r.data->'negocio', 'setup', true,
+                   'equipo', (select coalesce(jsonb_agg(jsonb_build_object('id', x->>'id', 'nombre', x->>'nombre', 'rol', x->>'rol')), '[]'::jsonb)
+                                from jsonb_array_elements(coalesce(r.data->'equipo', '[]'::jsonb)) x))
+                 else taca_filtrar(r.data, ro) end,
+    'version', case when ro is null then -1 else r.version end, 'sinPin', ro is null, 'rol', ro, 'persona', e.persona_id,
+    'plan', r.plan, 'prueba_hasta', r.prueba_hasta, 'pagado_hasta', r.pagado_hasta,
+    'estado', taca_estado_plan(r.plan, r.prueba_hasta, r.pagado_hasta), 'abono', r.abono, 'mp_estado', r.mp_estado,
+    'whatsapp', (select numero from taca_wa w where w.local_id = r.id and w.activo));
+end $$;
+
+create or replace function public.taca_eq_version(p_token text)
+returns integer language plpgsql stable security definer set search_path = public as $$
+declare e taca_equipos%rowtype;
+begin
+  e := taca_eq_de(p_token);
+  if e.id is null then return -2; end if;
+  if taca_eq_rol(e) is null then return -1; end if;
+  return (select version from taca_locales where id = e.local_id);
+end $$;
+
+create or replace function public.taca_eq_guardar(p_token text, p_data jsonb, p_version integer)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare e taca_equipos%rowtype; r taca_locales%rowtype; ro text; d jsonb;
+begin
+  e := taca_eq_de(p_token);
+  if e.id is null then return jsonb_build_object('ok', false, 'error', 'desvinculado'); end if;
+  ro := taca_eq_rol(e);
+  if ro is null then return jsonb_build_object('ok', false, 'error', 'pin'); end if;
+  select * into r from taca_locales where id = e.local_id for update;
+  if taca_estado_plan(r.plan, r.prueba_hasta, r.pagado_hasta) = 'bloqueado' then
+    return jsonb_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  if r.version <> p_version then
+    return jsonb_build_object('ok', false, 'data', taca_filtrar(r.data, ro), 'version', r.version);
+  end if;
+  d := taca_fusionar_rol(r.data, p_data, ro);
+  if ro = 'dueno' then d := taca_pines_guardar(r.id, d); else d := jsonb_set(d, '{equipo}', coalesce(r.data->'equipo', '[]'::jsonb)); end if;
+  update taca_locales set data = d, version = r.version + 1, updated_at = now() where id = r.id;
+  update taca_equipos set ultimo = now() where id = e.id;
+  return jsonb_build_object('ok', true, 'version', r.version + 1);
+end $$;
+
+-- Equipos vinculados de un local (para el dueño) y desconectar uno.
+create or replace function public.taca_eq_lista(p_id text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when taca_es_miembro(p_id) then (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'nombre', nombre, 'creado', creado, 'ultimo', ultimo,
+           'persona', (select x->>'nombre' from taca_locales l, jsonb_array_elements(coalesce(l.data->'equipo', '[]'::jsonb)) x where l.id = p_id and x->>'id' = e.persona_id and e.sesion_hasta > now() limit 1))
+           order by creado), '[]'::jsonb) from taca_equipos e where local_id = p_id and activo) end;
+$$;
+create or replace function public.taca_eq_quitar(p_id text, p_eid bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not taca_es_miembro(p_id) then return jsonb_build_object('ok', false, 'error', 'sin acceso'); end if;
+  update taca_equipos set activo = false, persona_id = null, sesion_hasta = null where id = p_eid and local_id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke execute on function public.taca_pines_guardar(text, jsonb), public.taca_pin_persona(text, text), public.taca_eq_de(text), public.taca_eq_rol(taca_equipos) from public, anon, authenticated;
+grant execute on function public.taca_pin_verificar(text, text), public.taca_pin_libre(text, text, text), public.taca_eq_codigo(text, text),
+  public.taca_eq_lista(text), public.taca_eq_quitar(text, bigint) to authenticated;
+grant execute on function public.taca_eq_vincular(text), public.taca_eq_pin(text, text), public.taca_eq_salir(text),
+  public.taca_eq_leer(text), public.taca_eq_version(text), public.taca_eq_guardar(text, jsonb, integer) to anon, authenticated;
+
+-- Una sola vez: los PIN que estaban a la vista dentro de los datos pasan a guardarse cifrados.
+update public.taca_locales set data = public.taca_pines_guardar(id, data), version = version + 1
+ where exists (select 1 from jsonb_array_elements(coalesce(data->'equipo', '[]'::jsonb)) x where x ? 'pin');
