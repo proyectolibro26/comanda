@@ -2,6 +2,12 @@
   "functions": {
     "api/*.js": { "includeFiles": "nucleo.js" }
   },
+  "rewrites": [
+    { "source": "/api/alerta", "destination": "/api/sistema?r=alerta" },
+    { "source": "/api/respaldo", "destination": "/api/sistema?r=respaldo" },
+    { "source": "/api/estado", "destination": "/api/sistema?r=estado" },
+    { "source": "/api/wa-suscribir", "destination": "/api/sistema?r=wa-suscribir" }
+  ],
   "crons": [
     { "path": "/api/respaldo", "schedule": "0 7 * * *" }
   ]
