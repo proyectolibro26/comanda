@@ -99,6 +99,50 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 .kpi.acc{border-color:var(--acc);background:var(--acc2)}.kpi.acc b{color:var(--acc)}
 /* salón */
 .salon{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+/* plano del salón */
+.plano-wrap{overflow-x:auto;border-radius:16px;-webkit-overflow-scrolling:touch}
+.plano{position:relative;min-width:620px;border-radius:16px;border:1px solid var(--line);background-color:var(--card);background-image:radial-gradient(circle,color-mix(in srgb,var(--muted) 22%,transparent) 1px,transparent 1.2px);background-size:2% calc(2% * 1);user-select:none;-webkit-user-select:none}
+.plano>*{position:absolute;box-sizing:border-box}
+.pm{display:flex;align-items:center;justify-content:center;padding:0;border:2px solid var(--line);background:var(--bg);color:var(--txt);border-radius:10px;cursor:pointer;transition-property:border-color,background-color,scale;transition-duration:.15s;z-index:2;font:inherit}
+.pm.pm-red{border-radius:50%}.pm.pm-larga{border-radius:10px}
+.pm:active{scale:.96}
+.pm .pm-in{display:flex;flex-direction:column;align-items:center;line-height:1.05;gap:1px;pointer-events:none}
+.pm b{font:700 clamp(13px,1.7vw,18px) Unbounded,sans-serif}
+.pm small{font-size:10.5px;color:var(--muted);white-space:nowrap}.pm .tnum{font-variant-numeric:tabular-nums;color:var(--txt);font-weight:600}
+.pm .sl{position:absolute;width:clamp(7px,1.1vw,11px);height:clamp(7px,1.1vw,11px);border-radius:4px;background:var(--line);translate:-50% -50%;pointer-events:none}
+.pm.ocupada{border-color:#e6b866;background:var(--warnsoft)}.pm.ocupada .sl{background:#e6b866}
+.pm.cuenta{border-color:var(--bad);background:var(--badbg)}.pm.cuenta .sl{background:var(--bad)}
+.pm.llama{box-shadow:0 0 0 3px var(--blue)}
+.pm .pm-ok{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 2px var(--card)}
+.pm .pm-ll,.pm .pm-cu{position:absolute;top:-10px;left:-8px;font-style:normal;font-size:14px}.pm .pm-cu{left:auto;right:-8px}
+.pe{display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);z-index:1;text-align:center;overflow:hidden}
+.pe span{padding:2px 6px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pe-barra{background:color-mix(in srgb,var(--acc) 22%,var(--card));border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);color:var(--txt)}
+.pe-cocina{background:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 9px);border:1px solid var(--line)}
+.pe-bano{border:1px solid var(--line);background:var(--bg)}
+.pe-zona{z-index:0;border:1.5px dashed color-mix(in srgb,var(--muted) 55%,transparent);border-radius:14px;align-items:flex-start;justify-content:flex-start;background:color-mix(in srgb,var(--muted) 4%,transparent)}
+.pe-zona span{padding:6px 10px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.pe-pared{background:var(--muted);border-radius:2px;opacity:.7}
+.pe-puerta{border:2px dashed var(--accd);border-radius:4px;color:var(--accd);font-size:10.5px;overflow:visible}.pe-puerta span{translate:0 -120%}
+.pe-planta{border-radius:50%;background:radial-gradient(circle at 35% 35%,#65a30d,#365314);border:0}
+.plano.edit [data-pi]{cursor:grab;touch-action:none}.plano.edit [data-pi]:active{cursor:grabbing}
+.plano.edit .sel{outline:2px solid var(--acc);outline-offset:3px;z-index:5}
+.ph{position:absolute;right:-7px;bottom:-7px;width:16px;height:16px;border-radius:5px;background:var(--acc);border:2px solid var(--card);cursor:nwse-resize;touch-action:none}
+.pl-pal{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.pl-pal button{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;padding:8px 12px}
+.pp{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-radius:4px;flex:none}
+.pp-red{border-radius:50%}.pp-larga{width:22px;height:12px}.pp-barra{width:22px;height:8px;background:color-mix(in srgb,var(--acc) 40%,transparent);border-color:var(--accd)}
+.pp-cocina{background:repeating-linear-gradient(45deg,currentColor 0 1.5px,transparent 1.5px 5px)}.pp-zona{border-style:dashed}.pp-pared{height:4px;width:22px;background:currentColor;border:0}
+.pp-puerta{border-style:dashed;height:8px;border-color:var(--accd)}.pp-bano{border-radius:3px}.pp-planta{border-radius:50%;background:#4d7c0f;border-color:#4d7c0f}
+.pl-panel{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:12px;min-height:52px}
+.pl-num{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted)}.pl-num b{min-width:18px;text-align:center;color:var(--txt)}
+.pl-l{max-width:160px;margin:0}
+.pl-tray{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
+.vista-sw{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pl-hint{display:none;font-size:12.5px;margin:8px 0 0}@media(max-width:700px){.pl-hint{display:block}}
+.imp-drop{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 16px;border:1.5px dashed var(--line);border-radius:14px;cursor:pointer;text-align:center;transition-property:border-color,background-color;transition-duration:.15s}
+.imp-drop:hover{border-color:var(--accd);background:color-mix(in srgb,var(--acc) 6%,transparent)}.imp-drop b{font-size:15px}.imp-drop small{color:var(--muted)}
+.imp-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.imp-map label{margin:0}
 .mesa-c{text-align:left;border:2px solid var(--line);border-radius:14px;padding:12px;min-height:110px;background:var(--card);display:flex;flex-direction:column;gap:4px}
 .mesa-c b{font:700 18px Unbounded,sans-serif}
 .mesa-c.ocupada{border-color:#e6b866;background:var(--warnsoft)}
@@ -408,12 +452,12 @@ function seed(){return{
     {id:'pinta',nombre:'Pinta de cerveza',cat:'Bebidas',area:'barra',precio:4500,desc:'Rubia o roja, 500 ml',alias:['cerveza','pinta','birra'],activo:true,receta:{cerveza:.5},mods:[]}
   ],
   pedidos:[],cobros:[],mermas:[],egresos:[],arqueo:null,cierres:[],audit:[],llamados:[],clientes:{},reservas:[],turnos:[],turno:null,
-  wa:{msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'}
+  wa:{msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'},plano:planoDemo()
 }}
 
 let S=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.insumos&&s.cobros)return completar(s)}catch(e){}return seed()}
-function completar(s){if(!s.equipo)s.equipo=[{id:'p-dueno',nombre:'Dueño',rol:'dueno',pin:'1234'},{id:'p-cajera',nombre:'Cajera',rol:'cajera',pin:'0000'},{id:'p-mozo',nombre:'Mozo',rol:'mozo',pin:'2222'},{id:'p-cocina',nombre:'Cocina',rol:'cocina',pin:'1111'}];if(s.setup===undefined)s.setup=true;s.reservas=s.reservas||[];s.turnos=s.turnos||[];if(s.turno===undefined)s.turno=null;return s}
+function completar(s){if(!s.equipo)s.equipo=[{id:'p-dueno',nombre:'Dueño',rol:'dueno',pin:'1234'},{id:'p-cajera',nombre:'Cajera',rol:'cajera',pin:'0000'},{id:'p-mozo',nombre:'Mozo',rol:'mozo',pin:'2222'},{id:'p-cocina',nombre:'Cocina',rol:'cocina',pin:'1111'}];if(s.setup===undefined)s.setup=true;s.reservas=s.reservas||[];s.turnos=s.turnos||[];if(s.turno===undefined)s.turno=null;if(s.plano===undefined&&s.negocio==='La Esquina Bar'&&s.mesas===12)s.plano=planoDemo();return s}
 function saveLocal(){if(cloudClient())return;if(typeof LID!=='undefined'&&LID&&SY.base)return persistSync();try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function save(){if(cloudClient())return;saveLocal();if(enNube()){SY.pend=true;clearTimeout(SY.t);SY.t=setTimeout(push,250)}}
 let rol=null;try{rol=sessionStorage.getItem('comanda-rol')}catch(e){}
@@ -627,7 +671,7 @@ function supaNube(sb){
   };
 }
 // Mismo criterio que taca_filtrar / taca_fusionar_rol del servidor (lo usa el servidor de prueba)
-const CLAVES_DUENO=['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio'];
+const CLAVES_DUENO=['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio','plano'];
 function filtrarRol(d,r){if(r==='dueno')return d;const x=clone(d);x.cierres=[];x.audit=[];return x}
 function fusionarRol(o,n,r){if(r==='dueno')return n;const x=clone(n);CLAVES_DUENO.forEach(k=>{if(k in o)x[k]=clone(o[k]);else delete x[k]});
   const ia=new Set((o.audit||[]).map(a=>a.id));x.audit=(o.audit||[]).concat((n.audit||[]).filter(a=>!ia.has(a.id)));
@@ -791,7 +835,7 @@ function cartaEjemplo(tipo){
   const provs=new Set(insumos.map(x=>x.prov));
   return{insumos,platos:lista,proveedores:b.proveedores.filter(x=>provs.has(x.id))}
 }
-function seedVacio(nombre){const s=seed();Object.assign(s,{negocio:nombre,insumos:[],platos:[],proveedores:[],equipo:[],setup:false,apertura:0,alias:'',tipo:''});s.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'};return s}
+function seedVacio(nombre){const s=seed();Object.assign(s,{negocio:nombre,insumos:[],platos:[],proveedores:[],equipo:[],setup:false,apertura:0,alias:'',tipo:'',plano:null});s.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'};return s}
 function persona(){return(S.equipo||[]).find(p=>p.id===personaId)||null}
 function errMsg(e){const m=String((e&&(e.message||e.error_description||e.msg))||e||'');
   if(/invalid login/i.test(m))return'Email o contraseña incorrectos';
@@ -956,6 +1000,7 @@ function vBienvenida(){
 <div class="inline"><label>PIN (4 a 6 números)<input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" pattern="[0-9]{4,6}" required autocomplete="off"></label><label>Repetilo<input name="pin2" type="text" inputmode="numeric" class="pin" autocomplete="off" required autocomplete="off"></label></div><div class="btns"><button type="button" class="ghost" data-a="wPaso" data-p="1">← Volver</button><button class="primary">Seguir →</button></div></form>`;
   if(p===3)c=`<h2>Tu carta</h2><p class="muted" style="margin-top:0">Después podés cambiar todo en <b>Carta y recetas</b>.</p>
 <div style="display:grid;gap:10px"><button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="ejemplo"><b>Empezar con una carta de ejemplo${S.tipo&&S.tipo!=='Otro'?' de '+esc((S.tipo==='Rotisería'?'rotisería':S.tipo.toLowerCase())):''}</b><small>${esc(cartaEjemplo(S.tipo).platos.map(x=>x.nombre).slice(0,5).join(', '))} y más, con sus recetas e insumos. Editás precios y sacás lo que no va.</small></button>
+<button class="mesa-c" style="min-height:0" data-a="wImportar"><b>Traer mi carta de Fudo o de un Excel</b><small>Subís el archivo con tus productos y precios. Reconocemos las columnas solas.</small></button>
 <button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="vacia"><b>Empezar con la carta vacía</b><small>Cargás tus platos e insumos desde cero.</small></button></div><div class="btns"><button class="ghost" data-a="wPaso" data-p="2">← Volver</button></div>`;
   if(p===4)c=`<h2>Tu equipo</h2><p class="muted" style="margin-top:0">Cada persona entra con su PIN y ve solo lo que le toca. Podés sumar gente después en <b>Ajustes</b>.</p>
 ${W.equipo.map((x,i)=>`<div class="row"><span><b>${esc(x.nombre)}</b> · ${ROLES[x.rol].nombre}</span><button class="small ghost bad" data-a="wQuitar" data-i="${i}">Quitar</button></div>`).join('')}
@@ -1157,13 +1202,15 @@ function estadoMesa(n){
 }
 function vSalon(){
   const del=abiertos().filter(p=>p.origen==='whatsapp');
-  return`<div class="ptitle"><div><h1>Salón</h1><small>Estado de cada mesa en vivo. Tocá una mesa para ver el detalle, tomar pedido o cobrar.</small></div></div>
+  if(PL.edit&&rol==='dueno')return vPlanoEditor();
+  const vp=PL.vista!=='lista';
+  return`<div class="ptitle"><div><h1>Salón</h1><small>Estado de cada mesa en vivo. Tocá una mesa para ver el detalle, tomar pedido o cobrar.</small></div><div class="vista-sw"><div class="seg" role="group" aria-label="Ver el salón como"><button class="${vp?'on':''}" data-a="salonVista" data-v="plano">Plano</button><button class="${vp?'':'on'}" data-a="salonVista" data-v="lista">Lista</button></div>${rol==='dueno'?'<button class="ghost" data-a="plEditar">Editar plano</button>':''}</div></div>
 <div class="legend"><span><i></i>Libre</span><span><i style="border-color:#e6b866;background:#fffaf0"></i>Ocupada</span><span><i style="border-color:var(--bad);background:var(--badbg)"></i>Pidió la cuenta</span><span><i style="box-shadow:0 0 0 2px var(--blue)"></i>Llama al mozo</span></div>
-<div class="salon">${Array.from({length:S.mesas},(_,i)=>i+1).map(n=>{const e=estadoMesa(n);
+${vp?vPlanoVer():`<div class="salon">${Array.from({length:S.mesas},(_,i)=>i+1).map(n=>{const e=estadoMesa(n);
   return`<button class="mesa-c ${e.cuenta?'cuenta':e.peds.length?'ocupada':''} ${e.llama?'llama':''}" data-a="verMesa" data-n="${n}"><b>Mesa ${n}</b>
 ${e.llama?'<span class="chip blue">🙋 Llama</span>':''}${e.cuenta?'<span class="chip bad">🧾 Cuenta</span>':''}${e.listos?'<span class="chip ok">Plato listo</span>':''}
 ${e.reserva?`<span class="chip">📅 ${esc(e.reserva.hora)} · ${esc(e.reserva.nombre)} (${e.reserva.personas})</span>`:''}
-${e.peds.length?`<small>${hace(e.desde)} · ${e.peds.length} pedido${e.peds.length>1?'s':''}</small><span class="tot">${fmt(e.total)}</span>`:'<small>Libre</small>'}</button>`}).join('')}</div>
+${e.peds.length?`<small>${hace(e.desde)} · ${e.peds.length} pedido${e.peds.length>1?'s':''}</small><span class="tot">${fmt(e.total)}</span>`:'<small>Libre</small>'}</button>`}).join('')}</div>`}
 ${(()=>{const m=abiertos().filter(p=>p.origen==='mostrador');return`<section class="card" style="margin-top:16px"><h2>🥡 Para llevar <button class="small" data-a="tomarMesa" data-n="0" style="margin-left:8px">+ Nuevo</button></h2>${m.map(p=>`<div class="row"><span>#${p.num} · ${esc(p.cliente)} — ${p.items.map(itemTxt).join(', ')}</span><span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span> <b>${fmt(p.total)}</b></span></div>`).join('')||'<p class="muted">No hay pedidos para llevar.</p>'}</section>`})()}
 <section class="card" style="margin-top:16px"><h2>Delivery en curso</h2>${del.map(p=>`<div class="row"><span>#${p.num} · ${esc(p.cliente)} — ${esc(p.direccion)}</span><span><span class="chip st-${p.estado}">${ESTADO[p.estado]}</span> <b>${fmt(p.total)}</b></span></div>`).join('')||'<p class="muted">No hay deliveries en curso.</p>'}</section>`;
 }
@@ -1246,7 +1293,7 @@ function sugerido(i){const q=Math.max(i.min*3-i.stock,i.min);return i.u==='u'?Ma
 function vStock(){
   const dueno=rol==='dueno',bajos=S.insumos.filter(i=>i.stock<=i.min),tv=S.insumos.reduce((a,i)=>a+i.stock*i.costo,0);
   const porProv={};bajos.forEach(i=>{(porProv[i.prov]=porProv[i.prov]||[]).push(i)});
-  return`<div class="ptitle"><div><h1>Stock y compras</h1><small>Cada plato vendido descuenta los insumos de su receta (con sus modificadores). La carta marca "agotado" sola.</small></div></div>
+  return`<div class="ptitle"><div><h1>Stock y compras</h1><small>Cada plato vendido descuenta los insumos de su receta (con sus modificadores). La carta marca "agotado" sola.</small></div>${dueno?'<div class="btns" style="margin:0"><button class="ghost" data-a="impAbrir" data-t="insumos">Importar Excel</button></div>':''}</div>
 ${bajos.length?`<div class="card" style="border-color:var(--warn)"><h2>⚠️ Para reponer — pedido sugerido</h2>${Object.entries(porProv).map(([pid,l])=>{const pv=prov(pid)||{nombre:'Sin proveedor',tel:''};return`<div class="grp"><div class="row"><b>${esc(pv.nombre)}</b><small style="display:inline">${esc(pv.tel)}</small></div><small>${l.map(i=>`${esc(i.nombre)}: quedan ${num(i.stock)} ${i.u} → pedir ${num(sugerido(i))} ${i.u}`).join(' · ')}</small>${dueno?`<div class="btns"><button class="small" data-a="copiarPedidoProv" data-p="${pid}">📋 Copiar pedido para WhatsApp</button></div>`:''}</div>`}).join('')}</div>`:''}
 <div class="grid2"><div>
 <section class="card"><h2>Mercadería</h2><div class="tablewrap"><table><thead><tr><th>Insumo</th><th class="n">Stock</th><th class="n">Mínimo</th>${dueno?'<th class="n">Costo</th><th class="n">Valor</th><th></th>':''}</tr></thead><tbody>
@@ -1264,7 +1311,7 @@ ${S.mermas.length?`<div style="margin-top:12px">${S.mermas.map(m=>`<div class="r
 
 /* carta y recetas */
 function vCarta(){
-  return`<div class="ptitle"><div><h1>Carta y recetas</h1><small>Precio, receta (ficha técnica) y modificadores de cada plato. El costo y el margen se calculan solos con el costo de los insumos.</small></div><div class="btns" style="margin:0"><button class="primary" data-a="editPlato">+ Nuevo plato</button></div></div>
+  return`<div class="ptitle"><div><h1>Carta y recetas</h1><small>Precio, receta (ficha técnica) y modificadores de cada plato. El costo y el margen se calculan solos con el costo de los insumos.</small></div><div class="btns" style="margin:0"><button class="ghost" data-a="impAbrir" data-t="carta">Importar Excel</button><button class="primary" data-a="editPlato">+ Nuevo plato</button></div></div>
 <section class="card"><div class="tablewrap"><table><thead><tr><th>Plato</th><th>Área</th><th class="n">Precio</th><th class="n">Costo</th><th class="n">Margen</th><th class="n">Quedan</th><th>Visible</th><th></th></tr></thead><tbody>
 ${S.platos.map(p=>{const cr=costoReceta(p.receta),mg=p.precio?1-cr/p.precio:0,d=disp(p);return`<tr class="${p.activo===false?'off':''}"><td><b>${esc(p.nombre)}</b><small>${esc(p.cat)} · ${Object.keys(p.receta).length} insumos · ${p.mods.length} modificadores</small></td><td>${AREA[p.area||'cocina']}</td>
 <td class="n"><input style="width:100px;text-align:right" data-precio="${p.id}" inputmode="decimal" value="${p.precio}"></td><td class="n">${fmt(cr)}</td><td class="n"><span class="chip ${mg<.6?'warn':'ok'}">${Math.round(mg*100)}%</span></td><td class="n">${d===999?'∞':d}</td>
@@ -1449,7 +1496,7 @@ function vClientes(){
   const circ=l.reduce((a,c)=>a+(c.puntos||0),0),mes=new Date();mes.setDate(1);mes.setHours(0,0,0,0);
   const canjes=l.reduce((a,c)=>a+(c.movs||[]).filter(m=>m.n<0&&m.ts>=+mes&&/^Canje/.test(m.motivo)).reduce((x,m)=>x-m.n,0),0);
   const vuelven=l.filter(c=>(c.pedidos||0)>=2).sort((a,b)=>(b.pedidos||0)-(a.pedidos||0)).slice(0,5);
-  return`<div class="ptitle"><div><h1>Clientes</h1><small>Se arma solo con cada pedido por WhatsApp y con cada cobro donde cargás el teléfono: nombre, dirección, qué pide, cuánto gastó y sus puntos.</small></div></div>
+  return`<div class="ptitle"><div><h1>Clientes</h1><small>Se arma solo con cada pedido por WhatsApp y con cada cobro donde cargás el teléfono: nombre, dirección, qué pide, cuánto gastó y sus puntos.</small></div>${dueno?'<div class="btns" style="margin:0"><button class="ghost" data-a="impAbrir" data-t="clientes">Importar Excel</button></div>':''}</div>
 ${dueno?`<section class="card"><h2>⭐ Sistema de puntos ${f.activo?'<span class="chip ok">activo</span>':'<span class="chip">apagado</span>'}</h2>
 <p class="muted" style="margin-top:0;font-size:14px">Tus clientes suman puntos con cada compra y los usan como descuento en el próximo pedido: así vuelven. 1 punto = ${fmt(1)}.</p>
 <form data-f="fidGuardar" class="inline"><label style="max-width:150px">Encendido<select name="activo"><option value="1" ${f.activo?'selected':''}>Sí</option><option value="0" ${!f.activo?'selected':''}>No</option></select></label>
@@ -1676,7 +1723,7 @@ function vMesas(){
 <div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label>
 <div class="inline"><label>Costo de envío<input data-set="envio" inputmode="decimal" value="${S.envio}"></label><label>Descuento máximo de la cajera (%)<input data-set="descMax" inputmode="decimal" value="${S.descMax}"></label></div>
 <label>Alias para transferencias<input data-set="alias" value="${esc(S.alias)}"></label></section>
-${vCuenta()}${vEquipos()}${vCobroMP()}${vArca()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">La demo arranca con un día de ejemplo: mesas ocupadas, pedidos en cocina y barra, cobros y reservas. Podés sumar más ventas o volver al inicio.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
+${vCuenta()}${vEquipos()}${vCobroMP()}${vArca()}${(!rol||rol==='dueno')?`<section class="card"><h2>Traer tus datos de otro sistema</h2><p class="muted" style="margin-top:0">¿Venís de Fudo, de otro sistema o tenés todo en una planilla? Subí el Excel o CSV con tu carta, tus insumos o tus clientes y lo pasamos solo.</p><div class="btns"><button data-a="impAbrir" data-t="carta">Importar carta</button><button data-a="impAbrir" data-t="insumos">Importar insumos</button><button data-a="impAbrir" data-t="clientes">Importar clientes</button></div></section><section class="card"><h2>Planos y mesas</h2><p class="muted" style="margin-top:0">Dibujá tu salón con las mesas redondas, cuadradas o largas, la barra y las zonas.</p><div class="btns"><button data-a="plIr">Editar plano del salón</button></div></section><section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">La demo arranca con un día de ejemplo: mesas ocupadas, pedidos en cocina y barra, cobros y reservas. Podés sumar más ventas o volver al inicio.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
 }
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
@@ -1987,6 +2034,8 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   wPaso(b){W.paso=+b.dataset.p;render()},
   wTipo(b){const t=b.dataset.t,x=TIPO[t]||TIPO.Otro;S.tipo=t;S.mesas=x.mesas;S.envio=x.envio;W.tipoOk=true;save();render()},
   wTipoCambiar(){W.tipoOk=false;render()},
+  wImportar(){S.insumos=[];S.platos=[];S.proveedores=[];impAbrir('carta')},
+  plIr(){tab='salon';PL.edit=true;PL.sel=null;planoEditable();render()},
   wCarta(b){if(b.dataset.c==='ejemplo'){const c=cartaEjemplo(S.tipo);S.insumos=c.insumos;S.platos=c.platos;S.proveedores=c.proveedores}else{S.insumos=[];S.platos=[];S.proveedores=[]}W.carta=b.dataset.c;W.paso=4;save();render()},
   wQuitar(b){W.equipo.splice(+b.dataset.i,1);render()},
   wFin(){const yoP={id:uid(),nombre:W.nombre,rol:'dueno',pin:W.pin};S.equipo=[yoP].concat(W.equipo.map(x=>Object.assign({id:uid()},x)));S.setup=true;
@@ -2108,6 +2157,199 @@ function demoVentas(){
   registrarMerma('tomate',.4,'Vencido');registrarMerma('cerveza',1.5,'Se cayó / se rompió');registrarMerma('carne',.18,'Error de cocina');
   S.egresos.push({id:uid(),turno:S.turno?S.turno.id:null,concepto:'Pago verdulería',monto:12000,ts:Date.now()-3600000,por:'Cajera'});audit('Egreso','Pago verdulería',12000);save();
 }
+
+/* ---------- plano del salón ---------- */
+// Coordenadas en unidades: el ancho siempre mide 100; el alto lo define el plano (H).
+let PL={edit:false,sel:null,vista:ls('taca-salon-vista')||'plano'};
+const PL_TIPOS={
+  mesa:{n:'Mesa'},barra:{n:'Barra',w:30,h:6},cocina:{n:'Cocina',w:18,h:10},zona:{n:'Zona',w:40,h:30},
+  pared:{n:'Pared',w:24,h:1.2},puerta:{n:'Puerta',w:9,h:2},bano:{n:'Baño',w:10,h:9},planta:{n:'Planta',w:4,h:4}
+};
+const PL_FORMAS={cuad:{n:'Cuadrada',w:7,h:7,s:4},red:{n:'Redonda',w:7,h:7,s:4},larga:{n:'Larga',w:14,h:7,s:6}};
+function planoDemo(){let i=0;const F={cuad:[7,7,4],red:[7,7,4],larga:[14,7,6]},m=(n,f,x,y,w,h,s)=>({id:'p'+(++i),t:'mesa',n,f,x,y,w:w||F[f][0],h:h||F[f][1],s:s||F[f][2]}),e=(t,x,y,w,h,l)=>({id:'p'+(++i),t,x,y,w,h,l:l||''});
+  return{h:64,items:[e('zona',2,16,62,46,'Salón'),e('zona',67,16,31,46,'Terraza'),e('cocina',2,2,18,10,'Cocina'),e('barra',24,3,38,6,'Barra'),e('bano',86,2,12,10,'Baño'),e('puerta',38,61.4,10,2,'Entrada'),e('pared',64.6,16,1.2,30),
+    m(1,'cuad',6,21),m(2,'cuad',18,21),m(3,'red',30,21),m(4,'red',42,21),m(5,'larga',50,21,12),m(6,'cuad',6,36),m(7,'larga',18,36,14,7,6),m(8,'red',38,36),m(9,'cuad',50,36,7,7,2),
+    m(10,'red',71,22),m(11,'red',86,22),m(12,'larga',73,40,16,7,8),e('planta',93,56,4,4),e('planta',69,56,4,4)]}}
+function planoAuto(n){const cols=6,items=[],filas=Math.ceil(n/cols);for(let k=0;k<n;k++){const c=k%cols,f=k/cols|0;items.push({id:uid(),t:'mesa',n:k+1,f:'cuad',x:5+c*16,y:14+f*13,w:7,h:7,s:4})}
+  items.unshift({id:uid(),t:'barra',x:5,y:3,w:40,h:6,l:'Barra'});const h=Math.max(48,14+filas*13+6);items.push({id:uid(),t:'puerta',x:45,y:h-2.6,w:10,h:2,l:'Entrada'});return{h,items}}
+function plano(){const p=S.plano&&S.plano.items?S.plano:planoAuto(S.mesas||0);return{h:p.h||64,items:p.items.filter(it=>it.t!=='mesa'||(it.n>=1&&it.n<=S.mesas))}}
+function planoEditable(){if(!S.plano||!S.plano.items)S.plano=JSON.parse(JSON.stringify(plano()));return S.plano}
+function sinUbicar(p){const u=new Set(p.items.filter(i=>i.t==='mesa').map(i=>i.n));return Array.from({length:S.mesas},(_,i)=>i+1).filter(n=>!u.has(n))}
+function sillas(it){const s=Math.max(0,Math.min(12,it.s||0)),out=[];
+  if(it.f==='red'){for(let k=0;k<s;k++){const a=k/s*2*Math.PI-Math.PI/2;out.push(`<i class="sl" style="left:${50+62*Math.cos(a)}%;top:${50+62*Math.sin(a)}%"></i>`)}return out.join('')}
+  const vert=it.h>it.w,lado=(n,pos)=>{for(let k=0;k<n;k++){const t=(k+.5)/n*100;out.push(`<i class="sl" style="${pos(t)}"></i>`)}};
+  let a,b,c=0,d=0;if(s<=4&&it.f==='cuad'){a=s>=1?1:0;b=s>=2?1:0;c=s>=3?1:0;d=s>=4?1:0}else{a=Math.ceil(s/2);b=s-a}
+  if(!vert){lado(a,t=>`left:${t}%;top:-22%`);lado(b,t=>`left:${t}%;top:122%`);lado(c,t=>`left:-22%;top:${t}%`);lado(d,t=>`left:122%;top:${t}%`)}
+  else{lado(a,t=>`top:${t}%;left:-22%`);lado(b,t=>`top:${t}%;left:122%`);lado(c,t=>`top:-22%;left:${t}%`);lado(d,t=>`top:122%;left:${t}%`)}
+  return out.join('')}
+function planoHTML(edit){const p=edit?planoEditable():plano(),H=p.h;
+  const pos=it=>`left:${it.x}%;top:${it.y/H*100}%;width:${it.w}%;height:${it.h/H*100}%`;
+  const items=p.items.slice().sort((a,b)=>(a.t==='zona'?0:1)-(b.t==='zona'?0:1)).map(it=>{const sel=edit&&PL.sel===it.id?' sel':'';
+    if(it.t==='mesa'){const e=estadoMesa(it.n),cls=`pm pm-${it.f}${e.cuenta?' cuenta':e.peds.length?' ocupada':''}${e.llama?' llama':''}${sel}`;
+      const info=edit?`<small>${it.s} silla${it.s===1?'':'s'}</small>`:e.peds.length?`<small class="tnum">${fmtK(e.total)}</small><small>${hace(e.desde)}</small>`:e.reserva?`<small>📅 ${esc(e.reserva.hora)}</small>`:'';
+      const attrs=edit?`data-pi="${it.id}"`:`data-a="verMesa" data-n="${it.n}"`;
+      return`<${edit?'div':'button'} class="${cls}" style="${pos(it)}" ${attrs} aria-label="Mesa ${it.n}${e.peds.length?', ocupada':', libre'}">${sillas(it)}<span class="pm-in"><b>${it.n}</b>${info}</span>${!edit&&e.listos?'<i class="pm-ok" title="Plato listo"></i>':''}${!edit&&e.llama?'<i class="pm-ll" title="Llama al mozo">🙋</i>':''}${!edit&&e.cuenta?'<i class="pm-cu" title="Pidió la cuenta">🧾</i>':''}</${edit?'div':'button'}>`}
+    return`<div class="pe pe-${it.t}${sel}" style="${pos(it)}" ${edit?`data-pi="${it.id}"`:''}>${it.t==='planta'||it.t==='pared'?'':`<span>${esc(it.l||PL_TIPOS[it.t].n)}</span>`}${edit&&sel&&it.t!=='planta'?`<i class="ph" data-ph="${it.id}"></i>`:''}</div>`}).join('');
+  return`<div class="plano-wrap"><div class="plano${edit?' edit':''}" style="aspect-ratio:100/${H}" data-h="${H}">${items}</div></div>`}
+function fmtK(n){return n>=1000?'$'+(Math.round(n/100)/10).toString().replace('.',',')+'k':fmt(n)}
+function vPlanoVer(){const p=plano(),su=sinUbicar(p);
+  return`${planoHTML(false)}<p class="muted pl-hint">Deslizá el plano de costado para ver todo →</p>${su.length?`<p class="muted" style="font-size:13px;margin:10px 0 4px">Sin ubicar en el plano:</p><div class="pl-tray">${su.map(n=>{const e=estadoMesa(n);return`<button class="small${e.peds.length?' warn':''}" data-a="verMesa" data-n="${n}">Mesa ${n}${e.peds.length?' · '+fmt(e.total):''}</button>`}).join('')}</div>`:''}`}
+function vPlanoEditor(){const p=planoEditable(),it=p.items.find(i=>i.id===PL.sel),su=sinUbicar(p);
+  let panel='<p class="muted" style="margin:0;font-size:14px">Arrastrá para mover. Tocá algo para cambiarle la forma, el tamaño o el nombre.</p>';
+  if(it&&it.t==='mesa'){const ped=estadoMesa(it.n).peds.length;
+    panel=`<b style="font-size:15px">Mesa ${it.n}</b><div class="seg">${Object.keys(PL_FORMAS).map(f=>`<button class="${it.f===f?'on':''}" data-a="plForma" data-f="${f}">${PL_FORMAS[f].n}</button>`).join('')}</div>
+<span class="pl-num">Sillas <button class="small" data-a="plSillas" data-d="-1" aria-label="Menos sillas">−</button><b class="tnum">${it.s}</b><button class="small" data-a="plSillas" data-d="1" aria-label="Más sillas">+</button></span>
+<span class="pl-num">Tamaño <button class="small" data-a="plTam" data-d="-1" aria-label="Más chica">−</button><button class="small" data-a="plTam" data-d="1" aria-label="Más grande">+</button></span>
+${it.f==='larga'?'<button class="small" data-a="plGirar">↻ Girar</button>':''}<button class="small ghost" data-a="plSacar">Sacar del plano</button>${it.n===S.mesas&&!ped?'<button class="small ghost bad" data-a="plBorrarMesa">Eliminar mesa</button>':''}`}
+  else if(it){panel=`<b style="font-size:15px">${PL_TIPOS[it.t].n}</b>${it.t==='planta'||it.t==='pared'?'':`<input class="pl-l" data-pl="l" value="${esc(it.l||'')}" placeholder="Nombre" aria-label="Nombre">`}
+<span class="pl-num">Tamaño <button class="small" data-a="plTam" data-d="-1" aria-label="Más chico">−</button><button class="small" data-a="plTam" data-d="1" aria-label="Más grande">+</button></span>
+${it.t==='planta'?'':'<button class="small" data-a="plGirar">↻ Girar</button>'}<button class="small ghost bad" data-a="plBorrar">Borrar</button>`}
+  return`<div class="ptitle"><div><h1>Plano del salón</h1><small>Armalo parecido a tu local: así el Salón se ve como tu salón de verdad.</small></div><div class="btns" style="margin:0"><button class="ghost" data-a="plAuto">Ordenar automático</button><button class="primary" data-a="plListo">Listo ✓</button></div></div>
+<div class="pl-pal">${['cuad','red','larga'].map(f=>`<button data-a="plAgregar" data-t="mesa" data-f="${f}"><i class="pp pp-${f}"></i>Mesa ${PL_FORMAS[f].n.toLowerCase()}</button>`).join('')}${['barra','cocina','zona','pared','puerta','bano','planta'].map(t=>`<button data-a="plAgregar" data-t="${t}"><i class="pp pp-${t}"></i>${PL_TIPOS[t].n}</button>`).join('')}</div>
+${su.length?`<div class="pl-tray"><span class="muted" style="font-size:13px">Mesas sin ubicar:</span>${su.map(n=>`<button class="small" data-a="plUbicar" data-n="${n}">+ Mesa ${n}</button>`).join('')}</div>`:''}
+<div class="pl-panel">${panel}</div>${planoHTML(true)}
+<p class="muted" style="font-size:12.5px;margin-top:10px">Tenés ${S.mesas} mesa${S.mesas===1?'':'s'}. Los QR de cada mesa no cambian aunque las muevas.</p>`}
+// arrastrar y cambiar tamaño (mouse y dedo)
+(function(){let d=null;
+  document.addEventListener('pointerdown',e=>{const pl=e.target.closest('.plano.edit');if(!pl)return;const h=e.target.closest('[data-ph]'),t=e.target.closest('[data-pi]');
+    if(!t&&!h){if(PL.sel){PL.sel=null;render()}return}
+    const id=(h&&h.dataset.ph)||t.dataset.pi,it=S.plano.items.find(i=>i.id===id);if(!it)return;e.preventDefault();
+    const r=pl.getBoundingClientRect();d={id,it,el:h?h.parentElement:t,res:!!h,x0:e.clientX,y0:e.clientY,ox:it.x,oy:it.y,ow:it.w,oh:it.h,ux:r.width/100,uy:r.height/S.plano.h,mov:false};
+    try{(h||t).setPointerCapture(e.pointerId)}catch(_){}});
+  document.addEventListener('pointermove',e=>{if(!d)return;const dx=(e.clientX-d.x0)/d.ux,dy=(e.clientY-d.y0)/d.uy;if(!d.mov&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4)return;d.mov=true;const H=S.plano.h,sn=v=>Math.round(v*2)/2;
+    if(d.res){d.it.w=Math.max(1,Math.min(100-d.it.x,sn(d.ow+dx)));d.it.h=Math.max(1,Math.min(H-d.it.y,sn(d.oh+dy)))}
+    else{d.it.x=Math.max(0,Math.min(100-d.it.w,sn(d.ox+dx)));d.it.y=Math.max(0,Math.min(H-d.it.h,sn(d.oy+dy)))}
+    Object.assign(d.el.style,{left:d.it.x+'%',top:d.it.y/H*100+'%',width:d.it.w+'%',height:d.it.h/H*100+'%'})});
+  const fin=()=>{if(!d)return;const x=d;d=null;if(x.mov)save();PL.sel=x.id;render()};
+  document.addEventListener('pointerup',fin);document.addEventListener('pointercancel',fin);
+  document.addEventListener('input',e=>{const k=e.target.dataset.pl;if(!k||!PL.sel||!S.plano)return;const it=S.plano.items.find(i=>i.id===PL.sel);if(it){it[k]=e.target.value.slice(0,24);const el=document.querySelector(`[data-pi="${it.id}"] span`);if(el)el.textContent=it[k]||PL_TIPOS[it.t].n;clearTimeout(PL.t);PL.t=setTimeout(save,400)}});
+})();
+function plLibre(w,h){const p=S.plano;for(let y=2;y<=p.h-h-1;y+=2)for(let x=2;x<=98-w;x+=2){if(!p.items.some(i=>i.t!=='zona'&&x<i.x+i.w+1&&x+w+1>i.x&&y<i.y+i.h+1&&y+h+1>i.y))return{x,y}}p.h+=12;return{x:4,y:p.h-h-4}}
+const PL_ACC={
+  salonVista(b){PL.vista=b.dataset.v;ls('taca-salon-vista',PL.vista);render()},
+  plEditar(){PL.edit=true;PL.sel=null;planoEditable();render()},
+  plListo(){PL.edit=false;PL.sel=null;save();audit('Plano','Se actualizó el plano del salón');render();toast('Plano guardado')},
+  plAuto(){modal(`<h2>¿Ordenar automático?</h2><p class="muted">Se acomodan todas las mesas en filas y se borra lo que dibujaste (barra, zonas, paredes).</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="plAutoOk">Ordenar</button></div>`)},
+  plAutoOk(){S.plano=planoAuto(S.mesas);PL.sel=null;save();closeModal();render()},
+  plAgregar(b){const p=planoEditable(),t=b.dataset.t;let it;
+    if(t==='mesa'){const f=b.dataset.f,F=PL_FORMAS[f],su=sinUbicar(p),n=su.length?su[0]:++S.mesas;it={id:uid(),t:'mesa',n,f,w:F.w,h:F.h,s:F.s}}
+    else{const T=PL_TIPOS[t];it={id:uid(),t,w:T.w,h:T.h,l:t==='zona'?'Terraza':t==='planta'||t==='pared'?'':T.n}}
+    Object.assign(it,plLibre(it.w,it.h));p.items.push(it);PL.sel=it.id;save();render()},
+  plUbicar(b){const p=planoEditable(),F=PL_FORMAS.cuad,it={id:uid(),t:'mesa',n:+b.dataset.n,f:'cuad',w:F.w,h:F.h,s:F.s};Object.assign(it,plLibre(it.w,it.h));p.items.push(it);PL.sel=it.id;save();render()},
+  plForma(b){const it=S.plano.items.find(i=>i.id===PL.sel);if(!it)return;const F=PL_FORMAS[b.dataset.f];it.f=b.dataset.f;it.w=F.w;it.h=F.h;it.s=F.s;save();render()},
+  plSillas(b){const it=S.plano.items.find(i=>i.id===PL.sel);if(!it)return;it.s=Math.max(0,Math.min(12,(it.s||0)+ +b.dataset.d));save();render()},
+  plTam(b){const it=S.plano.items.find(i=>i.id===PL.sel);if(!it)return;const k=+b.dataset.d>0?1.15:1/1.15,H=S.plano.h;
+    it.w=Math.max(1,Math.min(100-it.x,Math.round(it.w*k*2)/2));if(it.t!=='pared'||it.h>it.w)it.h=Math.max(1,Math.min(H-it.y,Math.round(it.h*k*2)/2));save();render()},
+  plGirar(b){const it=S.plano.items.find(i=>i.id===PL.sel);if(!it)return;const H=S.plano.h,w=it.w;it.w=Math.min(it.h,100-it.x);it.h=Math.min(w,H-it.y);save();render()},
+  plSacar(){S.plano.items=S.plano.items.filter(i=>i.id!==PL.sel);PL.sel=null;save();render()},
+  plBorrar(){S.plano.items=S.plano.items.filter(i=>i.id!==PL.sel);PL.sel=null;save();render()},
+  plBorrarMesa(){const it=S.plano.items.find(i=>i.id===PL.sel);if(!it||it.n!==S.mesas)return;S.plano.items=S.plano.items.filter(i=>i.id!==PL.sel);S.mesas--;PL.sel=null;audit('Mesas',`Se eliminó la mesa ${it.n}`);save();render()}
+};
+Object.assign(A,PL_ACC);
+/* ---------- importar desde Excel o CSV (Fudo u otro sistema) ---------- */
+let IMP=null;
+const IMP_TIPOS={
+  carta:{n:'Carta (productos y precios)',d:'Nombre, precio, categoría y descripción de cada plato o bebida.',campos:[['nombre','Nombre',1],['precio','Precio de venta',1],['cat','Categoría'],['desc','Descripción'],['area','Cocina o barra']],
+    ej:[['Nombre','Categoría','Precio','Descripción','Cocina o barra'],['Hamburguesa completa','Platos',9500,'Carne, cheddar y papas','Cocina'],['Pinta de cerveza','Bebidas',4500,'Rubia o roja 500 ml','Barra']]},
+  insumos:{n:'Insumos y stock',d:'Lo que comprás: nombre, unidad, stock, costo y proveedor.',campos:[['nombre','Nombre',1],['u','Unidad (u, kg, l)'],['stock','Stock actual'],['costo','Costo por unidad'],['min','Stock mínimo'],['prov','Proveedor']],
+    ej:[['Nombre','Unidad','Stock','Costo','Mínimo','Proveedor'],['Carne picada','kg',8,9000,2,'Frigorífico Norte'],['Gaseosa 500 ml','u',48,900,12,'Distribuidora de bebidas']]},
+  clientes:{n:'Clientes',d:'Nombre, teléfono y dirección de tus clientes de delivery.',campos:[['nombre','Nombre',1],['tel','Teléfono',1],['dir','Dirección'],['notas','Notas']],
+    ej:[['Nombre','Teléfono','Dirección','Notas'],['Martina','341 555-0111','Bv. Oroño 845','Timbre B'],['Diego','341 555-0112','Mitre 1290','']]}
+};
+const IMP_SIN={nombre:['nombre','producto','articulo','plato','item','name','nombre del producto','cliente','razon social','insumo','descripcion corta'],precio:['precio','precio de venta','precio venta','pvp','precio final','importe','valor','price','precio unitario'],
+  cat:['categoria','rubro','seccion','familia','grupo','category','subcategoria'],desc:['descripcion','detalle','description','descripcion larga'],area:['area','sector','estacion','cocina o barra','impresora','lugar de preparacion'],
+  u:['unidad','unidad de medida','medida','u','um','unit'],stock:['stock','stock actual','cantidad','existencia','disponible'],costo:['costo','precio de costo','costo unitario','precio de compra','cost'],min:['minimo','stock minimo','alerta','punto de pedido'],prov:['proveedor','proveedores'],
+  tel:['telefono','tel','celular','whatsapp','movil','phone','numero'],dir:['direccion','domicilio','address','calle'],notas:['notas','observaciones','comentario','comentarios','nota']};
+const impNorm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[*:._()-]/g,' ').replace(/\s+/g,' ').trim();
+function impNum(v){if(typeof v==='number')return v;let s=String(v??'').replace(/[^\d.,-]/g,'');if(!s)return NaN;
+  const c=s.lastIndexOf(','),p=s.lastIndexOf('.');
+  if(c>-1&&p>-1)s=c>p?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  else if(c>-1)s=/,\d{1,2}$/.test(s)&&(s.match(/,/g)||[]).length===1?s.replace(',','.'):s.replace(/,/g,'');
+  else if(p>-1&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+  return parseFloat(s)}
+function impCSV(t){t=t.replace(/^﻿/,'');const l1=t.split(/\r?\n/)[0]||'',sep=[';','\t',','].sort((a,b)=>l1.split(b).length-l1.split(a).length)[0];
+  const filas=[];let f=[],c='',q=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}
+    else if(ch==='"')q=true;else if(ch===sep){f.push(c);c=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;f.push(c);filas.push(f);f=[];c=''}else c+=ch}
+  if(c||f.length){f.push(c);filas.push(f)}return filas}
+async function impZip(buf){const u=new Uint8Array(buf),dv=new DataView(buf),dec=new TextDecoder();let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error('zip');
+  const n=dv.getUint16(e+10,true),out={};let p=dv.getUint32(e+16,true);
+  for(let i=0;i<n;i++){const met=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true),name=dec.decode(u.subarray(p+46,p+46+nl));p+=46+nl+el+cl;
+    const st=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);out[name]={met,data:u.subarray(st,st+cs)}}
+  return async k=>{const f=out[k];if(!f)return null;if(f.met===0)return dec.decode(f.data);if(typeof DecompressionStream==='undefined')throw new Error('navegador');
+    return await new Response(new Blob([f.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()}}
+async function impXLSX(buf){const leer=await impZip(buf),xml=t=>new DOMParser().parseFromString(t,'application/xml'),T=(d,n)=>Array.from(d.getElementsByTagNameNS('*',n));
+  const ss=await leer('xl/sharedStrings.xml'),comp=ss?T(xml(ss),'si').map(si=>T(si,'t').map(x=>x.textContent).join('')):[];
+  let ruta='xl/worksheets/sheet1.xml';try{const wb=xml(await leer('xl/workbook.xml')),s1=T(wb,'sheet')[0],rid=s1&&(s1.getAttribute('r:id')||s1.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id'));
+    const rel=T(xml(await leer('xl/_rels/workbook.xml.rels')),'Relationship').find(r=>r.getAttribute('Id')===rid);if(rel){const tg=rel.getAttribute('Target');ruta=tg.startsWith('/')?tg.slice(1):'xl/'+tg.replace(/^\.\//,'')}}catch(e){}
+  const hoja=await leer(ruta);if(!hoja)throw new Error('hoja');
+  const col=r=>{const m=/^([A-Z]+)/.exec(r||'');if(!m)return -1;let n=0;for(const ch of m[1])n=n*26+ch.charCodeAt(0)-64;return n-1};
+  return T(xml(hoja),'row').map(row=>{const f=[];T(row,'c').forEach((c,i)=>{const t=c.getAttribute('t'),v=T(c,'v')[0],k=col(c.getAttribute('r'));let val='';
+    if(t==='s')val=comp[+(v&&v.textContent)]??'';else if(t==='inlineStr')val=T(c,'t').map(x=>x.textContent).join('');else if(v){val=v.textContent;if(t!=='str'&&t!=='e'&&t!=='b'&&val!==''&&!isNaN(+val))val=+val}
+    f[k>=0?k:i]=val});for(let i=0;i<f.length;i++)if(f[i]===undefined)f[i]='';return f})}
+function impCabecera(filas){let mejor=0,pts=-1;for(let i=0;i<Math.min(10,filas.length);i++){const f=filas[i]||[];let s=0;f.forEach(c=>{const n=impNorm(c);if(n&&Object.values(IMP_SIN).some(a=>a.includes(n)))s+=3;else if(n&&isNaN(+c))s+=.2});if(s>pts){pts=s;mejor=i}}return mejor}
+function impAuto(cab,tipo){const m={},usadas=new Set();IMP_TIPOS[tipo].campos.forEach(([k])=>{const sin=IMP_SIN[k]||[];let i=cab.findIndex((c,j)=>!usadas.has(j)&&sin.includes(impNorm(c)));
+  if(i<0)i=cab.findIndex((c,j)=>!usadas.has(j)&&sin.some(w=>w.length>3&&impNorm(c).includes(w)));if(i>=0){m[k]=i;usadas.add(i)}});
+  if(tipo==='carta'&&m.nombre===undefined&&m.desc!==undefined){m.nombre=m.desc;delete m.desc}return m}
+function impFilas(){const{filas,cab,map,tipo}=IMP;return filas.slice(IMP.h+1).map(f=>{const o={};Object.entries(map).forEach(([k,i])=>{if(i!==''&&i!==undefined&&i>=0)o[k]=f[i]});return o}).filter(o=>Object.values(o).some(v=>String(v??'').trim()!==''))}
+function impValidas(){const t=IMP.tipo,fs=impFilas();return fs.filter(o=>String(o.nombre??'').trim()&&(t!=='carta'||impNum(o.precio)>0)&&(t!=='clientes'||String(o.tel??'').replace(/\D/g,'').length>=6))}
+function vImportar(){if(!IMP)return'';const T=IMP_TIPOS[IMP.tipo];
+  if(!IMP.filas)return`<h2>Traer tus datos</h2><p class="muted" style="margin-top:0">Subí un Excel (.xlsx) o un CSV. Sirve el archivo que exportás de Fudo u otro sistema, o cualquier planilla con una fila de títulos.</p>
+<div class="seg" role="group" aria-label="Qué querés traer" style="margin-bottom:12px">${Object.keys(IMP_TIPOS).map(k=>`<button class="${IMP.tipo===k?'on':''}" data-a="impTipo" data-t="${k}">${k==='carta'?'Carta':k==='insumos'?'Insumos':'Clientes'}</button>`).join('')}</div>
+<p style="margin:0 0 4px"><b>${T.n}</b></p><p class="muted" style="margin:0 0 14px;font-size:14px">${T.d}</p>
+<label class="imp-drop"><input type="file" data-impfile accept=".xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><b>Elegir archivo</b><small>Excel (.xlsx) o CSV</small></label>
+<p style="font-size:14px;margin:12px 0 0">¿No tenés un archivo? <button class="link" data-a="impModelo">Descargá la planilla modelo</button>, completala y subila.</p>
+<details style="margin-top:12px;font-size:14px"><summary>¿Venís de Fudo?</summary><p class="muted" style="margin:8px 0 0">Exportá tus productos o clientes a Excel desde Fudo y subí ese archivo acá tal cual. Nosotros reconocemos las columnas (nombre, precio, categoría…). Si algo no coincide, en el paso siguiente elegís qué columna es cada cosa. Si te trabás, escribinos por WhatsApp y te lo pasamos nosotros.</p></details>
+<div class="btns"><button class="ghost" data-a="close">Cancelar</button></div>`;
+  const cab=IMP.filas[IMP.h]||[],val=impValidas(),todas=impFilas(),ex=val.slice(0,6);
+  const exist=IMP.tipo==='carta'?S.platos:IMP.tipo==='insumos'?S.insumos:Object.values(S.clientes||{}),clave=o=>IMP.tipo==='clientes'?String(o.tel).replace(/\D/g,''):impNorm(o.nombre),
+    ya=new Set(exist.map(x=>IMP.tipo==='clientes'?String(x.tel).replace(/\D/g,''):impNorm(x.nombre))),nuevos=val.filter(o=>!ya.has(clave(o))).length;
+  return`<h2>Revisá antes de importar</h2><p class="muted" style="margin-top:0;font-size:14px">${esc(IMP.archivo)} · ${todas.length} fila${todas.length===1?'':'s'}. Elegí qué columna de tu archivo es cada dato.</p>
+<div class="imp-map">${T.campos.map(([k,n,req])=>`<label>${n}${req?' *':''}<select data-impmap="${k}"><option value="">— no usar —</option>${cab.map((c,i)=>`<option value="${i}" ${IMP.map[k]===i?'selected':''}>${esc(String(c||'Columna '+(i+1)))}</option>`).join('')}</select></label>`).join('')}</div>
+<div class="tablewrap" style="margin-top:12px"><table><thead><tr>${T.campos.filter(([k])=>IMP.map[k]!==undefined).map(([,n])=>`<th>${n}</th>`).join('')}</tr></thead><tbody>${ex.map(o=>`<tr>${T.campos.filter(([k])=>IMP.map[k]!==undefined).map(([k])=>`<td>${k==='precio'||k==='costo'?fmt(impNum(o[k])||0):esc(String(o[k]??''))}</td>`).join('')}</tr>`).join('')||`<tr><td class="muted">Elegí al menos la columna del nombre${IMP.tipo==='carta'?' y la del precio':IMP.tipo==='clientes'?' y la del teléfono':''}.</td></tr>`}</tbody></table></div>
+<p style="margin:12px 0 0;font-size:14px"><b>${val.length}</b> para importar: ${nuevos} nuevo${nuevos===1?'':'s'}${val.length-nuevos?` y ${val.length-nuevos} que ya tenías (se actualizan)`:''}.${todas.length-val.length?` <span class="muted">${todas.length-val.length} fila${todas.length-val.length===1?'':'s'} sin ${IMP.tipo==='carta'?'nombre o precio':IMP.tipo==='clientes'?'nombre o teléfono':'nombre'} se saltea${todas.length-val.length===1?'':'n'}.</span>`:''}</p>
+${IMP.tipo==='carta'?'<p class="muted" style="font-size:13px;margin:6px 0 0">Los platos entran sin receta. Después, en Carta y recetas, les cargás los insumos para que descuenten stock.</p>':''}
+<div class="btns"><button class="ghost" data-a="impVolver">← Otro archivo</button><button class="primary" data-a="impOk" ${val.length?'':'disabled'}>Importar ${val.length}</button></div>`}
+function impAbrir(tipo){IMP={tipo:tipo||'carta',filas:null,map:{},h:0,archivo:''};impRefrescar()}
+function impRefrescar(){modal(vImportar(),!!(IMP&&IMP.filas))}
+document.addEventListener('change',async e=>{const t=e.target;
+  if(t.matches&&t.matches('[data-impmap]')&&IMP){const v=t.value;IMP.map[t.dataset.impmap]=v===''?undefined:+v;if(v==='')delete IMP.map[t.dataset.impmap];impRefrescar();return}
+  if(!(t.matches&&t.matches('[data-impfile]'))||!IMP)return;const f=t.files&&t.files[0];if(!f)return;
+  if(f.size>8e6)return toast('El archivo es muy grande (máx. 8 MB)',1);
+  try{let filas;const ext=(f.name.split('.').pop()||'').toLowerCase();
+    if(ext==='xls')return toast('Ese es un Excel viejo (.xls). Abrilo y guardalo como .xlsx o .csv, y subilo de nuevo',1);
+    if(ext==='xlsx')filas=await impXLSX(await f.arrayBuffer());
+    else{const b=await f.arrayBuffer();let tx=new TextDecoder('utf-8').decode(b);if(tx.includes('�'))tx=new TextDecoder('windows-1252').decode(b);filas=impCSV(tx)}
+    filas=filas.filter(r=>r.some(c=>String(c??'').trim()!==''));if(filas.length<2)return toast('No encontramos filas en ese archivo',1);
+    IMP.filas=filas;IMP.archivo=f.name;IMP.h=impCabecera(filas);IMP.map=impAuto(filas[IMP.h]||[],IMP.tipo);impRefrescar()}
+  catch(err){toast(/navegador/.test(err.message)?'Tu navegador no puede abrir Excel. Guardalo como CSV o actualizá el navegador':'No pudimos leer ese archivo. Probá guardarlo como .xlsx o .csv',1)}});
+function impSlug(s,usados){let b=impNorm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24)||'item',id=b,i=2;while(usados.has(id))id=b+'-'+i++;usados.add(id);return id}
+const BARRA_RX=/bebida|cerveza|birra|pinta|vino|trago|gaseosa|agua|cafe|café|jugo|licuado|fernet|gin|vodka|whisky|aperitivo|coctel|cocktail|limonada|te\b|té|cortado|latte|soda|espumante|champagne/i;
+const IMP_ACC={
+  impAbrir(b){impAbrir(b&&b.dataset&&b.dataset.t)},
+  impTipo(b){IMP.tipo=b.dataset.t;impRefrescar()},
+  impVolver(){IMP.filas=null;IMP.map={};impRefrescar()},
+  impModelo(){const T=IMP_TIPOS[IMP.tipo];descargar(xlsx([{nombre:T.n.split(' (')[0],filas:T.ej,anchos:T.ej[0].map((c,i)=>i===0?28:i===3&&IMP.tipo==='carta'?32:16)}]),`ta-ca-${IMP.tipo}-modelo.xlsx`)},
+  impOk(){const val=impValidas(),t=IMP.tipo;let n=0,act=0;
+    if(t==='carta'){const ids=new Set(S.platos.map(p=>p.id));val.forEach(o=>{const nom=String(o.nombre).trim().slice(0,60),pr=Math.round(impNum(o.precio)),cat=String(o.cat??'').trim().slice(0,30)||'Carta',ar=String(o.area??'');
+        const area=/barra|bar\b|bebida/i.test(ar)?'barra':/cocina/i.test(ar)?'cocina':BARRA_RX.test(cat+' '+nom)?'barra':'cocina';
+        const ya=S.platos.find(p=>impNorm(p.nombre)===impNorm(nom));
+        if(ya){if(ya.precio!==pr)audit('Cambio de precio',`${ya.nombre}: ${fmt(ya.precio)} → ${fmt(pr)} (importado)`);ya.precio=pr;if(o.cat)ya.cat=cat;if(o.desc)ya.desc=String(o.desc).slice(0,140);act++}
+        else{S.platos.push({id:impSlug(nom,ids),nombre:nom,cat,area,precio:pr,desc:String(o.desc??'').trim().slice(0,140),alias:[],activo:true,receta:{},mods:[]});n++}})}
+    else if(t==='insumos'){const ids=new Set(S.insumos.map(i=>i.id));S.proveedores=S.proveedores||[];
+      val.forEach(o=>{const nom=String(o.nombre).trim().slice(0,60),un=impNorm(o.u),u=/^(kg|kilo|kilos|kilogramo)/.test(un)?'kg':/^(l|lt|lts|litro)/.test(un)?'l':'u';
+        let prov='';const pn=String(o.prov??'').trim();if(pn){let pv=S.proveedores.find(x=>impNorm(x.nombre)===impNorm(pn));if(!pv){pv={id:impSlug(pn,new Set(S.proveedores.map(x=>x.id))),nombre:pn.slice(0,50),tel:''};S.proveedores.push(pv)}prov=pv.id}
+        const num=(v,d)=>{const x=impNum(v);return isFinite(x)?x:d},ya=S.insumos.find(i=>impNorm(i.nombre)===impNorm(nom));
+        if(ya){if(o.stock!==undefined&&o.stock!=='')ya.stock=num(o.stock,ya.stock);if(o.costo!==undefined&&o.costo!=='')ya.costo=num(o.costo,ya.costo);if(o.min!==undefined&&o.min!=='')ya.min=num(o.min,ya.min);if(prov)ya.prov=prov;act++}
+        else{S.insumos.push({id:impSlug(nom,ids),nombre:nom,u,stock:num(o.stock,0),costo:num(o.costo,0),min:num(o.min,0),prov});n++}})}
+    else{S.clientes=S.clientes||{};val.forEach(o=>{const tel=String(o.tel).trim(),dig=tel.replace(/\D/g,''),k=Object.keys(S.clientes).find(x=>x.replace(/\D/g,'')===dig);
+      if(k){const c=S.clientes[k];c.nombre=String(o.nombre).trim().slice(0,50)||c.nombre;if(o.dir)c.dir=String(o.dir).trim().slice(0,90);if(o.notas)c.notas=String(o.notas).slice(0,200);act++}
+      else{S.clientes[tel]={tel,nombre:String(o.nombre).trim().slice(0,50),dir:String(o.dir??'').trim().slice(0,90),notas:String(o.notas??'').slice(0,200),pedidos:0,gastado:0,ult:null,ultItems:[]};n++}})}
+    audit('Importación',`${IMP_TIPOS[t].n}: ${n} nuevos, ${act} actualizados (${IMP.archivo})`);save();closeModal();
+    const enW=typeof W!=='undefined'&&W&&!S.setup&&t==='carta';IMP=null;if(enW){W.carta='importada';W.paso=4}
+    render();toast(`Listo: ${n} nuevo${n===1?'':'s'}${act?` y ${act} actualizado${act===1?'':'s'}`:''}`)}
+};
+Object.assign(A,IMP_ACC);
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b,e)});
 document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f||!F[f])return;e.preventDefault();F[f](Object.fromEntries(new FormData(e.target)),e.target)});
