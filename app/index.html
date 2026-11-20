@@ -2745,12 +2745,19 @@ setInterval(()=>{if(!busy()&&!$('#modal').innerHTML&&(pantallaMode||((tab==='coc
 })();
 /* ---------- botón Atrás del celular: cierra ventanas, vuelve de pantalla y pregunta antes de salir ---------- */
 let TABH=[],SALIENDO=false;
-function atrasArmar(){try{if(!(history.state&&history.state.taca))history.pushState({taca:1},'',location.href)}catch(e){}}
+// Chrome en Android saltea los pasos de historial agregados sin un toque del usuario.
+// Por eso el "seguro" se vuelve a poner con el primer toque después de cada uso.
+let ATRAS_TOQUE=false;
+function atrasArmar(conToque){try{const st=history.state||{};
+  if(st.taca&&(st.toque||!conToque))return;
+  history.pushState({taca:1,toque:!!conToque},'',location.href);if(conToque)ATRAS_TOQUE=true}catch(e){}}
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(!SALIENDO&&!pantallaMode&&!(history.state&&history.state.toque))atrasArmar(true)},{capture:true,passive:true}));
 let ATRAS_HASH=location.hash;
 window.addEventListener('hashchange',()=>{ATRAS_HASH=location.hash});
 window.addEventListener('popstate',()=>{
   if(location.hash!==ATRAS_HASH){ATRAS_HASH=location.hash;return} // cambio de # (otra pantalla de la app), no es "atrás"
-  if(SALIENDO||pantallaMode)return;
+  if(pantallaMode)return;
+  if(SALIENDO){if(SALIENDO<6){SALIENDO++;history.back()}return}
   const abierto=!!$('#modal').innerHTML.trim();
   if(abierto&&document.querySelector('#modal [data-a=salirApp]')){closeModal();atrasArmar();return}
   if(abierto){if(QRP&&document.getElementById('qrmp')){QRP=null}closeModal();atrasArmar();renderSafe();return}
@@ -2761,11 +2768,11 @@ window.addEventListener('popstate',()=>{
 });
 Object.assign(A,{
   quedarme(){closeModal();atrasArmar()},
-  salirApp(){SALIENDO=true;closeModal();try{window.close()}catch(e){}
+  salirApp(){SALIENDO=1;closeModal();try{window.close()}catch(e){}
     setTimeout(()=>{if(document.visibilityState==='visible'){history.back();setTimeout(()=>{if(document.visibilityState==='visible')toast('Tocá “atrás” una vez más para salir')},400)}},250);
     setTimeout(()=>{SALIENDO=false},6000)}
 });
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SALIENDO===false)atrasArmar()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!SALIENDO)atrasArmar()});
 atrasArmar();
 route();
 /* errores de la app: le llegan a Roman Web (panel y Telegram). Uno por tipo y como mucho 5 por sesión. */
