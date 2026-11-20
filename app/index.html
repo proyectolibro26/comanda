@@ -120,8 +120,8 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 .pe-barra{background:color-mix(in srgb,var(--acc) 22%,var(--card));border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);color:var(--txt)}
 .pe-cocina{background:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 9px);border:1px solid var(--line)}
 .pe-bano{border:1px solid var(--line);background:var(--bg)}
-.pe-zona{z-index:0;border:1.5px dashed color-mix(in srgb,var(--muted) 55%,transparent);border-radius:14px;align-items:flex-start;justify-content:flex-start;background:color-mix(in srgb,var(--muted) 4%,transparent)}
-.pe-zona span{padding:6px 10px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.pe-zona{z-index:0;border:1.5px dashed color-mix(in srgb,var(--muted) 55%,transparent);border-radius:14px;align-items:flex-start;justify-content:flex-start;background:color-mix(in srgb,var(--muted) 4%,transparent);overflow:visible}
+.pe-zona span{position:absolute;top:0;left:12px;translate:0 -50%;padding:1px 8px;border-radius:6px;background:var(--card);font-size:11px;letter-spacing:.06em;text-transform:uppercase;line-height:1.4}
 .pe-pared{background:var(--muted);border-radius:2px;opacity:.7}
 .pe-puerta{border:2px dashed var(--accd);border-radius:4px;color:var(--accd);font-size:10.5px;overflow:visible}.pe-puerta span{translate:0 -120%}
 .pe-planta{border-radius:50%;background:radial-gradient(circle at 35% 35%,#65a30d,#365314);border:0}
@@ -2399,7 +2399,12 @@ function plDesdeIA(d){const H=Math.max(40,Math.min(100,+d.alto||64)),cl=(v,a,b)=
   if(!ok)ms.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).forEach((m,i)=>m.num=i+1);
   (d.elementos||[]).slice(0,40).forEach(e=>{if(!PL_TIPOS[e.tipo]||e.tipo==='mesa')return;const w=cl(e.w,1,100),h=cl(e.h,1,H);items.push({id:uid(),t:e.tipo,x:cl(e.x,0,100-w),y:cl(e.y,0,H-h),w,h,l:String(e.nombre||(e.tipo==='planta'||e.tipo==='pared'?'':PL_TIPOS[e.tipo].n)).slice(0,24)})});
   ms.forEach(m=>items.push({id:uid(),t:'mesa',n:m.num,f:m.f,x:m.x,y:m.y,w:m.w,h:m.h,s:m.s}));
-  return{plano:{h:H,items},max:Math.max(0,...ms.map(m=>m.num))}}
+  // que nada quede pegado al borde de arriba de su zona (ahí va el nombre)
+  items.filter(z=>z.t==='zona').forEach(z=>items.forEach(i=>{if(i===z||i.t==='zona')return;if(i.x>=z.x&&i.x+i.w<=z.x+z.w+.5&&i.y>=z.y-.5&&i.y<z.y+3){const d=z.y+3-i.y;i.y+=d;if(i.y+i.h>z.y+z.h)z.h=i.y+i.h-z.y+1}}));
+  // agrandar para que ocupe todo el ancho (margen de 3), manteniendo proporciones
+  let H2=H;if(items.length){const x0=Math.min(...items.map(i=>i.x)),y0=Math.min(...items.map(i=>i.y)),x1=Math.max(...items.map(i=>i.x+i.w)),y1=Math.max(...items.map(i=>i.y+i.h)),k=Math.min(94/Math.max(1,x1-x0),2.2),r=v=>Math.round(v*2)/2;
+    if(k>1.05||x0>4||y0>4){items.forEach(i=>{i.x=r(3+(i.x-x0)*k);i.y=r(3+(i.y-y0)*k);i.w=r(i.w*k);i.h=r(i.h*k)});H2=Math.max(40,Math.min(110,r((y1-y0)*k+6)))}}
+  return{plano:{h:H2,items},max:Math.max(0,...ms.map(m=>m.num))}}
 const IA_ACC={
   iaSinCuenta(){iaSinCuenta()},
   plIaOk(){const d=PL.ia;if(!d)return;const r=plDesdeIA(d);S.plano=r.plano;if(r.max>S.mesas)S.mesas=r.max;PL.ia=null;PL.edit=true;PL.sel=null;audit('Plano','Plano armado con IA');save();closeModal();tab='salon';render();toast('Plano armado: acomodá lo que haga falta')}
