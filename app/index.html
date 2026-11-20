@@ -1879,7 +1879,7 @@ function carritoModal(){
 const A={
   closeOv(b,e){if(e.target===b)closeModal()},
   close(){closeModal()},
-  tab(b){tab=b.dataset.t;MAS=false;render();scrollTo(0,0)},
+  tab(b){const t=b.dataset.t;if(t!==tab){TABH.push(tab);if(TABH.length>20)TABH.shift()}tab=t;MAS=false;render();scrollTo(0,0)},
   async logout(){rol=null;personaId=null;try{sessionStorage.removeItem('comanda-rol');sessionStorage.removeItem('taca-persona')}catch(e){}if(EQ){try{await NB.pinSalir()}catch(e){}conectar()}render()},
   abrirMesa(b){location.hash='mesa-'+b.dataset.n},
   salirCliente(b,e){e.preventDefault();history.replaceState(null,'',location.pathname+location.search);clienteMode=null;render()},
@@ -2743,6 +2743,27 @@ setInterval(()=>{if(!busy()&&!$('#modal').innerHTML&&(pantallaMode||((tab==='coc
     else if(mc)toast('No se pudo conectar Mercado Pago. Probá de nuevo.',1);
   },900);
 })();
+/* ---------- botón Atrás del celular: cierra ventanas, vuelve de pantalla y pregunta antes de salir ---------- */
+let TABH=[],SALIENDO=false;
+function atrasArmar(){try{if(!(history.state&&history.state.taca))history.pushState({taca:1},'',location.href)}catch(e){}}
+window.addEventListener('popstate',()=>{
+  if(SALIENDO||pantallaMode)return;
+  const abierto=!!$('#modal').innerHTML.trim();
+  if(abierto&&document.querySelector('#modal [data-a=salirApp]')){closeModal();atrasArmar();return}
+  if(abierto){if(QRP&&document.getElementById('qrmp')){QRP=null}closeModal();atrasArmar();renderSafe();return}
+  if(typeof MAS!=='undefined'&&MAS){MAS=false;render();atrasArmar();return}
+  if(!clienteMode&&TABH.length){tab=TABH.pop();render();scrollTo(0,0);atrasArmar();return}
+  const carrito=clienteMode&&C.cart&&C.cart.length;
+  modal(`<h2>¿Querés salir de ta-ca?</h2><p class="muted" style="margin-top:0">${carrito?'Tenés un pedido sin enviar: si salís, se pierde.':'Tocaste “atrás” en la primera pantalla.'}</p><div class="btns"><button class="primary" data-a="quedarme">Quedarme</button><button class="ghost" data-a="salirApp">Salir</button></div>`);
+});
+Object.assign(A,{
+  quedarme(){closeModal();atrasArmar()},
+  salirApp(){SALIENDO=true;closeModal();try{window.close()}catch(e){}
+    setTimeout(()=>{if(document.visibilityState==='visible'){history.back();setTimeout(()=>{if(document.visibilityState==='visible')toast('Tocá “atrás” una vez más para salir')},400)}},250);
+    setTimeout(()=>{SALIENDO=false},6000)}
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SALIENDO===false)atrasArmar()});
+atrasArmar();
 route();
 /* errores de la app: le llegan a Roman Web (panel y Telegram). Uno por tipo y como mucho 5 por sesión. */
 (function(){const vistos=new Set();let n=0;
