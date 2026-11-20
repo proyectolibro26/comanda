@@ -114,12 +114,12 @@ module.exports = async (req, res) => {
     const contenido = archivos.map(a => a.mime === 'application/pdf'
       ? { type: 'document', source: { type: 'base64', media_type: a.mime, data: a.data } }
       : { type: 'image', source: { type: 'base64', media_type: a.mime, data: a.data } });
-    contenido.push({ type: 'text', text: tipo === 'carta' ? 'Esta es la carta del local.' : 'Este es el salón del local.' });
+    contenido.push({ type: 'text', text: (tipo === 'carta' ? 'Esta es la carta del local.' : 'Este es el salón del local.') + ` Respondé únicamente llamando a la herramienta ${HERR[tipo].name}, sin texto aparte.` });
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODELO, max_tokens: tipo === 'carta' ? 12000 : 6000, system: PROMPT[tipo], tools: [HERR[tipo]], tool_choice: { type: 'tool', name: HERR[tipo].name }, messages: [{ role: 'user', content: contenido }] })
+      body: JSON.stringify({ model: MODELO, max_tokens: tipo === 'carta' ? 12000 : 6000, system: PROMPT[tipo], tools: [HERR[tipo]], messages: [{ role: 'user', content: contenido }] })
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -127,7 +127,11 @@ module.exports = async (req, res) => {
       const msg = r.status === 529 || r.status === 503 ? 'El servicio de IA está ocupado. Probá de nuevo en un minuto' : r.status === 400 && /credit|balance/i.test(JSON.stringify(j)) ? 'La lectura con IA no tiene saldo. Avisale a Roman Web' : 'No pudimos leer el archivo. Probá con otra foto';
       return res.status(502).json({ error: msg });
     }
-    const uso = (j.content || []).find(c => c.type === 'tool_use');
+    let uso = (j.content || []).find(c => c.type === 'tool_use' && c.name === HERR[tipo].name);
+    if (!uso) { // por si respondió con el JSON en texto
+      const t = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n'), m = t.match(/\{[\s\S]*\}/);
+      try { if (m) uso = { input: JSON.parse(m[0]) }; } catch (e) {}
+    }
     if (!uso || !uso.input) return res.status(502).json({ error: 'No encontramos nada para cargar. Probá con una foto más clara' });
     console.log('ia ok', tipo, user.id, j.usage && JSON.stringify(j.usage));
     return res.status(200).json({ ok: true, tipo, datos: uso.input, cortado: j.stop_reason === 'max_tokens' });
