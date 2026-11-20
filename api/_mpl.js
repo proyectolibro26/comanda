@@ -5,7 +5,7 @@
 const crypto = require('crypto');
 const { SB } = require('./_lib');
 
-const BASE = (process.env.APP_URL || 'https://comanda-flax-eight.vercel.app').replace(/\/$/, '');
+const BASE = (process.env.APP_URL || 'https://ta-ca.com.ar').replace(/\/$/, '');
 const REDIRECT = BASE + '/api/mp-oauth';
 
 function clientId() {
