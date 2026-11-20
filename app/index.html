@@ -775,6 +775,7 @@ async function arrancarCuentas(){
   try{const ep=JSON.parse(ls('taca-espera-pago')||'null');if(ep||QS_PRE('pago')==='ok'){SY.esperaPago={ts:Date.now(),antes:ep?ep.antes:''};SY.infoTs=0;ls('taca-espera-pago',null);
     if(QS_PRE('pago')){history.replaceState(null,'',location.pathname+(QS_PRE('mock')?'?mock=1':''));setTimeout(()=>toast('Estamos confirmando tu pago con Mercado Pago… puede tardar unos minutos.'),800)}
     if(NB&&NB._acreditar)setTimeout(()=>NB._acreditar(),1200)}}catch(e){}
+  if(modoDemo()&&!cloudClient()&&!S.demoLista&&!S.pedidos.length&&!S.cobros.length){try{demoVentas()}catch(e){}S.demoLista=true;save();render()}
   if(modoDemo()||cloudClient()){AUTH.cargando=false;return}
   if(EQ){AUTH.user={id:'equipo',email:EQ.e||'Equipo',equipo:true};AUTH.cargando=false;conectar();render();return}
   try{AUTH.user=await NB.auth.sesion()}catch(e){AUTH.user=null}
@@ -1608,7 +1609,7 @@ function vMesas(){
 <div class="grid2"><section class="card"><h2>Ajustes del local</h2><label>Nombre del local<input data-set="negocio" value="${esc(S.negocio)}"></label>
 <div class="inline"><label>Costo de envío<input data-set="envio" inputmode="decimal" value="${S.envio}"></label><label>Descuento máximo de la cajera (%)<input data-set="descMax" inputmode="decimal" value="${S.descMax}"></label></div>
 <label>Alias para transferencias<input data-set="alias" value="${esc(S.alias)}"></label></section>
-${vCuenta()}${vEquipos()}${vCobroMP()}${vArca()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">Para mostrarle la app a un cliente: cargá un día de ventas de ejemplo o empezá de cero.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
+${vCuenta()}${vEquipos()}${vCobroMP()}${vArca()}${(!rol||rol==='dueno')?`<section class="card"><h2>💾 Copia de tus datos</h2><p class="muted" style="margin-top:0">Descargá una copia de la carta, el stock, los clientes y las ventas de este local para guardarla vos. Además, Roman Web hace una copia de seguridad automática todas las noches.</p><div class="btns"><button data-a="copiaDatos">⬇ Descargar copia</button></div></section>`:''}${vEquipo()}${vImpresora()}${modoDemo()?'':'<!--'}<section class="card"><h2>Demo</h2><p class="muted" style="margin-top:0">La demo arranca con un día de ejemplo: mesas ocupadas, pedidos en cocina y barra, cobros y reservas. Podés sumar más ventas o volver al inicio.</p><div class="btns"><button data-a="demoVentas">Cargar ventas de ejemplo</button><button class="bad" data-a="reset">Reiniciar demo</button></div></section>${modoDemo()?'':'-->'}</div>`;
 }
 const V={reservas:vReservas,cierre:vCierre,salon:vSalon,caja:vCaja,tomar:vTomar,cocina:vCocina,stock:vStock,carta:vCarta,clientes:vClientes,whatsapp:vWhatsapp,mesas:vMesas,menu:vMenu};
 
@@ -1864,7 +1865,7 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   waQuick(b){waSend(b.dataset.q)},
   waReset(){S.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:S.wa.tel};save();render()},
   demoVentas(){demoVentas();toast('Ventas de ejemplo cargadas');tab='cierre';render()},
-  reset(){modal(`<h2>¿Reiniciar la demo?</h2><p class="muted">Se borran ventas, stock, carta y ajustes y se vuelve al estado inicial.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="resetOk">Reiniciar</button></div>`)},
+  reset(){modal(`<h2>¿Reiniciar la demo?</h2><p class="muted">Se borran tus cambios y vuelven la carta, el stock y los pedidos de ejemplo.</p><div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="resetOk">Reiniciar</button></div>`)},
   imprimirComanda(b){const p=S.pedidos.find(x=>x.id===b.dataset.id);if(p)imprimir('Comanda #'+p.num,comandaHTML(p,kArea))},
   imprimirPrecuenta(b){imprimir('Precuenta',precuentaHTML(b.dataset.g))},
   imprimirTicket(b){const c=S.cobros.find(x=>x.id===b.dataset.id);if(c)imprimir('Ticket',ticketHTML(c))},
@@ -1927,7 +1928,7 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   eqPin(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(p)modal(`<h2>Nuevo PIN para ${esc(p.nombre)}</h2><form data-f="eqPin"><input type="hidden" name="id" value="${p.id}"><label>PIN (4 a 6 números)<input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required autocomplete="off"></label><div class="btns"><button type="button" class="ghost" data-a="close">Cancelar</button><button class="primary">Guardar</button></div></form>`)},
   eqQuitar(b){const p=S.equipo.find(x=>x.id===b.dataset.id);if(!p)return;if(p.rol==='dueno'&&S.equipo.filter(x=>x.rol==='dueno').length<2)return toast('Tiene que quedar al menos un dueño',1);if(p.id===personaId)return toast('No te podés quitar a vos mismo',1);
     S.equipo=S.equipo.filter(x=>x.id!==p.id);audit('Equipo',`Se quitó a ${p.nombre}`);save();render();toast(`${p.nombre} ya no puede entrar`)},
-  resetOk(){S=seed();save();closeModal();render();toast('Demo reiniciada')}
+  resetOk(){S=seed();try{demoVentas()}catch(e){}S.demoLista=true;save();closeModal();render();toast('Demo reiniciada con pedidos de ejemplo')}
 };
 const F={
   async admWaba(d,f){const btn=f.querySelector('button.primary');btn.disabled=true;btn.textContent='Consultando a Meta…';
@@ -2027,9 +2028,11 @@ function demoVentas(){
       const pagos={efectivo:0,mp:0,tarjeta:0,transferencia:0};if(i===6){pagos.efectivo=Math.round((total+prop)/2);pagos.tarjeta=total+prop-pagos.efectivo}else pagos[medios[i]]=total+prop;
       const cb=registrarCobro([p],{nombre:w?'Delivery #'+p.num+' · '+cl[0]:'Mesa '+p.mesa,por:'Cajera',subtotal:p.total,descPct:desc,descuento:p.total-total,propina:prop,total,pagos});cb.ts=p.ts+45*60000;
       if(i===4&&S.turno&&S.turno.cajera==='Ana'){const t=cerrarTurnoCon(calcTurno(S.turno).esperado-500);t.fin=Date.now()-2*3600000;S.turno={id:uid(),cajera:'Cajera',apertura:t.contado,inicio:t.fin}}
-    }else p.estado=i===9?'listo':i===10?'preparando':'nuevo';
+    }else{p.estado=i===9?'listo':i===10?'preparando':'nuevo';p.ts=Date.now()-(i===9?26:i===10?11:6)*60000}
   });
   [['Juli','listo',[L('hamb',1),L('papas',1)]],['Nico','preparando',[L('pizza',1)]],['Caro','nuevo',[L('mila',1),L('gaseosa',1)]]].forEach(([n,e,l])=>{const p=crearPedido({origen:'mostrador',por:'Cajera',cliente:n,lines:l});if(!p.error){p.estado=e;p.ts=Date.now()-(e==='listo'?18:e==='preparando'?9:2)*60000}});
+  // salón en vivo: mesas comiendo, esperando y recién pedidas
+  [[2,'entregado',[L('hamb',2,['xc']),L('pinta',2)],48,'Mozo'],[7,'nuevo',[L('pizza',1),L('pinta',4)],3,'QR'],[9,'preparando',[L('mila',2,['nap']),L('papas',1),L('gaseosa',2)],14,'Mozo'],[11,'listo',[L('cesar',1),L('gaseosa',1)],22,'QR'],[8,'entregado',[L('pizza',2),L('gaseosa',3)],35,'QR'],[2,'nuevo',[L('papas',1,['pc']),L('pinta',2)],4,'Mozo']].forEach(([m,e,l,min,por])=>{const p=crearPedido({origen:'mesa',por,mesa:m,lines:l});if(!p.error){p.estado=e;p.ts=Date.now()-min*60000}});
   const hoy=fechaISO();[['Familia Gómez','21:00',6,7,'Cumpleaños, traen torta'],['Lucas','21:30',2,8,''],['Mariana','22:00',4,null,'Ventana si se puede']].forEach(([n,h,per,m,nota])=>S.reservas.push({id:uid(),nombre:n,tel:'341 555-01'+per+'0',personas:per,fecha:hoy,hora:h,mesa:m,nota,estado:'confirmada',ts:Date.now(),por:'Dueño'}));
   const m3=S.pedidos.find(p=>!p.cobrado&&p.mesa===4&&p.origen==='mesa');if(m3)m3.pideCuenta=true;
   S.llamados.push({id:uid(),mesa:5,ts:Date.now()-3*60000});
