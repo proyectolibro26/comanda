@@ -267,6 +267,13 @@ footer .legal a{color:inherit}
 .cargada .row:first-of-type{border-top:0}.cargada .row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cargada .row .sw{flex:none}.cargada .row small{color:var(--muted);font-size:12px;margin-right:6px}.cargada .row b{font-variant-numeric:tabular-nums}
 @media(max-width:960px){.foto .wrap{grid-template-columns:1fr;gap:36px}}
 @media(max-width:520px){.fv{grid-template-columns:1fr;gap:16px}.fv .fl{rotate:90deg;justify-self:center}.papel{rotate:-1.5deg}}
+.ia-pill{display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;padding:5px 14px 5px 5px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none;background:var(--card);box-shadow:0 0 0 1px var(--line2);transition-property:box-shadow,scale;transition-duration:.15s}
+.ia-pill:hover{box-shadow:0 0 0 1px var(--marca)}.ia-pill:active{scale:.97}
+.ia-pill .ia-tag{padding:3px 10px;border-radius:999px;background:var(--lima);color:var(--sobre);font-size:12px;font-weight:700}.ia-pill .ico{width:16px;height:16px;color:var(--acc)}
+.ia-hero{display:flex;gap:14px;align-items:center;margin-top:26px;padding:14px 16px;border-radius:16px;text-decoration:none;color:var(--ink);font-size:15.5px;line-height:1.45;max-width:560px;background:linear-gradient(100deg,color-mix(in srgb,var(--lima) 16%,var(--card)),var(--card) 75%);box-shadow:0 0 0 1px color-mix(in srgb,var(--lima) 55%,transparent);transition-property:box-shadow,scale;transition-duration:.15s}
+.ia-hero:hover{box-shadow:0 0 0 1.5px var(--lima)}.ia-hero:active{scale:.98}
+.ia-hero .ia-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--lima);flex:none}.ia-hero .ia-ic .ico{width:24px;height:24px;color:var(--sobre)}
+.ia-hero b{font-weight:700}
 </style>
 </head>
 <body>
@@ -283,7 +290,7 @@ footer .legal a{color:inherit}
 
 <nav class="top" aria-label="Principal"><div class="wrap">
   <a class="tc" href="#" aria-label="ta-ca, inicio">ta<i></i>ca</a>
-  <div class="links"><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
+  <div class="links"><a href="#foto">Con IA</a><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
   <div class="der">
     <button class="icb" id="tema" type="button" aria-label="Cambiar entre modo oscuro y claro"><svg class="ico sol"><use href="#i-sol"/></svg><svg class="ico luna off"><use href="#i-luna"/></svg></button>
     <a class="entrar" href="/app">Iniciar sesión</a>
@@ -296,10 +303,12 @@ footer .legal a{color:inherit}
 <main>
 <header class="hero"><div class="wrap">
   <div>
+    <a class="ia-pill" href="#foto"><span class="ia-tag">Nuevo</span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Tu carta y tu salón con IA</a>
     <h1>Del QR a la caja, sin que <em>nadie anote nada.</em></h1>
     <p class="lead">ta-ca conecta las mesas, la cocina, la caja y el stock de tu bar. El cliente pide desde el QR, la comanda sale en cocina, la venta queda en caja y la factura de ARCA sale con un toque.</p>
     <div class="ctas"><a class="btn p" href="/app?crear=1">Empezar gratis <svg class="ico flecha"><use href="#i-flecha"/></svg></a><a class="btn" href="/app?demo=1">Ver la demo</a></div>
     <p class="nota-c">14 días gratis. Sin tarjeta y sin permanencia.</p>
+    <a class="ia-hero" href="#foto"><span class="ia-ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span><b>Sacale una foto a tu carta.</b> En un minuto tenés el sistema armado: la IA pasa platos y precios, y con un croquis te arma el salón.</span></a>
   </div>
 
   <div class="tablero" id="tablero">
@@ -339,6 +348,31 @@ footer .legal a{color:inherit}
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Mesas, WhatsApp o factura se pagan como módulos aparte.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Sin módulos sueltos:</b> mesas, stock y factura ARCA vienen en los dos planes.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Aumentos sorpresa y soporte que de noche no atiende.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Soporte por WhatsApp</b>, también en el horario del servicio.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Instalaciones, equipos especiales y técnicos que cobran.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Abrís el link y listo.</b> Usás los equipos que ya tenés.</span></div></div>
+  </div>
+</div></section>
+
+<section id="foto" class="foto"><div class="wrap">
+  <div>
+    <div class="sh"><h2>Sacale una foto a tu carta. <span class="lima-t">En un minuto tenés el sistema armado.</span></h2><p>La IA lee tu carta impresa o el PDF y pasa los platos, las categorías y los precios. Vos revisás y listo.</p></div>
+    <ul>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
+    </ul>
+  </div>
+  <div class="fv" aria-label="Una carta impresa se convierte en la carta cargada en ta-ca">
+    <div class="papel" aria-hidden="true"><i class="scan"></i><h4>PIZZAS</h4>
+      <div class="ln"><span>Muzzarella</span><span></span><span>10.500</span></div><div class="ln"><span>Fugazzeta</span><span></span><span>11.500</span></div><div class="ln"><span>Especial</span><span></span><span>12.500</span></div>
+      <h4 style="margin-top:16px">BEBIDAS</h4>
+      <div class="ln"><span>Pinta IPA</span><span></span><span>5.500</span></div><div class="ln"><span>Gaseosa</span><span></span><span>2.500</span></div></div>
+    <svg class="fl" viewBox="0 0 34 24" aria-hidden="true"><path d="M2 12h26M20 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="cargada"><div class="cab"><span>CARGADO EN TA-CA</span><span>5 platos</span></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Muzzarella</span><small>Cocina</small><b>$10.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Fugazzeta</span><small>Cocina</small><b>$11.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Especial</span><small>Cocina</small><b>$12.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Pinta IPA</span><small>Barra</small><b>$5.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Gaseosa</span><small>Barra</small><b>$2.500</b></div>
+    </div>
   </div>
 </div></section>
 
@@ -387,31 +421,6 @@ footer .legal a{color:inherit}
     <div class="item"><h3>Si se corta internet</h3><p>Tu equipo sigue cargando y todo se sube solo al volver. El QR del cliente usa sus propios datos.</p></div>
   </div>
   <p class="funciona">Funciona con <b>Mercado Pago</b>, <b>WhatsApp</b>, <b>ARCA</b>, cualquier impresora térmica de 80 mm y <b>Excel</b>. En el celular, la tablet o la compu que ya tenés, y se instala como app.</p>
-</div></section>
-
-<section id="foto" class="foto"><div class="wrap">
-  <div>
-    <div class="sh"><h2>Sacale una foto a tu carta. <span class="lima-t">En un minuto tenés el sistema armado.</span></h2><p>La IA lee tu carta impresa o el PDF y pasa los platos, las categorías y los precios. Vos revisás y listo.</p></div>
-    <ul>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
-    </ul>
-  </div>
-  <div class="fv" aria-label="Una carta impresa se convierte en la carta cargada en ta-ca">
-    <div class="papel" aria-hidden="true"><i class="scan"></i><h4>PIZZAS</h4>
-      <div class="ln"><span>Muzzarella</span><span></span><span>10.500</span></div><div class="ln"><span>Fugazzeta</span><span></span><span>11.500</span></div><div class="ln"><span>Especial</span><span></span><span>12.500</span></div>
-      <h4 style="margin-top:16px">BEBIDAS</h4>
-      <div class="ln"><span>Pinta IPA</span><span></span><span>5.500</span></div><div class="ln"><span>Gaseosa</span><span></span><span>2.500</span></div></div>
-    <svg class="fl" viewBox="0 0 34 24" aria-hidden="true"><path d="M2 12h26M20 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div class="cargada"><div class="cab"><span>CARGADO EN TA-CA</span><span>5 platos</span></div>
-      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Muzzarella</span><small>Cocina</small><b>$10.500</b></div>
-      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Fugazzeta</span><small>Cocina</small><b>$11.500</b></div>
-      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Especial</span><small>Cocina</small><b>$12.500</b></div>
-      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Pinta IPA</span><small>Barra</small><b>$5.500</b></div>
-      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Gaseosa</span><small>Barra</small><b>$2.500</b></div>
-    </div>
-  </div>
 </div></section>
 
 <section id="precios"><div class="wrap">
