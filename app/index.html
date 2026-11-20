@@ -228,6 +228,13 @@ table.fac td small{display:block;color:var(--muted);font-size:12px}table.fac td.
 .cli .cat{font:700 17px Unbounded,sans-serif;margin:18px 16px 8px}
 .dish{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 12px 8px}
 .dish.off{opacity:.55}
+.dish.con-foto{justify-content:flex-start}.dish .dish-t{flex:1;min-width:0}.dish-foto{flex:none;width:76px;height:76px;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--surface);cursor:zoom-in}.dish-foto img{width:100%;height:100%;object-fit:cover;display:block;outline:1px solid rgba(255,255,255,.08);outline-offset:-1px}
+.fotog{margin:-20px -20px 0;border-radius:16px 16px 0 0;overflow:hidden;background:#000}.fotog img{display:block;width:100%;max-height:60vh;object-fit:cover}
+.tfoto{width:36px;height:36px;border-radius:6px;object-fit:cover;float:left;margin:2px 10px 0 0}
+.efoto{display:flex;gap:14px;align-items:center;margin:4px 0 12px;padding:12px;border:1px dashed var(--line);border-radius:12px}.efoto small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.efoto-img{position:relative;flex:none;width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--surface);display:grid;place-items:center;color:var(--muted)}.efoto-img img{width:100%;height:100%;object-fit:cover}.efoto-img .ico{width:30px;height:30px}
+.efoto-cargando{position:absolute;inset:0;display:grid;place-items:center;background:rgba(11,17,32,.7);color:#fff;font-style:normal;font-size:12px}
+.btn-like.dis{opacity:.5;pointer-events:none}.btn-like.small{font-size:14px;padding:6px 10px}
 .dish .price{font-weight:700;color:var(--acc)}
 .qty{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .qty button{width:34px;height:34px;padding:0;border-radius:50%;font-size:18px;font-weight:700}
@@ -653,6 +660,9 @@ function supaNube(sb){
   const rpc=async(f,a)=>{const{data,error}=await sb.rpc(f,a);if(error)throw error;return data};
   let ch=null;
   return{
+    async subirFoto(local,blob){const nombre=local+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'.jpg';
+      const{error}=await sb.storage.from('taca-fotos').upload(nombre,blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});if(error)throw error;
+      return sb.storage.from('taca-fotos').getPublicUrl(nombre).data.publicUrl},
     auth:{
       async sesion(){const{data}=await sb.auth.getSession();return data.session?data.session.user:null},
       async entrar(e,p){const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});if(error)throw error;return data.user},
@@ -1226,7 +1236,7 @@ ${mis.length?`<div class="card mis"><h3>${mozo?'Pedidos de la mesa':'Tus pedidos
 <div class="row"><b>Total de la mesa</b><b>${fmt(totMesa)}</b></div>
 ${mozo?'':`<div class="btns">${mis.some(p=>p.pideCuenta)?'<span class="chip ok">Cuenta pedida ✓ — ya viene el mozo</span>':'<button data-a="pedirCuenta">🧾 Pedir la cuenta</button>'}<button class="mp" data-a="pagarMesa">Pagar con Mercado Pago</button></div>`}</div>`:''}
 ${cats.map(cat=>`<h2 class="cat">${esc(cat)}</h2>`+ps.filter(p=>p.cat===cat).map(p=>{const d=disp(p),c=enCarro(p.id);
-  return`<div class="dish ${d<=0?'off':''}"><div><b>${esc(p.nombre)}</b><small>${esc(p.desc)}${p.mods.length?' · se puede personalizar':''}</small><span class="price">${fmt(p.precio)}</span>
+  return`<div class="dish ${d<=0?'off':''} ${p.foto?'con-foto':''}">${p.foto?`<button class="dish-foto" data-a="verFoto" data-id="${p.id}" aria-label="Ver foto de ${esc(p.nombre)}"><img src="${esc(p.foto)}" alt="" loading="lazy" decoding="async"></button>`:''}<div class="dish-t"><b>${esc(p.nombre)}</b><small>${esc(p.desc)}${p.mods.length?' · se puede personalizar':''}</small><span class="price">${fmt(p.precio)}</span>
 ${mozo&&d>0?` <span class="chip ${d<10?'warn':'ok'}">quedan ${d}</span>`:''}${!mozo&&d>0&&d<=3?' <span class="chip warn">¡Últimas!</span>':''}</div>
 <div class="qty">${d<=0?'<span class="chip bad">Agotado</span>':`${c?`<button data-a="menos" data-id="${p.id}">−</button><b>${c}</b>`:''}<button data-a="mas" data-id="${p.id}">+</button>`}</div></div>`}).join('')).join('')}
 ${n?`<div class="cartbar"><span>${n} ${n>1?'ítems':'ítem'} · <b>${fmt(tot)}</b></span><button class="primary" data-a="verCarrito">${mozo?'Revisar y enviar':'Enviar pedido'} →</button></div>`:''}
@@ -1359,7 +1369,7 @@ ${S.mermas.length?`<div style="margin-top:12px">${S.mermas.map(m=>`<div class="r
 function vCarta(){
   return`<div class="ptitle"><div><h1>Carta y recetas</h1><small>Precio, receta (ficha técnica) y modificadores de cada plato. El costo y el margen se calculan solos con el costo de los insumos.</small></div><div class="btns" style="margin:0"><label class="btn-like btn-ia"><input type="file" data-iafile="carta" accept="image/*,application/pdf" multiple hidden>${ico('ia')}Cargar carta con IA</label><button class="ghost" data-a="impAbrir" data-t="carta">Importar Excel</button><button class="ghost" data-a="editPlato">+ Nuevo plato</button></div></div>
 <section class="card"><div class="tablewrap"><table><thead><tr><th>Plato</th><th>Área</th><th class="n">Precio</th><th class="n">Costo</th><th class="n">Margen</th><th class="n">Quedan</th><th>Visible</th><th></th></tr></thead><tbody>
-${S.platos.map(p=>{const cr=costoReceta(p.receta),mg=p.precio?1-cr/p.precio:0,d=disp(p);return`<tr class="${p.activo===false?'off':''}"><td><b>${esc(p.nombre)}</b><small>${esc(p.cat)} · ${Object.keys(p.receta).length} insumos · ${p.mods.length} modificadores</small></td><td>${AREA[p.area||'cocina']}</td>
+${S.platos.map(p=>{const cr=costoReceta(p.receta),mg=p.precio?1-cr/p.precio:0,d=disp(p);return`<tr class="${p.activo===false?'off':''}"><td>${p.foto?`<img class="tfoto" src="${esc(p.foto)}" alt="" loading="lazy">`:''}<b>${esc(p.nombre)}</b><small>${esc(p.cat)} · ${Object.keys(p.receta).length} insumos · ${p.mods.length} modificadores</small></td><td>${AREA[p.area||'cocina']}</td>
 <td class="n"><input style="width:100px;text-align:right" data-precio="${p.id}" inputmode="decimal" value="${p.precio}"></td><td class="n">${fmt(cr)}</td><td class="n"><span class="chip ${mg<.6?'warn':'ok'}">${Math.round(mg*100)}%</span></td><td class="n">${d===999?'∞':d}</td>
 <td><input type="checkbox" data-activo="${p.id}" ${p.activo!==false?'checked':''}></td><td><button class="small" data-a="editPlato" data-id="${p.id}">Editar</button></td></tr>`}).join('')}</tbody></table></div>
 <p class="muted" style="font-size:13px;margin:10px 0 0">Margen en amarillo = menos de 60%. Los cambios de precio quedan registrados en la auditoría.</p></section>`;
@@ -1367,6 +1377,7 @@ ${S.platos.map(p=>{const cr=costoReceta(p.receta),mg=p.precio?1-cr/p.precio:0,d=
 function editorHtml(){
   const opts=sel=>S.insumos.map(i=>`<option value="${i.id}" ${i.id===sel?'selected':''}>${esc(i.nombre)} (${i.u})</option>`).join('');
   return`<h2>${E.id?'Editar plato':'Nuevo plato'}</h2>
+<div class="efoto" id="efoto">${eFotoHtml()}</div>
 <div class="inline"><label>Nombre<input data-e="nombre" value="${esc(E.nombre)}"></label><label style="max-width:130px">Precio<input data-e="precio" inputmode="decimal" value="${E.precio}"></label></div>
 <div class="inline"><label>Categoría<input data-e="cat" value="${esc(E.cat)}" list="cats"></label><datalist id="cats">${[...new Set(S.platos.map(p=>p.cat))].map(c=>`<option>${esc(c)}`).join('')}</datalist>
 <label style="max-width:150px">Se prepara en<select data-e="area">${Object.entries(AREA).map(([k,t])=>`<option value="${k}" ${E.area===k?'selected':''}>${t}</option>`).join('')}</select></label></div>
@@ -1385,6 +1396,24 @@ ${E.mods.map((m,i)=>`<div class="erow m"><input data-em="${i}:nombre" value="${e
 <div class="cbsum" id="ecost">${eCosto()}</div>
 <div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="eSave">Guardar plato</button></div>`;
 }
+function eFotoHtml(){const sube=E.subiendo;
+  return`<div class="efoto-img">${E.foto?`<img src="${esc(E.foto)}" alt="Foto de ${esc(E.nombre||'el plato')}">`:`<span aria-hidden="true">${ico('camara')}</span>`}${sube?'<i class="efoto-cargando">Subiendo…</i>':''}</div>
+<div><b>Foto del plato</b><small>La ven tus clientes en la carta del QR. Sacala con buena luz, de arriba o de costado.</small>
+<div class="btns" style="margin-top:8px"><label class="btn-like small${sube?' dis':''}"><input type="file" data-efoto accept="image/*" hidden ${sube?'disabled':''}>${E.foto?'Cambiar foto':'Subir foto'}</label>${E.foto&&!sube?'<button class="small ghost" data-a="eFotoQuitar">Quitar</button>':''}</div></div>`}
+function achicarFoto(file,max,cal){return new Promise((ok,mal)=>{const u=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement('canvas');c.width=w;c.height=h;
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);c.toBlob(b=>b?ok({blob:b,url:c.toDataURL('image/jpeg',cal)}):mal(new Error('No se pudo leer la foto')),'image/jpeg',cal)};
+  im.onerror=()=>{URL.revokeObjectURL(u);mal(new Error('Ese archivo no es una foto que podamos leer'))};im.src=u})}
+async function eFotoArchivo(file){if(!E||!file)return;if(!/^image\//.test(file.type))return toast('Elegí una foto (JPG o PNG)',1);
+  readE();const pinta=()=>{const el=$('#efoto');if(el)el.innerHTML=eFotoHtml()};
+  E.subiendo=true;pinta();
+  try{if(enNube()&&LID&&NB&&NB.subirFoto){if(!AUTH.user)throw new Error('Para subir fotos entrá con tu cuenta de dueño (mail y contraseña)');
+      const r=await achicarFoto(file,1000,.82);E.foto=await NB.subirFoto(LID,r.blob)}
+    else{const r=await achicarFoto(file,640,.72);E.foto=r.url}
+    toast('Foto lista: tocá "Guardar plato"')}
+  catch(e){toast(e.message||'No se pudo subir la foto, probá de nuevo',1)}
+  finally{if(E){E.subiendo=false;pinta()}}}
+document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-efoto]')){const f=e.target.files&&e.target.files[0];e.target.value='';eFotoArchivo(f)}});
 function readE(){
   document.querySelectorAll('[data-e]').forEach(el=>E[el.dataset.e]=el.value);
   document.querySelectorAll('[data-er]').forEach(el=>{const[i,f]=el.dataset.er.split(':');E.receta[i][f]=el.value});
@@ -1944,8 +1973,8 @@ const A={
   copiarPedidoProv(b){const pv=prov(b.dataset.p)||{nombre:''},l=S.insumos.filter(i=>i.stock<=i.min&&i.prov===b.dataset.p);
     copiar(`Hola ${pv.nombre}! Te hago un pedido para ${S.negocio}:\n${l.map(i=>`• ${num(sugerido(i))} ${i.u} de ${i.nombre}`).join('\n')}\n¡Gracias!`,'Pedido copiado ✓ — pegalo en el WhatsApp del proveedor')},
   editPlato(b){const p=b.dataset.id?plato(b.dataset.id):null;
-    E=p?{id:p.id,nombre:p.nombre,cat:p.cat,area:p.area||'cocina',precio:p.precio,desc:p.desc,alias:p.alias.join(', '),receta:Object.entries(p.receta).map(([ins,cant])=>({ins,cant})),mods:p.mods.map(m=>({...m}))}
-      :{id:null,nombre:'',cat:'Platos',area:'cocina',precio:'',desc:'',alias:'',receta:[{ins:S.insumos[0].id,cant:''}],mods:[]};
+    E=p?{id:p.id,foto:p.foto||'',nombre:p.nombre,cat:p.cat,area:p.area||'cocina',precio:p.precio,desc:p.desc,alias:p.alias.join(', '),receta:Object.entries(p.receta).map(([ins,cant])=>({ins,cant})),mods:p.mods.map(m=>({...m}))}
+      :{id:null,foto:'',nombre:'',cat:'Platos',area:'cocina',precio:'',desc:'',alias:'',receta:[{ins:S.insumos[0].id,cant:''}],mods:[]};
     modal(editorHtml(),true)},
   eAddR(){readE();E.receta.push({ins:S.insumos[0].id,cant:''});modal(editorHtml(),true)},
   eDelR(b){readE();E.receta.splice(+b.dataset.i,1);modal(editorHtml(),true)},
@@ -1953,14 +1982,17 @@ const A={
   eDelM(b){readE();E.mods.splice(+b.dataset.i,1);modal(editorHtml(),true)},
   eSumarStock(b){const i=insumo(b.dataset.id),inp=document.querySelector(`[data-qadd="${b.dataset.id}"]`),q=pdec(inp&&inp.value);if(!i)return;if(!(q>0)){toast('Poné cuánto sumar',1);inp&&inp.focus();return}
     i.stock=r3(i.stock+q);audit('Ingreso de stock',`${num(q)} ${i.u} ${i.nombre} (desde la carta)`,q*(i.costo||0));save();readE();const el=$('#equedan');if(el)el.innerHTML=eQuedan();toast(`✓ Sumaste ${num(q)} ${i.u} de ${i.nombre}`)},
-  eSave(){readE();if(!E.nombre.trim())return toast('Poné un nombre',1);const precio=pnum(E.precio);if(!(precio>0))return toast('Poné un precio',1);
+  eFotoQuitar(){readE();E.foto='';const el=$('#efoto');if(el)el.innerHTML=eFotoHtml()},
+  verFoto(b){const p=plato(b.dataset.id);if(!p||!p.foto)return;modal(`<div class="fotog"><img src="${esc(p.foto)}" alt="${esc(p.nombre)}"></div><h2 style="margin-top:12px">${esc(p.nombre)}</h2>${p.desc?`<p class="muted" style="margin-top:0">${esc(p.desc)}</p>`:''}<div class="row"><b class="price">${fmt(p.precio)}</b></div><div class="btns"><button class="ghost" data-a="close">Volver</button>${disp(p)>0&&!(tab==='tomar'&&!clienteMode)?`<button class="primary" data-a="masCerrar" data-id="${p.id}">Agregar</button>`:''}</div>`)},
+  masCerrar(b){closeModal();A.mas(b)},
+  eSave(){readE();if(E.subiendo)return toast('Esperá a que termine de subir la foto',1);if(!E.nombre.trim())return toast('Poné un nombre',1);const precio=pnum(E.precio);if(!(precio>0))return toast('Poné un precio',1);
     const receta={};E.receta.forEach(r=>{if(r.ins&&pdec(r.cant)>0)receta[r.ins]=r3((receta[r.ins]||0)+pdec(r.cant))});
     const mods=E.mods.filter(m=>m.nombre.trim()).map(m=>({id:m.id||uid(),nombre:m.nombre.trim(),tipo:m.tipo,ins:m.tipo==='nota'?'':m.ins,cant:pdec(m.cant),precio:pnum(m.precio)}));
     if(mods.some(m=>m.tipo!=='nota'&&!m.ins))return toast('Elegí el insumo de cada modificador (o ponelo como "Solo aviso")',1);
     const alias=E.alias.split(',').map(norm).filter(Boolean);
     let p=E.id?plato(E.id):null;
-    if(p){if(p.precio!==precio)audit('Cambio de precio',`${p.nombre}: ${fmt(p.precio)} → ${fmt(precio)}`);Object.assign(p,{nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre)],receta,mods})}
-    else{p={id:uid(),nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre).split(' ')[0]],activo:true,receta,mods};S.platos.push(p);audit('Plato nuevo',p.nombre,precio)}
+    if(p){if(p.precio!==precio)audit('Cambio de precio',`${p.nombre}: ${fmt(p.precio)} → ${fmt(precio)}`);Object.assign(p,{foto:E.foto||'',nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre)],receta,mods})}
+    else{p={id:uid(),foto:E.foto||'',nombre:E.nombre.trim(),cat:E.cat.trim()||'Platos',area:E.area,precio,desc:E.desc,alias:alias.length?alias:[norm(E.nombre).split(' ')[0]],activo:true,receta,mods};S.platos.push(p);audit('Plato nuevo',p.nombre,precio)}
     save();closeModal();render();toast('Plato guardado ✓')},
   facturar(b,e,recien){const c=S.cobros.find(x=>x.id===b.dataset.id);if(!c)return;const ri=(S.arca||{}).condicion==='RI';
     modal(`<h2>${recien?'Cobrado ✓ ¿Hacemos la factura?':'Facturar '+esc(c.grupo)}</h2><p class="muted" style="margin-top:0">${fmt(c.total)}${c.propina?' (la propina no se factura)':''}</p>

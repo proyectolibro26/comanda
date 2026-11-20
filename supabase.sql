@@ -810,3 +810,14 @@ alter table public.taca_mp_cuentas add column if not exists qr_estatico text;
 -- QR de pago en cada mesa (una "caja" de Mercado Pago por mesa) y cobros de mesa hechos con ese QR.
 alter table public.taca_mp_cuentas add column if not exists qr_mesas jsonb;
 alter table public.taca_mp_mesa    add column if not exists orden text;
+
+-- Fotos de los platos: carpeta pública (las ve el cliente en la carta). Solo un miembro del local sube o borra en la carpeta de su local.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('taca-fotos', 'taca-fotos', true, 2097152, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public = true, file_size_limit = 2097152, allowed_mime_types = array['image/jpeg','image/png','image/webp'];
+drop policy if exists "taca fotos subir" on storage.objects;
+create policy "taca fotos subir" on storage.objects for insert to authenticated
+  with check (bucket_id = 'taca-fotos' and public.taca_es_miembro((storage.foldername(name))[1]));
+drop policy if exists "taca fotos borrar" on storage.objects;
+create policy "taca fotos borrar" on storage.objects for delete to authenticated
+  using (bucket_id = 'taca-fotos' and public.taca_es_miembro((storage.foldername(name))[1]));
