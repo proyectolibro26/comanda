@@ -44,6 +44,17 @@ function estadoOrden(o) {
   return { estado: 'pendiente' };
 }
 
+// Que el QR no deje escribir un monto a mano: solo cobra lo que ta-ca le manda.
+async function fijarMonto(token, local, c, clave, posId) {
+  const m = Object.assign({}, c.qr_mesas || {});
+  if (!posId || (m[clave] && m[clave].fijo)) return;
+  try { await mpCon(token, `/pos/${posId}`, { method: 'PUT', body: { fixed_amount: true } }); }
+  catch (e) { console.error('mp-qr fixed_amount', clave, e.message); return; }
+  m[clave] = Object.assign({}, m[clave], { fijo: true });
+  c.qr_mesas = m;
+  await sb('PATCH', `taca_mp_cuentas?local_id=eq.${enc(local)}`, { qr_mesas: m });
+}
+
 function qrsMesas(c) {
   const m = (c && c.qr_mesas) || {};
   const o = {};
@@ -82,6 +93,7 @@ async function mesaPublica(req, res, b, ac, local) {
       if (e.estado === 'pendiente') await mpCon(token, `/v1/orders/${r.orden}/cancel`, { method: 'POST', headers: { 'X-Idempotency-Key': idem() } }).catch(() => null);
       await sb('PATCH', `taca_mp_mesa?id=eq.${enc(r.id)}`, { estado: 'cancelado' });
     }
+    await fijarMonto(token, local, c, String(mesa), pos.id);
     const id = 'mm_' + crypto.randomBytes(9).toString('base64url');
     const o = await mpCon(token, '/v1/orders', {
       method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: {
@@ -163,7 +175,7 @@ module.exports = async (req, res) => {
       }
       let pos;
       try {
-        pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Caja ta-ca', store_id: storeId, external_store_id: extStore, external_id: extPos } });
+        pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Caja ta-ca', store_id: storeId, external_store_id: extStore, external_id: extPos, fixed_amount: true } });
       } catch (e) {
         const s = await mpCon(token, `/pos?external_id=${extPos}`).catch(() => null);
         pos = s && (s.results || [])[0];
@@ -191,10 +203,10 @@ module.exports = async (req, res) => {
         if (Date.now() - inicio > 40e3) break; // el resto en la próxima llamada
         const ext = base + n;
         let pos;
-        try { pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Mesa ' + n, store_id: c.qr_store_id, external_store_id: extStore, external_id: ext } }); }
+        try { pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Mesa ' + n, store_id: c.qr_store_id, external_store_id: extStore, external_id: ext, fixed_amount: true } }); }
         catch (e) { const r = await mpCon(token, `/pos?external_id=${ext}`).catch(() => null); pos = r && (r.results || [])[0]; if (!pos) throw e; }
         const qr = (pos.qr_response && (pos.qr_response.qr_code || pos.qr_response.image)) || (pos.qr && (pos.qr.qr_code || pos.qr.image)) || null;
-        mesas[n] = { id: String(pos.id || ''), ext, qr };
+        mesas[n] = { id: String(pos.id || ''), ext, qr, fijo: pos.fixed_amount !== false };
         await sb('PATCH', `taca_mp_cuentas?local_id=eq.${enc(local)}`, { qr_mesas: mesas });
       }
       const faltan = Array.from({ length: total }, (_, i) => i + 1).filter(n => !(mesas[n] && mesas[n].qr)).length;
@@ -221,17 +233,29 @@ module.exports = async (req, res) => {
       const [l] = await sb('GET', `taca_locales?select=data&id=eq.${enc(local)}`);
       const negocio = String((l && l.data && l.data.negocio) || 'ta-ca').slice(0, 40);
       const ref = 'tq_' + crypto.randomBytes(9).toString('base64url');
+      // si el cobro es de una mesa con QR propio, el monto va a ese QR (también se muestra en pantalla)
+      const nm = parseInt(b.mesa, 10), pm = nm > 0 && (c.qr_mesas || {})[nm];
+      let posExt = c.qr_pos_ext;
+      if (pm && pm.ext) {
+        posExt = pm.ext;
+        const prev = await sb('GET', `taca_mp_mesa?select=id,orden&local_id=eq.${enc(local)}&mesa=eq.${nm}&estado=eq.pendiente&orden=not.is.null`);
+        for (const r of prev) {
+          await mpCon(token, `/v1/orders/${r.orden}/cancel`, { method: 'POST', headers: { 'X-Idempotency-Key': idem() } }).catch(() => null);
+          await sb('PATCH', `taca_mp_mesa?id=eq.${enc(r.id)}`, { estado: 'cancelado' });
+        }
+        await fijarMonto(token, local, c, String(nm), pm.id);
+      } else await fijarMonto(token, local, c, '_caja', c.qr_pos_id);
       const o = await mpCon(token, '/v1/orders', {
         method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: {
           type: 'qr', external_reference: ref, description: `${negocio} · ${String(b.ref || 'Consumo').slice(0, 40)}`,
           expiration_time: 'PT10M', total_amount: monto.toFixed(2),
-          config: { qr: { external_pos_id: c.qr_pos_ext, mode: 'hybrid' } },
+          config: { qr: { external_pos_id: posExt, mode: 'hybrid' } },
           transactions: { payments: [{ amount: monto.toFixed(2) }] }
         }
       });
       const qr = o.type_response && o.type_response.qr_data;
       if (!qr) { console.error('mp-qr sin qr_data', JSON.stringify(o).slice(0, 300)); return res.status(502).json({ error: 'Mercado Pago no devolvió el QR. Probá de nuevo' }); }
-      return res.status(200).json({ orden: o.id, qr, monto, vence: Date.now() + 10 * 60e3 });
+      return res.status(200).json({ orden: o.id, qr, monto, vence: Date.now() + 10 * 60e3, mesa: pm ? nm : null });
     }
     const orden = String(b.orden || '');
     if (!/^ORD[A-Z0-9]{10,40}$/.test(orden)) return res.status(400).json({ error: 'Orden inválida' });

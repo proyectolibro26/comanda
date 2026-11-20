@@ -2543,7 +2543,7 @@ function vQRCobro(){const q=QRP;if(!q)return'';
   return`<h2>Cobrar con QR de Mercado Pago</h2><p class="muted" style="margin-top:0">${esc(CB&&CB.nombre||'')}</p>
 <div class="qrmp"><div class="qrmp-monto num">${fmt(q.monto)}</div><div id="qrmp" class="qrmp-qr" aria-label="Código QR para pagar ${fmt(q.monto)}"></div>
 <p class="qrmp-est" role="status">${est}</p>
-<p class="muted qrmp-ayuda">Que el cliente lo escanee con <b>Mercado Pago</b> o la app de su banco. También sirve el QR impreso de la caja: ahora cobra este mismo monto.</p></div>
+<p class="muted qrmp-ayuda">Que el cliente lo escanee con <b>Mercado Pago</b> o la app de su banco. ${q.mesa?`También sirve el QR de pago pegado en la <b>Mesa ${q.mesa}</b>`:'También sirve el QR impreso de la caja'}: ahora cobra este mismo monto.</p></div>
 <div class="btns">${q.estado==='vencido'||q.estado==='error'?'<button class="primary" data-a="cbQR">Generar otro QR</button>':''}<button class="ghost" data-a="qrCancelar">${q.estado==='pendiente'||q.estado==='creando'?'Cancelar y volver':'Volver'}</button>${modoDemo()&&q.estado==='pendiente'?'<button class="small" data-a="qrDemoPagar">Simular pago (demo)</button>':''}</div>`}
 function qrModal(){modal(vQRCobro());if(QRP&&QRP.qr)dibujarQR('qrmp',QRP.qr,240)}
 async function qrLlamar(datos){if(modoDemo()){
@@ -2603,7 +2603,7 @@ const QRMESA_ACC={
     const imgs=ks.map(n=>{const tmp=document.createElement('div');new QRCode(tmp,{text:m[n],width:480,height:480,correctLevel:QRCode.CorrectLevel.M});return{n,tmp}});
     setTimeout(()=>{const w=window.open('','_blank');if(!w)return toast('Permití las ventanas emergentes para imprimir',1);
       const cel=imgs.map(({n,tmp})=>{const c=tmp.querySelector('canvas'),src=c?c.toDataURL('image/png'):(tmp.querySelector('img')||{}).src;return`<div class="t"><b>Mesa ${n}</b><img src="${src}" alt="QR de pago mesa ${n}"><p>Pagá con Mercado Pago<br>o la app de tu banco</p><small>Primero tocá "Pagar con el QR de la mesa" en la carta</small></div>`}).join('');
-      w.document.write(`<!doctype html><title>QR de pago de las mesas</title><style>body{font-family:system-ui,sans-serif;margin:10mm}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:8mm}.t{border:1px dashed #999;border-radius:6px;padding:6mm;text-align:center;break-inside:avoid}.t b{font-size:20px}.t img{width:55mm;height:55mm;display:block;margin:4mm auto}.t p{margin:2mm 0;font-size:14px}.t small{color:#555;font-size:11px}h1{font-size:16px;margin:0 0 6mm}</style><h1>${esc(S.negocio||'')} · QR de pago de las mesas</h1><div class="g">${cel}</div><script>onload=()=>setTimeout(()=>print(),400)<\/script>`);w.document.close()},150)}
+      w.document.write(`<!doctype html><title>QR de pago de las mesas</title><style>body{font-family:system-ui,sans-serif;margin:10mm}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:8mm}.t{border:1px dashed #999;border-radius:6px;padding:6mm;text-align:center;break-inside:avoid}.t b{font-size:20px}.t img{width:55mm;height:55mm;display:block;margin:4mm auto}.t p{margin:2mm 0;font-size:14px}.t small{color:#555;font-size:11px;display:block;overflow-wrap:anywhere}h1{font-size:16px;margin:0 0 6mm}@media screen and (max-width:600px){.g{grid-template-columns:1fr}}</style><h1>${esc(S.negocio||'')} · QR de pago de las mesas</h1><div class="g">${cel}</div><script>onload=()=>setTimeout(()=>print(),400)<\/script>`);w.document.close()},150)}
 };
 Object.assign(A,QRMESA_ACC);
 function vMPQRMesas(q){const m=q.mesas||{},hay=Object.keys(m).length,tot=+S.mesas||0,on=!!(S.mpqr&&S.mpqr.mesas);
@@ -2623,7 +2623,7 @@ const QR_ACC={
     const monto=pnum(CB.pagos.mp)>0?pnum(CB.pagos.mp):Math.round(x.aPagar-otros);
     if(x.desc>x.max)return toast(`Descuento máximo: ${x.max}%`,1);if(!(monto>0))return toast('No queda nada para cobrar con QR',1);
     qrParar();QRP={monto,estado:'creando'};qrModal();
-    try{const r=await qrLlamar({accion:'cobrar',monto,ref:CB.nombre});if(!QRP)return;Object.assign(QRP,{orden:r.orden,qr:r.qr,vence:r.vence||Date.now()+600000,estado:'pendiente'});qrModal();QRP.t=setInterval(qrTick,2500)}
+    try{const r=await qrLlamar({accion:'cobrar',monto,ref:CB.nombre,mesa:CB.key&&CB.key[0]==='m'?+CB.key.slice(1):0});if(!QRP)return;Object.assign(QRP,{orden:r.orden,qr:r.qr,vence:r.vence||Date.now()+600000,estado:'pendiente',mesa:r.mesa||null});qrModal();QRP.t=setInterval(qrTick,2500)}
     catch(e){if(!QRP)return;QRP.estado='error';QRP.error=e.message;qrModal()}},
   async qrCancelar(){const q=QRP;qrParar();if(q&&q.orden&&(q.estado==='pendiente')){try{const c=await qrLlamar({accion:'cancelar',orden:q.orden});if(c.estado==='pagado'){QRP=q;return qrPagado(c)}}catch(e){}}QRP=null;if(CB)cobroModal(CB.key);else closeModal()},
   qrVolverCobro(){if(CB)cobroModal(CB.key);else closeModal()},
