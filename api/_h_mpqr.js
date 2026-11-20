@@ -14,6 +14,20 @@ const hash = (s, n) => crypto.createHash('sha256').update(s).digest('hex').slice
 const idem = () => crypto.randomUUID();
 const PROVINCIAS = ['Buenos Aires', 'Capital Federal', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja', 'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis', 'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'];
 
+const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)/g, ' ').replace(/[^a-zA-Z ]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+function valoresValidos(e, campo) {
+  const causas = (e && e.mp && e.mp.causes) || [];
+  const txt = causas.map(c => c.description || '').concat([(e && e.mp && e.mp.message) || '']).find(t => t.includes(campo) && /Valid values are:/i.test(t));
+  if (!txt) return null;
+  const lista = txt.split(/Valid values are:/i)[1].replace(/\.\s*$/, '').split(',').map(x => x.trim()).filter(Boolean);
+  return lista.length ? lista.slice(0, 400) : null;
+}
+function parecida(ciudad, lista) {
+  const n = norm(ciudad);
+  if (!n) return null;
+  return lista.find(v => norm(v) === n) || lista.find(v => norm(v).startsWith(n) || n.startsWith(norm(v))) || null;
+}
+
 async function cuenta(local) {
   const [c] = await sb('GET', `taca_mp_cuentas?select=mp_user_id,qr_store_id,qr_pos_id,qr_pos_ext,qr_estatico&local_id=eq.${enc(local)}`);
   return c || null;
@@ -54,10 +68,21 @@ module.exports = async (req, res) => {
       const extStore = 'TACA' + hash(local, 16), extPos = 'TACAPOS' + hash(local, 16);
       let storeId = c.qr_store_id;
       if (!storeId) {
+        const crear = (city) => mpCon(token, `/users/${uid}/stores`, { method: 'POST', body: { name: nombre, external_id: extStore, location: { street_number: numero, street_name: calle, city_name: city, state_name: prov, latitude: lat, longitude: lng, reference: '' } } });
         try {
-          const st = await mpCon(token, `/users/${uid}/stores`, { method: 'POST', body: { name: nombre, external_id: extStore, location: { street_number: numero, street_name: calle, city_name: ciudad, state_name: prov, latitude: lat, longitude: lng, reference: '' } } });
+          let st;
+          try { st = await crear(ciudad); }
+          catch (e) {
+            // MP solo acepta su lista de ciudades por provincia (en el interior suelen ser departamentos o partidos).
+            const validas = valoresValidos(e, 'city_name');
+            if (!validas) throw e;
+            const elegida = parecida(ciudad, validas);
+            if (!elegida) return res.status(400).json({ error: `Mercado Pago no reconoce "${ciudad}". Elegí tu ciudad, partido o departamento de la lista`, codigo: 'ciudad', ciudades: validas });
+            st = await crear(elegida);
+          }
           storeId = String(st.id);
         } catch (e) {
+          if (valoresValidos(e, 'city_name') || valoresValidos(e, 'state_name')) throw e;
           const s = await mpCon(token, `/users/${uid}/stores/search?external_id=${extStore}`).catch(() => null);
           const r = s && (s.results || [])[0];
           if (!r) throw e;
@@ -112,6 +137,8 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Acción inválida' });
   } catch (e) {
     console.error('mp-qr', e.message, JSON.stringify(e.mp || {}).slice(0, 300));
+    if (valoresValidos(e, 'state_name')) return res.status(400).json({ error: 'Mercado Pago no reconoce esa provincia. Elegí otra de la lista' });
+    if (e.status === 400 && e.mp && e.mp.message) return res.status(400).json({ error: 'Mercado Pago rechazó los datos: ' + String(e.mp.message).slice(0, 160) });
     if (e.status === 401) return res.status(409).json({ error: 'Se venció la conexión con Mercado Pago. Volvé a conectarlo en Ajustes', codigo: 'no_conectado' });
     return res.status(502).json({ error: 'Mercado Pago no respondió. Probá de nuevo o cobrá con otro medio' });
   }
