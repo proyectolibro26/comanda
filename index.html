@@ -251,11 +251,11 @@ footer .legal a{color:inherit}
 #waflot .ico{width:30px;height:30px;stroke:none;fill:none}
 #waflot{background:#25D366;color:#fff}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important}}
-.foto .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:56px;align-items:center}
+.foto .wrap{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.15fr);gap:56px;align-items:center}
 .foto .sh{margin-bottom:0}.foto .sh h2 .lima-t{color:var(--acc)}
 .foto ul{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:14px}
-.foto li{display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45}.foto li .sw{margin-top:2px;flex:none}.foto li b{display:block}
-.fv{display:grid;grid-template-columns:minmax(0,.9fr) 34px minmax(0,1.1fr);align-items:center;gap:10px}
+.foto li{display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45}.foto li .mk-f{width:22px;height:22px;margin-top:1px;flex:none;color:var(--acc)}.foto li b{display:block}
+.fv{display:grid;grid-template-columns:minmax(0,.85fr) 34px minmax(290px,1.15fr);align-items:center;gap:10px}
 .papel{position:relative;background:#fbf8f0;color:#2b2418;border-radius:10px;padding:22px 20px;rotate:-2.5deg;box-shadow:0 1px 2px oklch(0 0 0/.12),0 18px 40px oklch(0 0 0/.18);font-family:Georgia,'Times New Roman',serif;overflow:hidden}
 .papel h4{margin:0 0 10px;font-size:13px;letter-spacing:.18em;text-align:center;font-weight:700}
 .papel .ln{display:flex;gap:6px;font-size:13.5px;margin:7px 0}.papel .ln span:nth-child(2){flex:1;border-bottom:1.5px dotted #b9ad96;translate:0 -4px}
@@ -267,13 +267,10 @@ footer .legal a{color:inherit}
 .cargada .row:first-of-type{border-top:0}.cargada .row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cargada .row .sw{flex:none}.cargada .row small{color:var(--muted);font-size:12px;margin-right:6px}.cargada .row b{font-variant-numeric:tabular-nums}
 @media(max-width:960px){.foto .wrap{grid-template-columns:1fr;gap:36px}}
 @media(max-width:520px){.fv{grid-template-columns:1fr;gap:16px}.fv .fl{rotate:90deg;justify-self:center}.papel{rotate:-1.5deg}}
-.ia-pill{display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;padding:5px 14px 5px 5px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none;background:var(--card);box-shadow:0 0 0 1px var(--line2);transition-property:box-shadow,scale;transition-duration:.15s}
-.ia-pill:hover{box-shadow:0 0 0 1px var(--marca)}.ia-pill:active{scale:.97}
-.ia-pill .ia-tag{padding:3px 10px;border-radius:999px;background:var(--lima);color:var(--sobre);font-size:12px;font-weight:700}.ia-pill .ico{width:16px;height:16px;color:var(--acc)}
-.ia-hero{display:flex;gap:14px;align-items:center;margin-top:26px;padding:14px 16px;border-radius:16px;text-decoration:none;color:var(--ink);font-size:15.5px;line-height:1.45;max-width:560px;background:linear-gradient(100deg,color-mix(in srgb,var(--lima) 16%,var(--card)),var(--card) 75%);box-shadow:0 0 0 1px color-mix(in srgb,var(--lima) 55%,transparent);transition-property:box-shadow,scale;transition-duration:.15s}
-.ia-hero:hover{box-shadow:0 0 0 1.5px var(--lima)}.ia-hero:active{scale:.98}
-.ia-hero .ia-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--lima);flex:none}.ia-hero .ia-ic .ico{width:24px;height:24px;color:var(--sobre)}
-.ia-hero b{font-weight:700}
+.ia-hero{display:flex;gap:14px;align-items:center;margin-top:26px;padding:12px 16px 12px 12px;border-radius:14px;text-decoration:none;color:var(--muted);font-size:15px;line-height:1.45;max-width:520px;background:var(--card);box-shadow:0 0 0 1px var(--line2);transition-property:box-shadow,scale;transition-duration:.16s;transition-timing-function:ease-out}
+.ia-hero b{color:var(--ink)}.ia-hero:hover{box-shadow:0 0 0 1px var(--acc)}.ia-hero:active{scale:.98}
+.ia-hero .ia-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--bg2);flex:none}.ia-hero .ia-ic .ico{width:22px;height:22px;color:var(--acc)}
+.ia-hero .fl{width:18px;height:18px;color:var(--acc);flex:none;margin-left:auto;transition:translate .16s ease-out}.ia-hero:hover .fl{translate:3px 0}
 .notif{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:12px 14px;border-radius:18px;background:var(--card);box-shadow:0 0 0 1px var(--line2),0 14px 34px oklch(0 0 0/.18);font-size:13.5px;line-height:1.35;max-width:360px;transition-property:opacity,translate;transition-duration:.5s;transition-timing-function:cubic-bezier(.2,0,0,1)}
 .notif.esp{opacity:0;translate:0 12px}
 .notif .n-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#0b1120;flex:none}
@@ -295,25 +292,24 @@ footer .legal a{color:inherit}
 
 <nav class="top" aria-label="Principal"><div class="wrap">
   <a class="tc" href="#" aria-label="ta-ca, inicio">ta<i></i>ca</a>
-  <div class="links"><a href="#foto">Con IA</a><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
+  <div class="links"><a href="#foto">Cargá tu carta</a><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a></div>
   <div class="der">
     <button class="icb" id="tema" type="button" aria-label="Cambiar entre modo oscuro y claro"><svg class="ico sol"><use href="#i-sol"/></svg><svg class="ico luna off"><use href="#i-luna"/></svg></button>
     <a class="entrar" href="/app">Iniciar sesión</a>
     <a class="btn p sm" href="/app?crear=1">Empezar gratis</a>
     <details class="menu"><summary class="icb" aria-label="Abrir menú"><svg class="ico"><use href="#i-menu"/></svg></summary>
-      <div class="panel"><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a><a href="/app">Iniciar sesión</a><a href="/app?demo=1">Ver la demo</a><button type="button" class="temam" id="tema2">Modo claro</button></div></details>
+      <div class="panel"><a href="#foto">Cargá tu carta</a><a href="#distinto">Qué hace</a><a href="#precios">Precios</a><a href="#preguntas">Preguntas</a><a href="/app">Iniciar sesión</a><a href="/app?demo=1">Ver la demo</a><button type="button" class="temam" id="tema2">Modo claro</button></div></details>
   </div>
 </div></nav>
 
 <main>
 <header class="hero"><div class="wrap">
   <div>
-    <a class="ia-pill" href="#foto"><span class="ia-tag">Nuevo</span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Tu carta y tu salón con IA</a>
     <h1>Del QR a la caja, sin que <em>nadie anote nada.</em></h1>
     <p class="lead">ta-ca conecta las mesas, la cocina, la caja y el stock de tu bar. El cliente pide desde el QR, la comanda sale en cocina, la venta queda en caja y la factura de ARCA sale con un toque.</p>
     <div class="ctas"><a class="btn p" href="/app?crear=1">Empezar gratis <svg class="ico flecha"><use href="#i-flecha"/></svg></a><a class="btn" href="/app?demo=1">Ver la demo</a></div>
     <p class="nota-c">14 días gratis. Sin tarjeta y sin permanencia.</p>
-    <a class="ia-hero" href="#foto"><span class="ia-ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span><b>Sacale una foto a tu carta.</b> En un minuto tenés el sistema armado: la IA pasa platos y precios, y con un croquis te arma el salón.</span></a>
+    <a class="ia-hero" href="#foto"><span class="ia-ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span><b>Cargá tu carta con una foto.</b> La IA pasa platos y precios en un minuto.</span><svg class="ico fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></a>
   </div>
 
   <div class="tablero" id="tablero">
@@ -360,10 +356,10 @@ footer .legal a{color:inherit}
   <div>
     <div class="sh"><h2>Sacale una foto a tu carta. <span class="lima-t">En un minuto tenés el sistema armado.</span></h2><p>La IA lee tu carta impresa o el PDF y pasa los platos, las categorías y los precios. Vos revisás y listo.</p></div>
     <ul>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
-      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu compra, desde la foto de la factura</b>Le sacás una foto a la factura del proveedor y se suma al stock con los costos nuevos.</span></li>
+      <li><svg class="ico mk-f" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
+      <li><svg class="ico mk-f" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7M12.5 10v8"/></svg><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
+      <li><svg class="ico mk-f" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="2"/><rect x="14" y="6" width="4" height="4" rx=".8"/><rect x="6" y="14" width="4" height="4" rx=".8"/><circle cx="16" cy="16" r="2"/></svg><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
+      <li><svg class="ico mk-f" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span><b>Tu compra, desde la foto de la factura</b>Le sacás una foto a la factura del proveedor y se suma al stock con los costos nuevos.</span></li>
     </ul>
   </div>
   <div class="fv" aria-label="Una carta impresa se convierte en la carta cargada en ta-ca">
@@ -440,7 +436,7 @@ footer .legal a{color:inherit}
       <a class="btn" href="/app?crear=1&amp;plan=local">Empezar gratis con Local</a></div>
     <div class="plan dest"><div class="nom"><h3>Encendido</h3><span class="eleg">El que más eligen</span></div><p class="desc">Todo lo de Local, más pedidos y reservas por WhatsApp.</p>
       <div class="pr"><b class="num" data-m="89900">$89.900</b><span class="muted">/ mes</span></div><div class="an" data-an="89900"></div>
-      <ul><li><svg class="ico mk ok"><use href="#i-si"/></svg>Todo lo del plan Local</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Bot de WhatsApp para pedidos, delivery y reservas</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Puntos y avisos por WhatsApp a tus clientes</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Te cargamos la carta y las recetas</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Soporte prioritario, también de noche</li></ul>
+      <ul><li><svg class="ico mk ok"><use href="#i-si"/></svg>Todo lo del plan Local</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Bot de WhatsApp para pedidos, delivery y reservas</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Puntos y avisos por WhatsApp a tus clientes</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Te armamos las recetas y el stock, y revisamos la carta con vos</li><li><svg class="ico mk ok"><use href="#i-si"/></svg>Soporte prioritario, también de noche</li></ul>
       <a class="btn p" href="/app?crear=1&amp;plan=encendido">Empezar gratis con Encendido</a></div>
   </div>
   <p class="nota">Precios finales en pesos argentinos. Pagás con Mercado Pago o transferencia. Si un mes no pagás, tus datos quedan guardados.</p>
@@ -449,10 +445,10 @@ footer .legal a{color:inherit}
 <section id="preguntas"><div class="wrap">
   <div class="sh"><h2>Lo que siempre nos preguntan</h2></div>
   <div class="faq">
-    <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien.</p></details>
+    <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien. La IA viene incluida en los dos planes.</p></details>
     <details><summary>¿Me avisa cuando se acaba algo?<i class="sw"></i></summary><p>Sí. Cuando un plato se queda sin stock o un insumo baja del mínimo que pusiste, te llega una notificación al celular, aunque tengas ta-ca cerrado. Y el plato se saca solo de la carta del QR y del celular del mozo.</p></details>
     <details><summary>¿Tengo que instalar algo o comprar equipos?<i class="sw"></i></summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés, y se puede instalar como app desde el mismo navegador. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
-    <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>Unos minutos: creás la cuenta, elegís qué tipo de local tenés y le sacás una foto a tu carta (o arrancás con una de ejemplo). Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
+    <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>La carta, en un minuto: creás la cuenta, elegís qué tipo de local tenés y le sacás una foto a tu carta. Después armás el plano del salón e imprimís los QR de las mesas, y ya podés atender. En el plan Encendido te armamos las recetas y el stock, y revisamos la carta con vos.</p></details>
     <details><summary>¿Hace factura electrónica?<i class="sw"></i></summary><p>Sí. Al cobrar tocás “Facturar” y sale la factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal y te guiamos paso a paso.</p></details>
     <details><summary>¿Qué pasa si se corta internet?<i class="sw"></i></summary><p>Tu equipo sigue trabajando: cada celular o compu guarda lo que hacés y lo sube solo cuando vuelve la conexión. El QR de los clientes sigue andando con los datos de su propio celular.</p></details>
     <details><summary>¿Cómo funciona el sistema de puntos?<i class="sw"></i></summary><p>Vos elegís cuántos puntos da cada compra (por ejemplo, 2%). El cliente los suma al pagar y los usa como descuento en el próximo pedido, en la caja o escribiendo PUNTOS en WhatsApp.</p></details>
