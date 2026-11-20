@@ -269,9 +269,15 @@ button.mp{background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700}
 .bar b{font-size:10px;color:var(--ink);font-weight:600;margin-bottom:2px}
 .cls-estrella{background:var(--okbg);color:var(--ok)}.cls-caballo{background:var(--warnbg);color:var(--warn)}.cls-enigma{background:var(--bluebg);color:var(--blue)}.cls-perro{background:var(--badbg);color:var(--bad)}
 /* modal / toast */
-.ov{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;z-index:20}
-.mod{background:var(--card);border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.35);border-radius:16px;padding:20px;width:100%;max-width:460px;max-height:92vh;overflow:auto}
+.ov{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));z-index:40}
+.mod{background:var(--card);border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.35);border-radius:16px;padding:20px;width:100%;max-width:460px;max-height:92vh;max-height:calc(100dvh - 32px - env(safe-area-inset-bottom));overscroll-behavior:contain;overflow:auto}
+.mod>.btns:last-child{position:sticky;bottom:-20px;margin:16px -20px -20px;padding:12px 20px 16px;background:var(--card);border-top:1px solid var(--line);z-index:1}
 .mod.wide{max-width:720px}
+.erow.ehead{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:-2px}.erow.ehead span{padding:0 2px}
+.quedan{margin:14px 0 4px;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}.quedan p{margin:6px 0 8px;font-size:14px}
+.q-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.q-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed var(--line)}.q-row small{display:block;color:var(--muted);font-size:13px}
+.q-add{display:flex;gap:6px;align-items:center;flex:none}.q-add input{width:84px;margin:0;padding:8px 10px}
 .mod h2{font:700 19px Unbounded,sans-serif;letter-spacing:-.02em}
 .erow{display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center}
 .erow.m{grid-template-columns:1.6fr 1fr 1.4fr .8fr .9fr auto}
@@ -1362,9 +1368,12 @@ function editorHtml(){
 <label style="max-width:150px">Se prepara en<select data-e="area">${Object.entries(AREA).map(([k,t])=>`<option value="${k}" ${E.area===k?'selected':''}>${t}</option>`).join('')}</select></label></div>
 <label>Descripción<input data-e="desc" value="${esc(E.desc)}"></label>
 <label>Palabras para el bot de WhatsApp (separadas por coma)<input data-e="alias" value="${esc(E.alias)}" placeholder="ej: mila, milanesa"></label>
-<h3 style="margin:14px 0 8px">Receta (por porción)</h3>
-${E.receta.map((r,i)=>`<div class="erow"><select data-er="${i}:ins">${opts(r.ins)}</select><input data-er="${i}:cant" inputmode="decimal" value="${r.cant}" placeholder="cantidad"><button class="small bad" data-a="eDelR" data-i="${i}">✕</button></div>`).join('')}
+<h3 style="margin:14px 0 4px">Receta (por porción)</h3>
+<p class="muted" style="margin:0 0 8px;font-size:14px">Qué lleva <b>una</b> porción. Cada venta descuenta esto del stock.</p>
+${E.receta.length?'<div class="erow ehead" aria-hidden="true"><span>Ingrediente</span><span>Por porción</span><span></span></div>':''}
+${E.receta.map((r,i)=>`<div class="erow"><select data-er="${i}:ins" aria-label="Ingrediente">${opts(r.ins)}</select><input data-er="${i}:cant" inputmode="decimal" value="${r.cant}" placeholder="cantidad" aria-label="Cantidad por porción"><button class="small bad" data-a="eDelR" data-i="${i}" aria-label="Quitar ingrediente">✕</button></div>`).join('')}
 <button class="small" data-a="eAddR">+ Ingrediente</button>
+<div id="equedan">${eQuedan()}</div>
 <h3 style="margin:14px 0 8px">Modificadores <small style="display:inline">(sin tomate, extra queso, punto…)</small></h3>
 ${E.mods.map((m,i)=>`<div class="erow m"><input data-em="${i}:nombre" value="${esc(m.nombre)}" placeholder="Nombre"><select data-em="${i}:tipo"><option value="quita" ${m.tipo==='quita'?'selected':''}>Quita</option><option value="agrega" ${m.tipo==='agrega'?'selected':''}>Agrega</option><option value="nota" ${m.tipo==='nota'?'selected':''}>Solo aviso</option></select>
 <select data-em="${i}:ins"><option value="">—</option>${opts(m.ins)}</select><input data-em="${i}:cant" inputmode="decimal" value="${m.cant||''}" placeholder="cant."><input data-em="${i}:precio" inputmode="decimal" value="${m.precio||''}" placeholder="+$"><button class="small bad" data-a="eDelM" data-i="${i}">✕</button></div>`).join('')}
@@ -1377,6 +1386,14 @@ function readE(){
   document.querySelectorAll('[data-er]').forEach(el=>{const[i,f]=el.dataset.er.split(':');E.receta[i][f]=el.value});
   document.querySelectorAll('[data-em]').forEach(el=>{const[i,f]=el.dataset.em.split(':');E.mods[i][f]=el.value});
 }
+function eQuedan(){
+  const r=[];E.receta.forEach(x=>{const c=pdec(x.cant);if(x.ins&&c>0&&insumo(x.ins))r.push({i:insumo(x.ins),c})});
+  const dueno=!rol||rol==='dueno';
+  if(!r.length)return`<div class="quedan"><b>¿Cuántos quedan?</b><p class="muted">Este plato no tiene receta, así que no se controla el stock: siempre aparece disponible. Sumá ingredientes arriba para que se apague solo cuando se terminan.</p></div>`;
+  const n=Math.max(0,Math.floor(Math.min(...r.map(x=>x.i.stock/x.c))+1e-6)),lim=r.reduce((a,x)=>x.i.stock/x.c<a.i.stock/a.c?x:a);
+  return`<div class="quedan"><div class="q-top"><b>¿Cuántos quedan?</b><span class="chip ${n===0?'bad':n<10?'warn':'ok'}">${n===0?'Agotado':'Alcanza para '+n}</span></div>
+<p class="muted">Se calcula con el stock de cada ingrediente${r.length>1?` (lo limita <b>${esc(lim.i.nombre)}</b>)`:''}. Para tener más porciones, sumá stock:</p>
+${r.map(x=>`<div class="q-row"><span>${esc(x.i.nombre)}<small>hay ${num(x.i.stock)} ${x.i.u} · alcanza para ${Math.floor(x.i.stock/x.c+1e-6)}</small></span>${dueno?`<span class="q-add"><input data-qadd="${x.i.id}" inputmode="decimal" placeholder="+ ${x.i.u}" aria-label="Cantidad de ${esc(x.i.nombre)} a sumar"><button class="small" data-a="eSumarStock" data-id="${x.i.id}">Sumar</button></span>`:''}</div>`).join('')}</div>`}
 function eCosto(){const r={};E.receta.forEach(x=>{if(x.ins&&pdec(x.cant)>0)r[x.ins]=(r[x.ins]||0)+pdec(x.cant)});const c=costoReceta(r),pr=pnum(E.precio);
   return`<div class="row"><span>Costo de la receta</span><b>${fmt(c)}</b></div><div class="row"><span>Margen</span><b class="${pr&&1-c/pr<.6?'badt':'ok'}">${pr?Math.round((1-c/pr)*100)+'% · '+fmt(pr-c):'—'}</b></div><div class="row"><span>Precio sugerido (costo = 30%)</span><b>${fmt(Math.ceil(c/.3/100)*100)}</b></div>`}
 
@@ -1926,6 +1943,8 @@ const A={
   eDelR(b){readE();E.receta.splice(+b.dataset.i,1);modal(editorHtml(),true)},
   eAddM(){readE();E.mods.push({id:uid(),nombre:'',tipo:'quita',ins:'',cant:'',precio:''});modal(editorHtml(),true)},
   eDelM(b){readE();E.mods.splice(+b.dataset.i,1);modal(editorHtml(),true)},
+  eSumarStock(b){const i=insumo(b.dataset.id),inp=document.querySelector(`[data-qadd="${b.dataset.id}"]`),q=pdec(inp&&inp.value);if(!i)return;if(!(q>0)){toast('Poné cuánto sumar',1);inp&&inp.focus();return}
+    i.stock=r3(i.stock+q);audit('Ingreso de stock',`${num(q)} ${i.u} ${i.nombre} (desde la carta)`,q*(i.costo||0));save();readE();const el=$('#equedan');if(el)el.innerHTML=eQuedan();toast(`✓ Sumaste ${num(q)} ${i.u} de ${i.nombre}`)},
   eSave(){readE();if(!E.nombre.trim())return toast('Poné un nombre',1);const precio=pnum(E.precio);if(!(precio>0))return toast('Poné un precio',1);
     const receta={};E.receta.forEach(r=>{if(r.ins&&pdec(r.cant)>0)receta[r.ins]=r3((receta[r.ins]||0)+pdec(r.cant))});
     const mods=E.mods.filter(m=>m.nombre.trim()).map(m=>({id:m.id||uid(),nombre:m.nombre.trim(),tipo:m.tipo,ins:m.tipo==='nota'?'':m.ins,cant:pdec(m.cant),precio:pnum(m.precio)}));
@@ -2579,7 +2598,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
 document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f||!F[f])return;e.preventDefault();F[f](Object.fromEntries(new FormData(e.target)),e.target)});
 document.addEventListener('input',e=>{
   const k=e.target.dataset.cb;if(k&&CB){if(k==='desc')CB.desc=e.target.value;else if(k==='tel')CB.tel=e.target.value;else if(k==='usarPts')CB.usarPts=e.target.checked;else CB.pagos[k.slice(5)]=e.target.value;$('#cbsum').innerHTML=cbResumen();if(k!=='usarPts'&&$('#cbpts'))$('#cbpts').innerHTML=cbPtsHTML()}
-  if(E&&e.target.closest('.mod')&&(e.target.dataset.e||e.target.dataset.er)){readE();const ec=$('#ecost');if(ec)ec.innerHTML=eCosto()}
+  if(E&&e.target.closest('.mod')&&(e.target.dataset.e||e.target.dataset.er)){readE();const ec=$('#ecost');if(ec)ec.innerHTML=eCosto();if(e.target.dataset.er){const eq=$('#equedan');if(eq)eq.innerHTML=eQuedan()}}
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -2587,7 +2606,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.resmesa){const r=S.reservas.find(x=>x.id===t.dataset.resmesa);if(r){const m=t.value?+t.value:null;if(m&&choque(r.fecha,r.hora,m,r.id)){toast(`La mesa ${m} ya tiene otra reserva cerca de esa hora`,1);return render()}r.mesa=m;save();render()}return}
   if(t.dataset.precio){const p=plato(t.dataset.precio),v=pnum(t.value);if(v>0&&v!==p.precio){audit('Cambio de precio',`${p.nombre}: ${fmt(p.precio)} → ${fmt(v)}`);p.precio=v;save();toast('Precio actualizado')}render();return}
   if(t.dataset.activo){const p=plato(t.dataset.activo);p.activo=t.checked;save();render();return}
-  if(E&&t.closest('.mod')){readE();const ec=$('#ecost');if(ec)ec.innerHTML=eCosto();return}
+  if(E&&t.closest('.mod')){if(t.dataset.qadd)return;readE();const ec=$('#ecost');if(ec)ec.innerHTML=eCosto();const eq=$('#equedan');if(eq&&t.dataset.er)eq.innerHTML=eQuedan();return}
   const k=t.dataset.set;if(!k)return;const v=t.value;
   if(k==='mesaSim'){C.mesa=+v;C.cart=[]}
   else if(k==='mesas')S.mesas=Math.max(1,Math.min(60,parseInt(v)||1));
