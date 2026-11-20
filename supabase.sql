@@ -821,3 +821,245 @@ create policy "taca fotos subir" on storage.objects for insert to authenticated
 drop policy if exists "taca fotos borrar" on storage.objects;
 create policy "taca fotos borrar" on storage.objects for delete to authenticated
   using (bucket_id = 'taca-fotos' and public.taca_es_miembro((storage.foldername(name))[1]));
+-- ===================== App del equipo de ventas (ta-ca.com.ar/equipo) =====================
+-- Cada persona entra con su mail y su contraseña (Supabase Auth). Solo ve datos quien está en taca_vt_equipo.
+create table if not exists public.taca_vt_equipo (
+  id      text primary key,
+  nombre  text not null,
+  email   text unique,
+  rol     text not null default 'vendedor',   -- 'socio' o 'vendedor'
+  admin   boolean not null default false,
+  parte   numeric not null default 0,         -- % de la ganancia que le toca (socios)
+  activo  boolean not null default true,
+  creado  timestamptz not null default now()
+);
+create table if not exists public.taca_vt_config (id integer primary key default 1, data jsonb not null default '{}'::jsonb);
+create table if not exists public.taca_vt_contactos (
+  id text primary key, nro integer, nombre text not null, tipo text, zona text, direccion text,
+  telefono text, whatsapp text, maps text, instagram text, prioridad text, vendedor text,
+  estado text not null default 'Sin contactar', proximo text, fecha date, notas text,
+  actualizado timestamptz not null default now(), actualizado_por text
+);
+create table if not exists public.taca_vt_actividad (
+  id bigserial primary key, ts timestamptz not null default now(), miembro text not null,
+  contacto_id text, tipo text not null, plan text, monto numeric, detalle text
+);
+create table if not exists public.taca_vt_tareas (
+  id text primary key, mes text not null, titulo text not null, asignado text,
+  hecho boolean not null default false, vence date, creado_por text, creado timestamptz not null default now()
+);
+create table if not exists public.taca_vt_objetivos (
+  mes text not null, miembro text not null,   -- miembro = id del integrante o 'grupo'
+  contactos integer not null default 0, demos integer not null default 0,
+  pruebas integer not null default 0, ventas integer not null default 0,
+  primary key (mes, miembro)
+);
+alter table public.taca_vt_equipo enable row level security;
+alter table public.taca_vt_config enable row level security;
+alter table public.taca_vt_contactos enable row level security;
+alter table public.taca_vt_actividad enable row level security;
+alter table public.taca_vt_tareas enable row level security;
+alter table public.taca_vt_objetivos enable row level security;
+
+create or replace function public.taca_vt_yo_id() returns text
+language sql stable security definer set search_path = public as $$
+  select id from taca_vt_equipo where activo and email is not null and lower(email) = lower(coalesce(auth.jwt()->>'email','')) limit 1;
+$$;
+create or replace function public.taca_vt_soy_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select admin from taca_vt_equipo where id = taca_vt_yo_id()), false);
+$$;
+create or replace function public.taca_vt_soy_socio() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select rol = 'socio' from taca_vt_equipo where id = taca_vt_yo_id()), false);
+$$;
+
+drop policy if exists vt_equipo_ver on public.taca_vt_equipo;
+create policy vt_equipo_ver on public.taca_vt_equipo for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_equipo_admin on public.taca_vt_equipo;
+create policy vt_equipo_admin on public.taca_vt_equipo for all to authenticated using (taca_vt_soy_admin()) with check (taca_vt_soy_admin());
+drop policy if exists vt_config_ver on public.taca_vt_config;
+create policy vt_config_ver on public.taca_vt_config for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_config_admin on public.taca_vt_config;
+create policy vt_config_admin on public.taca_vt_config for all to authenticated using (taca_vt_soy_admin()) with check (taca_vt_soy_admin());
+drop policy if exists vt_contactos_rw on public.taca_vt_contactos;
+create policy vt_contactos_rw on public.taca_vt_contactos for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_contactos_ins on public.taca_vt_contactos;
+create policy vt_contactos_ins on public.taca_vt_contactos for insert to authenticated with check (taca_vt_yo_id() is not null);
+drop policy if exists vt_contactos_upd on public.taca_vt_contactos;
+create policy vt_contactos_upd on public.taca_vt_contactos for update to authenticated using (taca_vt_yo_id() is not null) with check (taca_vt_yo_id() is not null);
+drop policy if exists vt_contactos_del on public.taca_vt_contactos;
+create policy vt_contactos_del on public.taca_vt_contactos for delete to authenticated using (taca_vt_soy_admin());
+drop policy if exists vt_act_ver on public.taca_vt_actividad;
+create policy vt_act_ver on public.taca_vt_actividad for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_act_ins on public.taca_vt_actividad;
+create policy vt_act_ins on public.taca_vt_actividad for insert to authenticated with check (miembro = taca_vt_yo_id());
+drop policy if exists vt_act_del on public.taca_vt_actividad;
+create policy vt_act_del on public.taca_vt_actividad for delete to authenticated using (miembro = taca_vt_yo_id() or taca_vt_soy_admin());
+drop policy if exists vt_tareas_ver on public.taca_vt_tareas;
+create policy vt_tareas_ver on public.taca_vt_tareas for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_tareas_ins on public.taca_vt_tareas;
+create policy vt_tareas_ins on public.taca_vt_tareas for insert to authenticated with check (taca_vt_yo_id() is not null);
+drop policy if exists vt_tareas_upd on public.taca_vt_tareas;
+create policy vt_tareas_upd on public.taca_vt_tareas for update to authenticated using (taca_vt_yo_id() is not null) with check (taca_vt_yo_id() is not null);
+drop policy if exists vt_tareas_del on public.taca_vt_tareas;
+create policy vt_tareas_del on public.taca_vt_tareas for delete to authenticated using (taca_vt_soy_socio() or creado_por = taca_vt_yo_id());
+drop policy if exists vt_obj_ver on public.taca_vt_objetivos;
+create policy vt_obj_ver on public.taca_vt_objetivos for select to authenticated using (taca_vt_yo_id() is not null);
+drop policy if exists vt_obj_socio on public.taca_vt_objetivos;
+create policy vt_obj_socio on public.taca_vt_objetivos for all to authenticated using (taca_vt_soy_socio()) with check (taca_vt_soy_socio());
+
+-- Números reales del negocio para el equipo: locales pagando, abono mensual y lo cobrado en el mes.
+create or replace function public.taca_vt_metricas(p_mes text default to_char(now() at time zone 'America/Argentina/Buenos_Aires','YYYY-MM'))
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare r jsonb; ini timestamptz; fin timestamptz; cfg jsonb;
+begin
+  if taca_vt_yo_id() is null then return null; end if;
+  ini := (p_mes || '-01')::timestamp at time zone 'America/Argentina/Buenos_Aires';
+  fin := ini + interval '1 month';
+  select data into cfg from taca_vt_config where id = 1;
+  select jsonb_build_object(
+    'pagando',   count(*) filter (where plan = 'activo' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'pag_local', count(*) filter (where plan = 'activo' and coalesce(abono,'local') = 'local' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'pag_encendido', count(*) filter (where plan = 'activo' and abono = 'encendido' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'en_prueba', count(*) filter (where plan = 'prueba' and prueba_hasta > now()),
+    'nuevos_mes', count(*) filter (where creado >= ini and creado < fin),
+    'total', count(*)
+  ) into r from taca_locales where id not in (select m.local_id from taca_miembros m join taca_admins a on a.user_id = m.user_id);
+  r := r || jsonb_build_object(
+    'cobrado_mes', coalesce((select sum(monto) from taca_pagos where creado >= ini and creado < fin), 0),
+    'mrr', coalesce((r->>'pag_local')::numeric, 0) * coalesce((cfg->'precios'->>'local')::numeric, 49900)
+         + coalesce((r->>'pag_encendido')::numeric, 0) * coalesce((cfg->'precios'->>'encendido')::numeric, 89900),
+    'mes', p_mes);
+  return r;
+end $$;
+grant execute on function public.taca_vt_metricas(text) to authenticated;
+
+-- Datos de arranque (solo la primera vez).
+insert into public.taca_vt_equipo (id, nombre, email, rol, admin, parte) values
+  ('lucas', 'Lucas', 'lucastavano2020@gmail.com', 'socio', true, 50),
+  ('daniel', 'Daniel', null, 'socio', false, 50),
+  ('nahuel', 'Nahuel', null, 'vendedor', false, 0)
+on conflict (id) do nothing;
+insert into public.taca_vt_config (id, data) values (1, '{"precios":{"local":49900,"encendido":89900},"fijos":168020,"porLocal":3886,"fondoPct":20,"comision":"primer_mes"}')
+on conflict (id) do nothing;
+insert into public.taca_vt_objetivos (mes, miembro, contactos, demos, pruebas, ventas) values
+  ('2026-11','grupo',60,6,3,2), ('2026-11','lucas',20,2,1,1), ('2026-11','daniel',20,2,1,1), ('2026-11','nahuel',20,2,1,0),
+  ('2026-12','grupo',270,27,16,8), ('2026-12','lucas',90,9,6,3), ('2026-12','daniel',90,9,5,3), ('2026-12','nahuel',90,9,5,2)
+on conflict do nothing;
+insert into public.taca_vt_tareas (id, mes, titulo, asignado, vence, creado_por) values
+  ('t1','2026-11','Imprimir 50 folletos A5 (frente y dorso)','lucas','2026-11-23','lucas'),
+  ('t2','2026-11','Crear el local "Demo ta-ca" para mostrar la IA','lucas','2026-11-22','lucas'),
+  ('t3','2026-11','Practicar la demo de 10 minutos dos veces','lucas','2026-11-22','lucas'),
+  ('t4','2026-11','Practicar la demo de 10 minutos dos veces','daniel','2026-11-22','lucas'),
+  ('t5','2026-11','Practicar la demo de 10 minutos dos veces','nahuel','2026-11-22','lucas'),
+  ('t6','2026-11','Repartir las zonas de la lista de locales','todos','2026-11-23','lucas'),
+  ('t7','2026-11','Publicar los 4 posts de Instagram (lun, mié, vie, dom)','nahuel','2026-11-29','lucas'),
+  ('t8','2026-11','Decidir comisiones, fondo común y oferta de lanzamiento','todos','2026-11-23','lucas'),
+  ('t9','2026-11','Bajar Zoho a Mail Lite','lucas','2026-12-02','lucas'),
+  ('t10','2026-11','Pasar Vercel y Supabase a pago antes del primer cobro','lucas','2026-12-05','lucas')
+on conflict (id) do nothing;
+insert into public.taca_vt_contactos (id,nro,nombre,tipo,zona,direccion,telefono,whatsapp,maps,prioridad) values
+('c1',1,'Almirante','Bar','Pichincha','Brown 3098','+54 341 749-9047',null,'https://www.google.com/maps/place/?q=place_id:ChIJjV6v1SKrt5URLDU_pd7SLgA','Alta'),
+('c2',2,'Bon Scott','Bar','Pichincha','Pichincha 131','+54 9 341 211-8352','5493412118352','https://www.google.com/maps/place/?q=place_id:ChIJExaJZE6rt5URTA7-OJG6OuQ','Alta'),
+('c3',3,'Cervario','Bar','Pichincha','Brown 2888',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJF8YWLUyrt5URM_OtSDA4cPM','Alta'),
+('c4',4,'Corner Pichincha','Bar','Pichincha','Av. Francia 7','+54 341 589-8189',null,'https://www.google.com/maps/place/?q=place_id:ChIJTTnGfROrt5URWZpaYTLFaPs','Alta'),
+('c5',5,'Grolar Bar','Bar','Pichincha','Pichincha Bis 2','+54 341 562-1947',null,'https://www.google.com/maps/place/?q=place_id:ChIJ6QL_nKWrt5URUuoxi7SMN24','Alta'),
+('c6',6,'Möns Beer Garden','Cervecería','Pichincha','Av. Francia Bis 59',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJOQJzhU2rt5UR1SOuxNpodFI','Alta'),
+('c7',7,'Refinería Restaurant','Restaurante','Pichincha','Rawson 443 bis','+54 9 341 695-1250','5493416951250','https://www.google.com/maps/place/?q=place_id:ChIJOaKEDUVTtpURjKuPKnMrdGs','Alta'),
+('c8',8,'Casa Brava','Bar','Pichincha','Pichincha 120',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJ-7fyPoert5URKAon1CUlBVw','Media (local grande)'),
+('c9',9,'Tanno''s Pizzas','Pizzería','Pichincha','Pichincha 38','+54 341 662-4850',null,'https://www.google.com/maps/place/?q=place_id:ChIJsfsirTCrt5URKSu0kb1ZeD4','Media'),
+('c10',10,'Alvear and Nueve de Julio Grill','Restaurante','Centro','9 de Julio 2295','+54 341 449-3811',null,'https://www.google.com/maps/place/?q=place_id:ChIJUwxBz2urt5URDOJFImFGg50','Alta'),
+('c11',11,'Bar Neco''s','Bar','Centro','Av. Carlos Pellegrini 3994','+54 341 437-4563',null,'https://www.google.com/maps/place/?q=place_id:ChIJr9npYKGst5UR3mB0RU_VeCI','Alta'),
+('c12',12,'Bella Roma Pizzería','Pizzería','Centro','Sarmiento 1414',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJ2yrrAgCrt5URD22jlIoNJxA','Alta'),
+('c13',13,'Birria','Bar','Centro','España 1501','+54 341 449-3776',null,'https://www.google.com/maps/place/?q=place_id:ChIJgcFfVBKrt5URSwdueg-ASQQ','Alta'),
+('c14',14,'Bodegón Asturiano','Restaurante','Centro','San Luis 644','+54 341 674-1616',null,'https://www.google.com/maps/place/?q=place_id:ChIJH-yMD42rt5URJl73kgkEgys','Alta'),
+('c15',15,'Bodegón Pueyrredón','Restaurante','Centro','Pueyrredón 398',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJ6YytKgCrt5URzAKQ8PPkxGs','Alta'),
+('c16',16,'Bodegón de sabores 1852','Restaurante','Centro','3 de Febrero 2417','+54 341 255-3429',null,'https://www.google.com/maps/place/?q=place_id:ChIJwZ0ADQCrt5URZb2QpYPISt4','Alta'),
+('c17',17,'Brooklyn | Crafters'' Garden','Bar','Centro','Tucumán 1294','+54 341 377-9444',null,'https://www.google.com/maps/place/?q=place_id:ChIJUy320CKrt5UR4BoyGaz0pmg','Alta'),
+('c18',18,'Charles Cerveceria','Cervecería','Centro','San Juan 1827','+54 9 341 344-0175','5493413440175','https://www.google.com/maps/place/?q=place_id:ChIJ57FoAhWrt5URXzj_rB7vkUQ','Alta'),
+('c19',19,'El Patio Multiespacio','Cervecería','Centro','España 1190','+54 341 281-7567',null,'https://www.google.com/maps/place/?q=place_id:ChIJQa9kbhSrt5UR4JnnDXyp9LQ','Alta'),
+('c20',20,'Hamburguesas Extremas','Hamburguesería','Centro','Córdoba 1180',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJmdL6cQCrt5URdIUJOLe7LaU','Alta'),
+('c21',21,'John''s Burgers Centro','Hamburguesería','Centro','Mendoza 1096',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJLb5AeNWrt5URNpOvl-5Qt7k','Alta'),
+('c22',22,'La Bodeguita de Pichincha','Bar','Centro','Alvear 144',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJe3aa7eurt5UR2lvScGu8NIM','Alta'),
+('c23',23,'La Rosario - Almacén de Pizzas','Pizzería','Centro',null,'+54 341 792-6006',null,'https://www.google.com/maps/place/?q=place_id:ChIJncB14MSrt5URgoVUxd4a1kY','Alta'),
+('c24',24,'La Vizcachera cervecería','Cervecería','Centro','Av. Carlos Pellegrini 3702',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJvbZdJSutt5URCI66cRf5Giw','Alta'),
+('c25',25,'Las Rosarinas','Pizzería','Centro','Rioja 2392','+54 341 447-0010',null,'https://www.google.com/maps/place/?q=place_id:ChIJpQ68EkGrt5URiTxm2qBaSyc','Alta'),
+('c26',26,'Mosto Barrio Martin','Cervecería','Centro','San Juan 561',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJhUz2qOSrt5URwQOgy-866bU','Alta'),
+('c27',27,'Mosto Echesortu','Bar','Centro','San Nicolás 1141',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJx-E3SQCrt5URl7s4Wq4GqZc','Alta'),
+('c28',28,'Mosto Somos Cervezas','Cervecería','Centro','Pueyrredón 1096',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJfRmq_vWrt5UR-tYUzMsVFkk','Alta'),
+('c29',29,'Mr. Tasty Rosario','Hamburguesería','Centro','Sarmiento 870','+54 341 542-8120',null,'https://www.google.com/maps/place/?q=place_id:ChIJyaX773ert5URNL6dX_UMyDo','Alta'),
+('c30',30,'Olegario Almacén Boutique','Cervecería','Centro','Montevideo 2370','+54 341 257-3774',null,'https://www.google.com/maps/place/?q=place_id:ChIJLUeLVw6rt5UR5aplzO3M2KM','Alta'),
+('c31',31,'Resto Bar Pico Fino','Bar','Centro','Av. San Martín 783','+54 341 424-7836',null,'https://www.google.com/maps/place/?q=place_id:ChIJT5ozcxmrt5UR8E5x-bOHfrM','Alta'),
+('c32',32,'Ruin Bar','Bar','Centro','Jujuy 2230',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJf9v3f9urt5URt-GgGWNJP2A','Alta'),
+('c33',33,'Vibra Bar','Bar','Centro','Salta 2250',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJP-nkZgCrt5URFCgqd4DCMeY','Alta'),
+('c34',34,'Weiss Burger Rosario','Hamburguesería','Centro','Pres. Roca 749',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJbSEaRq2rt5URFXqM8NPi9-U','Alta'),
+('c35',35,'LA BUSSOLA CENTRO','Restaurante','Centro','3 de Febrero 1314 BLB','+54 341 411-8030',null,'https://www.google.com/maps/place/?q=place_id:ChIJRaNoVBCrt5URjO6PIzWaR3M','Media'),
+('c36',36,'La Fabrica "Bebidas De Pichincha"','Bar','Centro','Catamarca 2941','+54 341 270-9827',null,'https://www.google.com/maps/place/?q=place_id:ChIJeRvFZkSrt5UR9L1R8ZlK85c','Media'),
+('c37',37,'Los Tres Hermanos','Pizzería','Centro','Vera Mujica 944','+54 341 581-4061',null,'https://www.google.com/maps/place/?q=place_id:ChIJB8DELFirt5URIn7oYm8GiRQ','Media'),
+('c38',38,'Pizza Piazza','Pizzería','Centro','Córdoba 901 AWK','+54 341 448-2233',null,'https://www.google.com/maps/place/?q=place_id:ChIJSz58Wxmrt5URR2Jtxz90kz0','Media (local grande)'),
+('c39',39,'Ronnie Mercado Zarpado','Hamburguesería','Centro','San Luis 1038','+54 341 588-0366',null,'https://www.google.com/maps/place/?q=place_id:ChIJRSD5l-Grt5UREFtV10FVDWM','Media'),
+('c40',40,'Ronnie Pichincha','Hamburguesería','Centro','Santiago 102','+54 341 588-0366',null,'https://www.google.com/maps/place/?q=place_id:ChIJq7E7W0irt5URsWOBZBLytq4','Media (local grande)'),
+('c41',41,'Bar Friends.','Bar','Abasto / Echesortu','HUE, Av. San Martín 4099','+54 341 613-3949',null,'https://www.google.com/maps/place/?q=place_id:ChIJsYcht7irt5URqbLk81ZOzxg','Alta'),
+('c42',42,'Bros','Cervecería','Abasto / Echesortu','Av. Carlos Pellegrini 388 BTQ','+54 341 283-0537',null,'https://www.google.com/maps/place/?q=place_id:ChIJA2BZrQGrt5UR58wY8Lac1DA','Alta'),
+('c43',43,'Burger House Grill Pellegrini','Hamburguesería','Abasto / Echesortu','Av. Carlos Pellegrini 916','+54 341 310-0808',null,'https://www.google.com/maps/place/?q=place_id:ChIJEw8WEd6rt5URC64QbefLL2s','Alta'),
+('c44',44,'Charly Bodegón','Restaurante','Abasto / Echesortu','Entre Ríos 1798','+54 341 482-5039',null,'https://www.google.com/maps/place/?q=place_id:ChIJqYxR8A6rt5UREMJWcL3py4g','Alta'),
+('c45',45,'El Leñador','Hamburguesería','Abasto / Echesortu','Sarmiento 1798 FVB','+54 341 239-1401',null,'https://www.google.com/maps/place/?q=place_id:ChIJiXAmRA-rt5URTwh0ZXVUqb8','Alta'),
+('c46',46,'Fullero RestoBar','Cervecería','Abasto / Echesortu','Av. Carlos Pellegrini 1085','+54 341 504-9126',null,'https://www.google.com/maps/place/?q=place_id:ChIJ2ZDMMsWrt5UR_4MGACeVkCk','Alta'),
+('c47',47,'La Perrería Beer & Food','Cervecería','Abasto / Echesortu','Av. San Martín 4869',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJt1tfpumrt5URnWsQh4aW7lA','Alta'),
+('c48',48,'La Social Barrio Martin','Bar','Abasto / Echesortu','Zeballos 101','+54 341 243-3165',null,'https://www.google.com/maps/place/?q=place_id:ChIJbRaPTv6qt5UROKEQs9PjwXc','Alta'),
+('c49',49,'Marvel Food Pellegrini','Hamburguesería','Abasto / Echesortu','Av. Carlos Pellegrini 1149',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJbRHXbACrt5URexFzz1Z7XOU','Alta'),
+('c50',50,'Mosto Abasto','Bar','Abasto / Echesortu','Viamonte 1399','+54 341 572-3575',null,'https://www.google.com/maps/place/?q=place_id:ChIJEWZpowqrt5URFTFPD51lGHw','Alta'),
+('c51',51,'Prego','Bar','Abasto / Echesortu','Cochabamba 1596','+54 341 749-1031',null,'https://www.google.com/maps/place/?q=place_id:ChIJ8-dDjPert5URrbSSZSOVdqI','Alta'),
+('c52',52,'Stuttgart','Cervecería','Abasto / Echesortu','Av. Carlos Pellegrini 1910','+54 341 441-6117',null,'https://www.google.com/maps/place/?q=place_id:ChIJEV_fMW2rt5URXEkFmconq2E','Alta'),
+('c53',53,'Wilson Pizzas','Pizzería','Abasto / Echesortu','Av. Carlos Pellegrini 1048 BTX','+54 341 425-1080',null,'https://www.google.com/maps/place/?q=place_id:ChIJN6hloxyrt5URQM0u2uZie14','Alta'),
+('c54',54,'BARREL Abasto','Cervecería','Abasto / Echesortu','La Paz 1298','+54 9 341 228-4361','5493412284361','https://www.google.com/maps/place/?q=place_id:ChIJa9KJRQCrt5URil1FFTKllEc','Media'),
+('c55',55,'Bar Restaurante','Bar','Abasto / Echesortu','Av. San Martín 6009',null,null,'https://www.google.com/maps/place/?q=place_id:ChIJtbRxGDSrt5URa4m2wdMUPmc','Media'),
+('c56',56,'Club de Pizzas','Pizzería','Abasto / Echesortu','Av. Carlos Pellegrini 1295','+54 341 486-0667',null,'https://www.google.com/maps/place/?q=place_id:ChIJRRk0Vw6rt5URhyy2KzwIAP8','Media (local grande)'),
+('c57',57,'EL CARLO DEL ABASTO','Bar','Abasto / Echesortu','España 1894','+54 341 750-3296',null,'https://www.google.com/maps/place/?q=place_id:ChIJm5aYKpqrt5UR195pbPARJco','Media'),
+('c58',58,'Espacio World','Cervecería','Abasto / Echesortu','Av. Carlos Pellegrini 1647','+54 341 355-6794',null,'https://www.google.com/maps/place/?q=place_id:ChIJ30MviSurt5URg06H2BwjifE','Media (local grande)'),
+('c59',59,'Irineo','Bar','Abasto / Echesortu','Av. San Martín 4502','+54 341 462-4049',null,'https://www.google.com/maps/place/?q=place_id:ChIJtSTiOcGrt5URstmk-OUubU0','Media (local grande)'),
+('c60',60,'King Beer','Cervecería','Abasto / Echesortu','Av. Carlos Pellegrini 1727','+54 341 368-0202',null,'https://www.google.com/maps/place/?q=place_id:ChIJQZkhe5qrt5UR0wYD9yKxx5s','Media (local grande)'),
+('c61',61,'Pizza House','Pizzería','Abasto / Echesortu','Montevideo 1378','+54 341 217-4002',null,'https://www.google.com/maps/place/?q=place_id:ChIJUdzrGcWrt5URC4THJFLDCPA','Media'),
+('c62',62,'Via Apia Pizzería','Pizzería','Abasto / Echesortu','Av. Carlos Pellegrini 961','+54 341 481-3174',null,'https://www.google.com/maps/place/?q=place_id:ChIJ13W26wWrt5URXpHi6ZBjI2Q','Media (local grande)'),
+('c63',63,'Barro Pichincha','Restaurante','Puerto Norte / Refinería','Alvear 41','+54 341 283-8386',null,'https://www.google.com/maps/place/?q=place_id:ChIJwbbu-P-rt5UR9gVUUV8-Skw','Alta'),
+('c64',64,'Bajada España','Restaurante','Puerto Norte / Refinería',null,'+54 341 449-6801',null,'https://www.google.com/maps/place/?q=place_id:ChIJB0LkgzCrt5URwGH6mQUV7s0','Media (local grande)'),
+('c65',65,'El Dorado - Bodegón de Río','Restaurante','Puerto Norte / Refinería','Emilio O Schiffner 1580','+54 341 541-2650',null,'https://www.google.com/maps/place/?q=place_id:ChIJl4cPw_2rt5URD_btpxjWjf4','Media (local grande)'),
+('c66',66,'BAR LA ROMERIA DE SAN ANTONIO','Bar','Barrio Martin / Sur','Av. San Martín 3372','+54 341 274-9671',null,'https://www.google.com/maps/place/?q=place_id:ChIJD9NVP7urt5UReXWPzBcxGME','Alta'),
+('c67',67,'Borussia Cervezas','Cervecería','Barrio Martin / Sur','Av. San Martín 3440','+54 341 312-4106',null,'https://www.google.com/maps/place/?q=place_id:ChIJX4fNcrurt5UR7wrU_jkKsWo','Alta'),
+('c68',68,'Parrilla Bodegón Centro Entrerriano','Parrilla / Bodegón','Barrio Martin / Sur','Buenos Aires 2565','+54 341 482-0307',null,'https://www.google.com/maps/place/?q=place_id:ChIJLxRt0Kirt5URQH9f-NipNSs','Alta'),
+('c69',69,'BIRIQUITINA - Experiencias y café','Café-bar','Barrio Martin / Sur','Av. San Martín 3515','+54 341 212-7935',null,'https://www.google.com/maps/place/?q=place_id:ChIJgTyuhIOrt5URTwvUI8-K518','Media'),
+('c70',70,'Bar "Lido"','Bar','Barrio Martin / Sur','Av. San Martín 3142','+54 341 481-1027',null,'https://www.google.com/maps/place/?q=place_id:ChIJ-fSuwqSrt5URCq5js2smBb8','Media (local grande)'),
+('c71',71,'El León','Restaurante','Barrio Martin / Sur','Leandro N. Alem 2291','+54 341 366-2291',null,'https://www.google.com/maps/place/?q=place_id:ChIJn-7urNWrt5URN4--TvWX0WI','Media (local grande)'),
+('c72',72,'Cantina del C.A.F.','Bar','Fisherton','Chassaing 1650','+54 341 390-8880',null,'https://www.google.com/maps/place/?q=place_id:ChIJB86AdN5TtpURrgLN4q8PILQ','Alta'),
+('c73',73,'LA ANDONIA RESTAURANT','Restaurante','Fisherton','José M. Rosa 993','+54 341 350-6593',null,'https://www.google.com/maps/place/?q=place_id:ChIJ5RV5Y3NTtpURXDY8t3Q0gU4','Alta'),
+('c74',74,'Nenina Fisherton','Bar','Fisherton','A. J. Paz 1065 Bis⁣⁣','+54 341 268-7770',null,'https://www.google.com/maps/place/?q=place_id:ChIJUQPyUmtNtpURAamNAFn3THI','Alta'),
+('c75',75,'Palo Borracho','Bar','Fisherton','Av. Eva Perón 7849','+54 341 307-6917',null,'https://www.google.com/maps/place/?q=place_id:ChIJD6V3kdxStpURTQrbs0gdkBk','Alta'),
+('c76',76,'Picaña Parrilla Restaurante','Parrilla / Bodegón','Fisherton','Schweitzer, Juan Pablo II 9063','+54 341 503-9986',null,'https://www.google.com/maps/place/?q=place_id:ChIJJR9J74NTtpURDlbMTlSCDao','Alta'),
+('c77',77,'la destileria','Cervecería','Fisherton','Av. Eva Perón 7801','+54 341 236-7217',null,'https://www.google.com/maps/place/?q=place_id:ChIJHc0PfNxStpUR0qzBJUskFYU','Alta'),
+('c78',78,'Bar Antartida','Bar','Fisherton','199 Sánchez de Loria Bis 101','+54 341 451-1441',null,'https://www.google.com/maps/place/?q=place_id:ChIJW915xdxStpUR0VjumDM1Y8Q','Media (local grande)'),
+('c79',79,'Jardín Restobar','Bar','Fisherton','Rodó 166','+54 341 703-9788',null,'https://www.google.com/maps/place/?q=place_id:ChIJaY-yJ2tTtpURp1GSk5ZvdCI','Media'),
+('c80',80,'Restaurante Gimme Shelter House','Restaurante','Fisherton','Blvd. Argentino 8013','+54 9 341 592-1404','5493415921404','https://www.google.com/maps/place/?q=place_id:ChIJD4UBQjhTtpURFfD_oAt5OR0','Media (local grande)')
+on conflict (id) do nothing;
+-- Resumen del equipo de ventas para el Panel Roman Web de la app.
+create or replace function public.taca_vt_resumen(p_mes text default to_char(now() at time zone 'America/Argentina/Buenos_Aires','YYYY-MM'))
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare ini timestamptz; fin timestamptz;
+begin
+  if taca_vt_yo_id() is null then return null; end if;
+  ini := (p_mes || '-01')::timestamp at time zone 'America/Argentina/Buenos_Aires';
+  fin := ini + interval '1 month';
+  return jsonb_build_object(
+    'mes', p_mes,
+    'metricas', taca_vt_metricas(p_mes),
+    'config', (select data from taca_vt_config where id = 1),
+    'equipo', coalesce((select jsonb_agg(jsonb_build_object('id',id,'nombre',nombre,'rol',rol,'parte',parte,'email',email is not null) order by creado) from taca_vt_equipo where activo), '[]'::jsonb),
+    'logros', coalesce((select jsonb_object_agg(miembro, t) from (select miembro, jsonb_object_agg(tipo, n) t from (select miembro, tipo, count(*) n from taca_vt_actividad where ts >= ini and ts < fin group by 1,2) a group by 1) b), '{}'::jsonb),
+    'comisiones', coalesce((select jsonb_object_agg(miembro, s) from (select miembro, sum(coalesce(monto,0)) s from taca_vt_actividad where tipo='venta' and ts >= ini and ts < fin group by 1) c), '{}'::jsonb),
+    'objetivos', coalesce((select jsonb_object_agg(miembro, jsonb_build_object('contactos',contactos,'demos',demos,'pruebas',pruebas,'ventas',ventas)) from taca_vt_objetivos where mes = p_mes), '{}'::jsonb),
+    'tareas', jsonb_build_object('total',(select count(*) from taca_vt_tareas where mes=p_mes),'hechas',(select count(*) from taca_vt_tareas where mes=p_mes and hecho)),
+    'embudo', coalesce((select jsonb_object_agg(estado, n) from (select estado, count(*) n from taca_vt_contactos group by 1) e), '{}'::jsonb),
+    'ultimas', coalesce((select jsonb_agg(x order by x->>'ts' desc) from (select jsonb_build_object('ts',a.ts,'miembro',a.miembro,'tipo',a.tipo,'local',c.nombre) x from taca_vt_actividad a left join taca_vt_contactos c on c.id=a.contacto_id order by a.ts desc limit 8) u), '[]'::jsonb)
+  );
+end $$;
+grant execute on function public.taca_vt_resumen(text) to authenticated;

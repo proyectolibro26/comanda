@@ -692,6 +692,7 @@ function supaNube(sb){
     async suscribir(local,plan,periodo,email){const t=await this.auth.token();const r=await fetch('/api/suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,plan,periodo,email})});
       const j=await r.json().catch(()=>({}));if(!r.ok||!j.url)throw new Error(j.error||'No se pudo iniciar el pago');return j},
     adminLocales:()=>rpc('taca_admin_locales'),
+    ventasEquipo:mes=>rpc('taca_vt_resumen',{p_mes:mes}),
     async mpCuenta(local){const t=await this.auth.token();const r=await fetch('/api/mp-cuenta?local='+encodeURIComponent(local),{headers:{Authorization:'Bearer '+t}});
       const j=await r.json().catch(()=>({}));if(r.status===503)return{sinConfig:true};if(!r.ok)throw new Error(j.error||'No se pudo consultar');return j},
     async mpCuentaAccion(local,accion){const t=await this.auth.token();const r=await fetch('/api/mp-cuenta',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,accion})});
@@ -749,6 +750,7 @@ function mockNube(){
       onCambio(cb){cbs.push(cb)}
     },
     esAdmin:()=>later(()=>{const u=ses();return !!(u&&JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))}),
+    ventasEquipo:()=>later(()=>null),
     adminLocales:()=>later(()=>{const u=ses();if(!u||!JSON.parse(ls('taca-mock-admins')||'[]').includes(u.email))return null;const us=users(),em=id=>(Object.entries(us).find(([,x])=>x.id===id)||[''])[0];
       return Object.entries(get()).map(([id,r])=>({id,nombre:r.data.negocio,tipo:r.data.tipo,plan:r.plan||'prueba',prueba_hasta:r.prueba_hasta,pagado_hasta:r.pagado_hasta||null,nota:r.nota||null,creado:r.creado||r.prueba_hasta,actualizado:r.actualizado||null,
         whatsapp:r.wa?r.wa.numero||r.wa.phoneId:null,pedidos:(r.data.pedidos||[]).length,equipo:(r.data.equipo||[]).length,ventas:(r.data.cobros||[]).filter(c=>!c.anulado).reduce((a,c)=>a+c.total,0),duenos:(r.miembros||[]).map(em)}))}),
@@ -1009,7 +1011,32 @@ function estadoLocal(x){const dd=t=>Math.ceil((new Date(t)-Date.now())/864e5);
 }
 function haceDias(t){if(!t)return'—';const m=(Date.now()-new Date(t))/6e4;return m<60?'hace '+Math.max(1,Math.round(m))+' min':m<1440?'hace '+Math.round(m/60)+' h':'hace '+Math.round(m/1440)+' días'}
 const fecha=t=>t?new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
-async function cargarAdmin(){ADM.cargando=true;render();try{ADM.lista=await NB.adminLocales();if(ADM.lista===null){AUTH.panel=false;AUTH.admin=false;toast('Tu cuenta no es administradora',1)}}catch(e){toast(errMsg(e),1)}ADM.cargando=false;render()}
+async function cargarAdmin(){ADM.cargando=true;render();try{ADM.lista=await NB.adminLocales();try{ADM.vt=NB.ventasEquipo?await NB.ventasEquipo(new Date().toLocaleDateString('sv-SE',{timeZone:'America/Argentina/Buenos_Aires'}).slice(0,7)):null}catch(e){ADM.vt=null}if(ADM.lista===null){AUTH.panel=false;AUTH.admin=false;toast('Tu cuenta no es administradora',1)}}catch(e){toast(errMsg(e),1)}ADM.cargando=false;render()}
+// Resumen del equipo de ventas (datos de ta-ca.com.ar/equipo).
+function vVentasEquipo(v){
+  if(!v)return`<section class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div style="flex:1;min-width:220px"><b>Ventas del equipo</b><div class="muted" style="font-size:13px">Métricas, contactos, tareas y objetivos del equipo están en la app del equipo.</div></div><a class="btn" href="/equipo/" target="_blank" rel="noopener">Abrir app del equipo ↗</a></section>`;
+  const cfg=v.config||{},pr=cfg.precios||{local:49900,encendido:89900},mt=v.metricas||{};
+  const tot=k=>Object.values(v.logros||{}).reduce((a,x)=>a+(+x[k]||0),0);
+  const og=(v.objetivos||{}).grupo||{};
+  const barra=(t,k,ob)=>{const n=tot(k),o=+og[ob]||0,pc=o?Math.min(100,Math.round(n/o*100)):0;return`<div style="display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font-size:14px"><span>${t}</span><span style="height:8px;border-radius:9px;background:var(--line);overflow:hidden"><span style="display:block;height:100%;width:${pc}%;background:${pc>=100?'var(--ok)':'var(--acc)'}"></span></span><span style="text-align:right;font-variant-numeric:tabular-nums">${n} / ${o||'–'}</span></div>`};
+  const mrr=+mt.mrr||0,gastos=(+cfg.fijos||0)+(+mt.pagando||0)*(+cfg.porLocal||0);
+  const com=Object.values(v.comisiones||{}).reduce((a,x)=>a+(+x||0),0);
+  const queda=mrr-gastos-com,fondo=queda>0?Math.round(queda*(+cfg.fondoPct||0)/100):0,rep=queda>0?queda-fondo:0;
+  const socios=(v.equipo||[]).filter(x=>x.rol==='socio');
+  const cobra=(v.equipo||[]).map(x=>{const c=+(v.comisiones||{})[x.id]||0,pa=x.rol==='socio'?Math.round(rep*(+x.parte||0)/100):0;return`<tr><td><b>${esc(x.nombre)}</b><small>${x.rol==='socio'?'Socio · '+(+x.parte||0)+'%':'Vendedor'}${x.email?'':' · sin acceso todavía'}</small></td><td style="text-align:right">${(v.logros||{})[x.id]?.venta||0}</td><td style="text-align:right">${fmt(c)}</td><td style="text-align:right">${x.rol==='socio'?fmt(pa):'–'}</td><td style="text-align:right"><b>${fmt(c+pa)}</b></td></tr>`}).join('');
+  const emb=v.embudo||{},EST=['Sin contactar','Mensaje enviado','Respondió','Demo agendada','Demo hecha','En prueba','Pagó','No le interesa'];
+  const TIP={contacto:'contactó a',demo:'hizo la demo en',prueba:'puso en prueba a',venta:'cerró'};
+  const nom=id=>((v.equipo||[]).find(x=>x.id===id)||{}).nombre||id;
+  return`<section class="card" style="margin-bottom:14px">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h2 style="margin:0;font-size:17px">Ventas del equipo · ${esc(new Date(v.mes+'-15').toLocaleDateString('es-AR',{month:'long'}))}</h2><span style="flex:1"></span><a class="btn small" href="/equipo/" target="_blank" rel="noopener">Abrir app del equipo ↗</a></div>
+<div class="kpis"><div class="kpi hi"><small>Abono mensual (MRR)</small><b>${fmt(mrr)}</b></div><div class="kpi"><small>Queda después de gastos y comisiones</small><b style="color:${queda<0?'var(--bad)':'inherit'}">${fmt(queda)}</b></div><div class="kpi acc"><small>Fondo común (${+cfg.fondoPct||0}%)</small><b>${fmt(fondo)}</b></div><div class="kpi"><small>Tareas del mes</small><b>${v.tareas?.hechas||0} / ${v.tareas?.total||0}</b></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:6px">
+<div style="display:flex;flex-direction:column;gap:9px"><b style="font-size:14px">Objetivos del equipo</b>${barra('Contactos','contacto','contactos')}${barra('Demos','demo','demos')}${barra('Pruebas','prueba','pruebas')}${barra('Ventas','venta','ventas')}
+<b style="font-size:14px;margin-top:6px">Lista de bares</b><div style="display:flex;flex-wrap:wrap;gap:6px">${EST.filter(e=>emb[e]).map(e=>`<span class="chip ${e==='Pagó'?'ok':e==='No le interesa'?'bad':e==='Sin contactar'?'':'blue'}">${e} · ${emb[e]}</span>`).join('')}</div></div>
+<div style="overflow:auto"><table><thead><tr><th>Persona</th><th style="text-align:right">Ventas</th><th style="text-align:right">Comisión</th><th style="text-align:right">Parte</th><th style="text-align:right">Cobraría</th></tr></thead><tbody>${cobra}<tr><td><b>Fondo común</b></td><td></td><td></td><td></td><td style="text-align:right"><b>${fmt(fondo)}</b></td></tr></tbody></table>
+${(v.ultimas||[]).length?`<b style="font-size:14px;display:block;margin:12px 0 6px">Últimos movimientos</b>${v.ultimas.slice(0,5).map(u=>`<div style="font-size:13px;padding:3px 0"><span class="muted">${haceDias(u.ts)} ·</span> ${esc(nom(u.miembro))} ${TIP[u.tipo]||u.tipo} ${esc(u.local||'')}</div>`).join('')}`:'<p class="muted" style="font-size:13px">Todavía no hay movimientos este mes.</p>'}</div></div>
+${queda<0?'<p class="muted" style="font-size:13px;margin:10px 0 0">Todavía no alcanza para cubrir gastos: este mes no se reparte.</p>':''}${socios.length?'':''}</section>`;
+}
 function vAdmin(){
   const L=(ADM.lista||[]).map(x=>Object.assign({},x,{e:estadoLocal(x)}));
   const cuenta=k=>L.filter(x=>k==='prueba'?['prueba','porvencer'].includes(x.e.k)&&!x.e.pago:k==='activo'?x.e.pago&&x.e.k!=='vencido':x.e.k===k).length;
@@ -1030,6 +1057,7 @@ ${ADM.lista===null?`<p class="muted">${ADM.cargando?'Cargando locales…':'Sin d
 <div class="kpis"><div class="kpi hi"><small>Locales</small><b>${L.length}</b></div><div class="kpi acc"><small>Pagando</small><b>${cuenta('activo')}</b></div>
 <div class="kpi"><small>En prueba</small><b>${cuenta('prueba')}</b></div><div class="kpi"><small>Por vencer</small><b>${cuenta('porvencer')}</b></div>
 <div class="kpi"><small>Altas últimos 7 días</small><b>${nuevos7}</b></div><div class="kpi"><small>Usaron ta-ca esta semana</small><b>${activos7}</b></div></div>
+${vVentasEquipo(ADM.vt)}
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">${FIL.map(([k,t,n])=>`<button class="small ${ADM.f===k?'primary':''}" data-a="admFiltro" data-f="${k}">${t} · ${n}</button>`).join('')}
 <input id="admq" placeholder="Buscar local, email o nota" value="${esc(ADM.q||'')}" oninput="ADM.q=this.value;admFiltrarDom()" style="max-width:260px;margin:0 0 0 auto"></div>
 <section class="card" style="padding:0;overflow:auto"><table id="admtabla"><thead><tr><th>Local</th><th>Dueño</th><th>Estado</th><th>Alta</th><th>Último uso</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Ventas</th><th></th></tr></thead>
