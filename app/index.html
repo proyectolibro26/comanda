@@ -2746,7 +2746,10 @@ setInterval(()=>{if(!busy()&&!$('#modal').innerHTML&&(pantallaMode||((tab==='coc
 /* ---------- botón Atrás del celular: cierra ventanas, vuelve de pantalla y pregunta antes de salir ---------- */
 let TABH=[],SALIENDO=false;
 function atrasArmar(){try{if(!(history.state&&history.state.taca))history.pushState({taca:1},'',location.href)}catch(e){}}
+let ATRAS_HASH=location.hash;
+window.addEventListener('hashchange',()=>{ATRAS_HASH=location.hash});
 window.addEventListener('popstate',()=>{
+  if(location.hash!==ATRAS_HASH){ATRAS_HASH=location.hash;return} // cambio de # (otra pantalla de la app), no es "atrás"
   if(SALIENDO||pantallaMode)return;
   const abierto=!!$('#modal').innerHTML.trim();
   if(abierto&&document.querySelector('#modal [data-a=salirApp]')){closeModal();atrasArmar();return}
