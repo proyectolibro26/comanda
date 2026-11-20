@@ -799,3 +799,9 @@ create table if not exists public.taca_push_avisos (
 alter table public.taca_push_avisos enable row level security;
 revoke all on public.taca_push_avisos from anon, authenticated;
 grant select, insert, update, delete on public.taca_push_avisos to service_role;
+
+-- Cobro en caja con QR de Mercado Pago: sucursal y caja creadas en la cuenta MP de cada local.
+alter table public.taca_mp_cuentas add column if not exists qr_store_id text;
+alter table public.taca_mp_cuentas add column if not exists qr_pos_id   text;
+alter table public.taca_mp_cuentas add column if not exists qr_pos_ext  text;
+alter table public.taca_mp_cuentas add column if not exists qr_estatico text;

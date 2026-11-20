@@ -2,10 +2,10 @@
 // La página y nucleo.js: primero la red (así siempre llega la última versión) y si no hay, la copia guardada.
 // Librerías y tipografías de otros sitios: la copia guardada, y se actualiza por detrás.
 // Nunca se guardan /api ni Supabase: esos datos los maneja la app con su propia cola de cambios.
-const CACHE = 'taca-v10';
+const CACHE = 'taca-v11';
 const BASE = ['/app', '/nucleo.js', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png'];
 const CDN = [
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+  '/assets/js/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 

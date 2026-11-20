@@ -37,7 +37,7 @@ async function mandar(local, datos, excepto) {
   return { equipos: subs.length, enviados: ok };
 }
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Sin configurar' });
   try {
     if (req.method === 'GET') return res.status(200).json({ clave: vapid().publica });
@@ -83,3 +83,5 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'No se pudo completar' });
   }
 };
+module.exports = handler;
+module.exports.quien = quien;

@@ -14,7 +14,7 @@
 <meta name="theme-color" content="#0f172a">
 <script>addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__instalar=e;if(window.render)try{render()}catch(x){}});addEventListener('appinstalled',()=>{window.__instalar=null});try{document.documentElement.dataset.tema=localStorage.getItem('taca-tema')||'oscuro'}catch(e){document.documentElement.dataset.tema='oscuro'}</script>
 <link rel="preload" href="/assets/fonts/inter.woff" as="font" type="font/woff" crossorigin>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/assets/js/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 @font-face{font-family:Unbounded;src:url(/assets/fonts/unbounded.woff) format("woff");font-weight:200 900;font-display:swap}
@@ -158,6 +158,14 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 @media(max-width:600px){.ia-banner .ia-go{display:none}}
 .btn-like{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;margin:0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);transition-property:border-color,scale;transition-duration:.15s}.btn-like:hover{border-color:var(--accd)}.btn-like:active{scale:.96}
 table.fac td small{display:block;color:var(--muted);font-size:12px}table.fac td.n{white-space:nowrap}table.fac select{min-width:180px;margin:0}table.fac tr.off td{opacity:.5}
+.btn-mpqr{display:inline-flex;align-items:center;gap:8px;background:#009ee3;color:#fff;border-color:#009ee3;font-weight:600}.btn-mpqr .ico{width:18px;height:18px}.btn-mpqr:hover{filter:brightness(1.07)}
+.qrmp{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin:6px 0 4px}
+.qrmp-monto{font:700 34px Unbounded,sans-serif;letter-spacing:-.02em}
+.qrmp-qr{background:#fff;padding:14px;border-radius:16px;box-shadow:0 0 0 1px var(--line);min-width:268px;min-height:268px;display:grid;place-items:center}
+.qrmp-est{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 0;min-height:34px}
+.qrmp-ayuda{font-size:14px;max-width:360px;margin:0}
+.mpqr-aj{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.mpqr-aj h3{margin:0 0 8px;font-size:16px}
+.mpqr-fijo{display:flex;gap:16px;align-items:center;margin-top:10px}.mpqr-fijo #qrfijo{background:#fff;padding:8px;border-radius:10px;flex:none}
 .imp-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.imp-map label{margin:0}
 .mesa-c{text-align:left;border:2px solid var(--line);border-radius:14px;padding:12px;min-height:110px;background:var(--card);display:flex;flex-direction:column;gap:4px}
 .mesa-c b{font:700 18px Unbounded,sans-serif}
@@ -653,6 +661,8 @@ function supaNube(sb){
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No pudimos leer el archivo');return j},
     async push(datos){const h={'Content-Type':'application/json'};if(EQ)h['x-equipo']=EQ.t;else{const t=await this.auth.token();if(t)h.Authorization='Bearer '+t}
       const r=await fetch('/api/push',{method:'POST',headers:h,body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo');return j},
+    async mpqr(datos){const h={'Content-Type':'application/json'};if(EQ)h['x-equipo']=EQ.t;else{const t=await this.auth.token();if(t)h.Authorization='Bearer '+t}
+      const r=await fetch('/api/mp-qr',{method:'POST',headers:h,body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Mercado Pago no respondió');return j},
     async pushClave(){const r=await fetch('/api/push');const j=await r.json();if(!r.ok||!j.clave)throw new Error('sin clave');return j.clave},
     async waSuscribir(waba){const t=await this.auth.token();const r=await fetch('/api/wa-suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({waba})});
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo suscribir');return j},
@@ -694,7 +704,7 @@ function supaNube(sb){
   };
 }
 // Mismo criterio que taca_filtrar / taca_fusionar_rol del servidor (lo usa el servidor de prueba)
-const CLAVES_DUENO=['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio','plano'];
+const CLAVES_DUENO=['equipo','cierres','descMax','alias','negocio','mesas','baseUrl','tipo','setup','envio','plano','mpqr'];
 function filtrarRol(d,r){if(r==='dueno')return d;const x=clone(d);x.cierres=[];x.audit=[];return x}
 function fusionarRol(o,n,r){if(r==='dueno')return n;const x=clone(n);CLAVES_DUENO.forEach(k=>{if(k in o)x[k]=clone(o[k]);else delete x[k]});
   const ia=new Set((o.audit||[]).map(a=>a.id));x.audit=(o.audit||[]).concat((n.audit||[]).filter(a=>!ia.has(a.id)));
@@ -1303,7 +1313,7 @@ ${fid().activo?`<div class="inline" style="margin-top:8px"><label>⭐ Puntos · 
 <div class="pagos">${Object.entries(MEDIO).map(([m,t])=>`<label style="margin:0">${t}<input data-cb="pago-${m}" inputmode="decimal" value="${CB.pagos[m]}" placeholder="0"></label>`).join('')}</div>
 <div class="btns">${Object.entries(MEDIO).map(([m,t])=>`<button class="small" data-a="cbTodo" data-m="${m}">Todo en ${t}</button>`).join('')}</div>
 <div class="cbsum" id="cbsum">${cbResumen()}</div>
-<div class="btns"><button class="ghost" data-a="close">Cancelar</button><button class="primary" data-a="cbOk">Confirmar cobro</button></div>`);
+<div class="btns"><button class="ghost" data-a="close">Cancelar</button>${qrMPDisponible()?`<button class="btn-mpqr" data-a="cbQR">${icoMP()}Cobrar con QR</button>`:''}<button class="primary" data-a="cbOk">Confirmar cobro</button></div>`);
 }
 function cbTel(){const t=telN(CB.tel);if(!t)return'';if(S.clientes[t])return t;const k=t.length>=8&&Object.keys(S.clientes).find(k=>k.endsWith(t.slice(-8)));if(k)return k;const u=t.replace(/^0/,'');return u.length===10?'549'+u:u}
 function cbPtsHTML(){const t=cbTel();if(!t)return'';const c=S.clientes[t],p=ptsDe(t),f=fid(),x=cbCalc();return`<p style="margin:6px 0;font-size:14px">${c&&c.nombre?`<b>${esc(c.nombre)}</b> · `:''}tiene <b>${p} puntos</b>${p>=f.minimo?` · <label style="display:inline"><input type="checkbox" data-cb="usarPts" ${CB.usarPts?'checked':''}> usar ${Math.min(p,x.total+x.pts)} (−${fmt(Math.min(p,x.total+x.pts))})</label>`:p?` · se usan desde ${f.minimo}`:''} · con este cobro suma <b>${ptsPor(x.total)}</b></p>`}
@@ -1733,11 +1743,11 @@ function puedeMP(){return !!(enNube()&&LID&&AUTH.user&&NB&&NB.mpCuenta&&(!rol||r
 function vCobroMP(){
   if(!puedeMP())return'';
   if(!MPC||MPC.local!==LID){MPC={local:LID,cargando:true};NB.mpCuenta(LID).then(r=>{MPC=Object.assign({local:LID},r);renderSafe()}).catch(()=>{MPC={local:LID,error:true};renderSafe()})}
-  const h='<section class="card"><h2>💳 Cobro en la mesa con Mercado Pago</h2>';
+  const h='<section class="card"><h2>💳 Mercado Pago</h2>';
   if(MPC.cargando)return h+'<p class="muted">Cargando…</p></section>';
   if(MPC.sinConfig)return h+'<p class="muted" style="margin-top:0">Muy pronto: tus clientes van a poder pagar la mesa desde el QR.</p></section>';
   if(MPC.error)return h+'<p class="muted" style="margin-top:0">No pudimos consultar. Revisá internet.</p></section>';
-  if(MPC.conectado)return h+`<p style="margin-top:0"><span class="chip ok">✓ Conectado</span> Cuenta de Mercado Pago n.º ${esc(MPC.cuenta||'')}</p><p class="muted" style="font-size:14px">Tus clientes tocan <b>Pagar con Mercado Pago</b> en el QR de la mesa, pagan desde el celular y la mesa queda cobrada sola en caja. La plata entra directo a tu cuenta.</p><div class="btns"><button class="ghost bad" data-a="mpDesconectar">Desconectar</button></div></section>`;
+  if(MPC.conectado)return h+`<p style="margin-top:0"><span class="chip ok">✓ Conectado</span> Cuenta de Mercado Pago n.º ${esc(MPC.cuenta||'')}</p><p class="muted" style="font-size:14px">Tus clientes tocan <b>Pagar con Mercado Pago</b> en el QR de la mesa, pagan desde el celular y la mesa queda cobrada sola en caja. La plata entra directo a tu cuenta.</p>${vMPQR()}<div class="btns"><button class="ghost bad" data-a="mpDesconectar">Desconectar</button></div></section>`;
   return h+`<p class="muted" style="margin-top:0">Conectá la cuenta de Mercado Pago del local y tus clientes pagan la mesa desde el QR. La plata entra directo a tu cuenta y la mesa queda cobrada sola en caja.</p><div class="btns"><button class="primary" data-a="mpConectar">Conectar mi Mercado Pago</button></div><small class="muted">Te lleva a Mercado Pago: entrás con tu cuenta y tocás Autorizar.</small></section>`;
 }
 function vMesas(){
@@ -1756,6 +1766,7 @@ function render(){
   const app=$('#app');document.body.classList.remove('con-bnav');render2();const tf=document.getElementById('temaflot');if(tf)tf.remove();
   if(!pantallaMode&&!clienteMode&&!app.querySelector('header.top')){const d=document.createElement('div');d.id='temaflot';d.innerHTML=botonTema(1);document.body.appendChild(d)}
   avisosStock();
+  if(document.getElementById('qrfijo')&&MPC&&MPC.qr&&MPC.qr.estatico)dibujarQR('qrfijo',MPC.qr.estatico,140);
   if(!PUSH.intentado&&rol&&enNube()&&LID){PUSH.intentado=true;setTimeout(()=>pushActivar(true),3000)}
 }
 function render2(){
@@ -1876,6 +1887,7 @@ const A={
     const vuelto=-x.falta;if(vuelto>0.5){if(pagos.efectivo<vuelto)return toast('El vuelto solo se puede dar sobre efectivo',1);pagos.efectivo-=vuelto}
     const peds=pedidosDeGrupo(CB.key),nombre=CB.nombre;
     const cb=registrarCobro(peds,{nombre,subtotal:CB.subtotal,descPct:x.desc,descuento:x.descuento,propina:x.propina,total:x.total,pagos});
+    if(cb&&CB.mpPago){cb.mpPago=CB.mpPago;cb.mpOrden=CB.mpOrden;cb.por=(cb.por||'')+' · QR Mercado Pago'}
     const tel=fid().activo&&CB.tel?cbTel():'';
     if(tel){const gana=ptsPor(x.total),c0=S.clientes[tel],volvio=c0&&(c0.pedidos||0)>=1;
       if(x.pts)moverPuntos(tel,-x.pts,'Canje en '+nombre,cb.id);if(gana)moverPuntos(tel,gana,'Compra en '+nombre,cb.id);
@@ -2492,6 +2504,68 @@ const AV_ACC={
   async avisosToggle(b){ls('taca-avisos-stock',b.checked?'on':'off');if(b.checked)await pushActivar();else await pushDesactivar();render()}
 };
 Object.assign(A,FAC_ACC,AV_ACC);
+/* ---------- cobro en caja con QR de Mercado Pago ---------- */
+let QRP=null;
+const PROVS=['Buenos Aires','Capital Federal','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'];
+function qrMPDisponible(){return modoDemo()||(enNube()&&LID&&S.mpqr&&S.mpqr.activo)}
+function icoMP(){return'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></svg>'}
+function dibujarQR(id,texto,tam){const el=document.getElementById(id);if(!el)return;el.innerHTML='';try{new QRCode(el,{text:texto,width:tam,height:tam,colorDark:'#0b1120',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='No se pudo dibujar el QR'}}
+function vQRCobro(){const q=QRP;if(!q)return'';
+  const est=q.estado==='creando'?'<span class="ia-sw" aria-hidden="true"><i></i></span> Generando el QR…':q.estado==='pendiente'?'<span class="ia-sw" aria-hidden="true"><i></i></span> Esperando el pago…':q.estado==='vencido'?'Venció el QR.':q.estado==='error'?esc(q.error||'No se pudo generar el QR.'):'';
+  return`<h2>Cobrar con QR de Mercado Pago</h2><p class="muted" style="margin-top:0">${esc(CB&&CB.nombre||'')}</p>
+<div class="qrmp"><div class="qrmp-monto num">${fmt(q.monto)}</div><div id="qrmp" class="qrmp-qr" aria-label="Código QR para pagar ${fmt(q.monto)}"></div>
+<p class="qrmp-est" role="status">${est}</p>
+<p class="muted qrmp-ayuda">Que el cliente lo escanee con <b>Mercado Pago</b> o la app de su banco. También sirve el QR impreso de la caja: ahora cobra este mismo monto.</p></div>
+<div class="btns">${q.estado==='vencido'||q.estado==='error'?'<button class="primary" data-a="cbQR">Generar otro QR</button>':''}<button class="ghost" data-a="qrCancelar">${q.estado==='pendiente'||q.estado==='creando'?'Cancelar y volver':'Volver'}</button>${modoDemo()&&q.estado==='pendiente'?'<button class="small" data-a="qrDemoPagar">Simular pago (demo)</button>':''}</div>`}
+function qrModal(){modal(vQRCobro());if(QRP&&QRP.qr)dibujarQR('qrmp',QRP.qr,240)}
+async function qrLlamar(datos){if(modoDemo()){
+    if(datos.accion==='cobrar')return{orden:'ORDDEMO'+Date.now(),qr:'https://ta-ca.com.ar/?qr-demo='+datos.monto,monto:datos.monto,vence:Date.now()+600000};
+    if(datos.accion==='consultar')return QRP&&QRP.demoPagado?{estado:'pagado',pago:'DEMO'+Date.now(),monto:QRP.monto}:{estado:'pendiente'};
+    return{estado:'cancelado'}}
+  return NB.mpqr(Object.assign({local:LID},datos))}
+function qrParar(){if(QRP&&QRP.t){clearInterval(QRP.t);QRP.t=null}}
+async function qrPagado(r){qrParar();const q=QRP;QRP=null;if(!CB)return;
+  const otros=Object.entries(CB.pagos).filter(([m])=>m!=='mp').reduce((a,[,v])=>a+pnum(v),0);
+  CB.pagos.mp=String(Math.round((r.monto||q.monto)));if(!otros){Object.keys(CB.pagos).forEach(m=>{if(m!=='mp')CB.pagos[m]=''})}
+  CB.mpPago=r.pago;CB.mpOrden=q.orden;toast('✓ Pagado con Mercado Pago');A.cbOk();if($('#modal').innerHTML.trim())cobroModal(CB.key)}
+async function qrTick(){const q=QRP;if(!q||!q.orden||q.ocupado)return;q.ocupado=true;
+  try{const abierto=!!document.getElementById('qrmp');const r=await qrLlamar({accion:'consultar',orden:q.orden});
+    if(QRP!==q)return;if(r.estado==='pagado')return qrPagado(r);
+    if(r.estado==='vencido'||Date.now()>q.vence+5000){qrParar();q.estado='vencido';if(abierto)qrModal();return}
+    if(r.estado==='cancelado'){qrParar();QRP=null;return}
+    if(!abierto){const c=await qrLlamar({accion:'cancelar',orden:q.orden}).catch(()=>({}));if(c.estado==='pagado')return qrPagado(c);qrParar();QRP=null}}
+  catch(e){}finally{q.ocupado=false}}
+function vMPQR(){if(!MPC||!MPC.conectado)return'';
+  if(MPC.qr===undefined){MPC.qr=null;NB.mpqr({accion:'estado',local:LID}).then(r=>{MPC.qr=r;if(r.activo&&!(S.mpqr&&S.mpqr.activo)){S.mpqr={activo:true};save()}renderSafe()}).catch(()=>{MPC.qr={error:true};renderSafe()})}
+  const q=MPC.qr,h='<div class="mpqr-aj"><h3>Cobrar en la caja con QR</h3>';
+  if(!q)return h+'<p class="muted">Cargando…</p></div>';
+  if(q.error)return h+'<p class="muted">No pudimos consultar. Revisá internet.</p></div>';
+  if(q.activo)return h+`<p style="margin-top:0"><span class="chip ok">✓ Activado</span> Al cobrar tocás <b>Cobrar con QR</b>: aparece el QR con el monto y el cobro se registra solo cuando el cliente paga.</p>${q.estatico?`<div class="mpqr-fijo"><div id="qrfijo"></div><div><b>QR fijo de la caja</b><p class="muted" style="margin:4px 0 10px;font-size:14px">Imprimilo y pegalo en el mostrador: cuando generás un cobro, este QR cobra ese monto.</p><button class="small" data-a="qrImprimir">Imprimir QR de la caja</button></div></div>`:''}</div>`;
+  const d=MPQRF;return h+`<p class="muted" style="margin-top:0">El cliente escanea un QR con el monto exacto y paga con Mercado Pago o la app de su banco. Para activarlo, Mercado Pago pide la dirección del local (una sola vez).</p>
+<div class="inline"><label>Calle<input data-mq="calle" value="${esc(d.calle)}" placeholder="Pellegrini"></label><label style="max-width:120px">Número<input data-mq="numero" inputmode="numeric" value="${esc(d.numero)}" placeholder="1234"></label></div>
+<div class="inline"><label>Ciudad<input data-mq="ciudad" value="${esc(d.ciudad)}" placeholder="Rosario"></label><label>Provincia<select data-mq="provincia"><option value="">Elegí</option>${PROVS.map(p=>`<option ${d.provincia===p?'selected':''}>${p}</option>`).join('')}</select></label></div>
+<p style="font-size:14px;margin:6px 0">${d.lat?'<span class="chip ok">✓ Ubicación tomada</span>':'Ubicación: tocá el botón estando en el local.'} <button class="small" data-a="mqUbic">${d.lat?'Volver a tomar':'Usar la ubicación de este equipo'}</button></p>
+<div class="btns"><button class="primary" data-a="mqActivar">Activar cobro con QR</button></div></div>`}
+let MPQRF={calle:'',numero:'',ciudad:'',provincia:'',lat:null,lng:null};
+document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(k)MPQRF[k]=e.target.value});
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(k)MPQRF[k]=e.target.value});
+const QR_ACC={
+  async cbQR(){if(!CB)return;const x=cbCalc();const otros=Object.entries(CB.pagos).filter(([m])=>m!=='mp').reduce((a,[,v])=>a+pnum(v),0);
+    const monto=pnum(CB.pagos.mp)>0?pnum(CB.pagos.mp):Math.round(x.aPagar-otros);
+    if(x.desc>x.max)return toast(`Descuento máximo: ${x.max}%`,1);if(!(monto>0))return toast('No queda nada para cobrar con QR',1);
+    qrParar();QRP={monto,estado:'creando'};qrModal();
+    try{const r=await qrLlamar({accion:'cobrar',monto,ref:CB.nombre});if(!QRP)return;Object.assign(QRP,{orden:r.orden,qr:r.qr,vence:r.vence||Date.now()+600000,estado:'pendiente'});qrModal();QRP.t=setInterval(qrTick,2500)}
+    catch(e){if(!QRP)return;QRP.estado='error';QRP.error=e.message;qrModal()}},
+  async qrCancelar(){const q=QRP;qrParar();if(q&&q.orden&&(q.estado==='pendiente')){try{const c=await qrLlamar({accion:'cancelar',orden:q.orden});if(c.estado==='pagado'){QRP=q;return qrPagado(c)}}catch(e){}}QRP=null;if(CB)cobroModal(CB.key);else closeModal()},
+  qrDemoPagar(){if(QRP)QRP.demoPagado=true;qrTick()},
+  mqUbic(){if(!navigator.geolocation)return toast('Este equipo no puede dar la ubicación',1);navigator.geolocation.getCurrentPosition(p=>{MPQRF.lat=+p.coords.latitude.toFixed(6);MPQRF.lng=+p.coords.longitude.toFixed(6);render()},()=>toast('No pudimos tomar la ubicación. Revisá el permiso del navegador',1),{enableHighAccuracy:true,timeout:15000})},
+  async mqActivar(){const d=MPQRF;if(!d.calle||!d.numero||!d.ciudad||!d.provincia)return toast('Completá la dirección del local',1);if(!d.lat)return toast('Tocá "Usar la ubicación de este equipo" estando en el local',1);
+    try{const r=await NB.mpqr({accion:'activar',local:LID,dir:d});MPC.qr=r;S.mpqr={activo:true};save();render();toast('Listo: ya podés cobrar con QR')}catch(e){toast(e.message,1)}},
+  qrImprimir(){const q=MPC&&MPC.qr;if(!q||!q.estatico)return;const tmp=document.createElement('div');new QRCode(tmp,{text:q.estatico,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+    setTimeout(()=>{const c=tmp.querySelector('canvas'),src=c?c.toDataURL('image/png'):(tmp.querySelector('img')||{}).src;const w=window.open('','_blank');if(!w)return toast('Permití las ventanas emergentes para imprimir',1);
+      w.document.write(`<!doctype html><title>QR de la caja</title><style>body{font-family:system-ui,sans-serif;text-align:center;margin:40px}img{width:70mm;height:70mm}h1{font-size:22px;margin:8px 0}p{margin:4px 0;color:#333}</style><h1>${esc(S.negocio||'')}</h1><p>Pagá con Mercado Pago o la app de tu banco</p><img src="${src}" alt="QR"><p style="font-size:12px;margin-top:10px">Escaneá cuando te lo indiquen en la caja</p><script>onload=()=>setTimeout(()=>print(),300)<\/script>`);w.document.close()},150)}
+};
+Object.assign(A,QR_ACC);
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b,e)});
 document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f||!F[f])return;e.preventDefault();F[f](Object.fromEntries(new FormData(e.target)),e.target)});
