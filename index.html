@@ -274,6 +274,11 @@ footer .legal a{color:inherit}
 .ia-hero:hover{box-shadow:0 0 0 1.5px var(--lima)}.ia-hero:active{scale:.98}
 .ia-hero .ia-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--lima);flex:none}.ia-hero .ia-ic .ico{width:24px;height:24px;color:var(--sobre)}
 .ia-hero b{font-weight:700}
+.notif{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:12px 14px;border-radius:18px;background:var(--card);box-shadow:0 0 0 1px var(--line2),0 14px 34px oklch(0 0 0/.18);font-size:13.5px;line-height:1.35;max-width:360px;transition-property:opacity,translate;transition-duration:.5s;transition-timing-function:cubic-bezier(.2,0,0,1)}
+.notif.esp{opacity:0;translate:0 12px}
+.notif .n-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#0b1120;flex:none}
+.notif .n-ic i{width:24px;height:13px;border-radius:8px;background:#c4f82a;position:relative}.notif .n-ic i::after{content:"";position:absolute;right:2px;top:2px;width:9px;height:9px;border-radius:50%;background:#0b1120}
+.notif>div{flex:1;display:flex;flex-direction:column;gap:1px}.notif .n-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.notif .n-top b{font-weight:600}.notif>div>span{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -358,6 +363,7 @@ footer .legal a{color:inherit}
       <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
       <li><span class="sw sm on" aria-hidden="true"></span><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
       <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu compra, desde la foto de la factura</b>Le sacás una foto a la factura del proveedor y se suma al stock con los costos nuevos.</span></li>
     </ul>
   </div>
   <div class="fv" aria-label="Una carta impresa se convierte en la carta cargada en ta-ca">
@@ -391,12 +397,13 @@ footer .legal a{color:inherit}
     </article>
     <article class="bloque">
       <h3>El plato se apaga solo</h3>
-      <p>Cada venta descuenta los insumos de la receta. Cuando algo se termina, el plato desaparece del QR y del mozo antes de que lo pidan.</p>
+      <p>Cada venta descuenta los insumos de la receta. Cuando algo se termina, el plato desaparece del QR y del mozo antes de que lo pidan. Y a vos te llega el aviso al celular, aunque tengas ta-ca cerrado.</p>
       <div class="carta" role="group" aria-label="Carta de ejemplo">
         <div class="plato"><span>Hamburguesa doble</span><b class="pr num">$9.500</b><i class="sw sm on"></i></div>
         <div class="plato sin"><span>Milanesa napolitana</span><em>sin stock</em><i class="sw sm"></i></div>
         <div class="plato"><span>Papas con cheddar</span><b class="pr num">$6.800</b><i class="sw sm on"></i></div>
       </div>
+      <div class="notif" role="img" aria-label="Notificación en el celular: se agotó Milanesa napolitana"><span class="n-ic" aria-hidden="true"><i></i></span><div><div class="n-top"><b>ta-ca</b><small>ahora</small></div><b>Se agotó un plato</b><span>Milanesa napolitana · queda 0 de nalga</span></div></div>
     </article>
     <article class="bloque">
       <h3>Factura ARCA en un toque</h3>
@@ -443,6 +450,7 @@ footer .legal a{color:inherit}
   <div class="sh"><h2>Lo que siempre nos preguntan</h2></div>
   <div class="faq">
     <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien.</p></details>
+    <details><summary>¿Me avisa cuando se acaba algo?<i class="sw"></i></summary><p>Sí. Cuando un plato se queda sin stock o un insumo baja del mínimo que pusiste, te llega una notificación al celular, aunque tengas ta-ca cerrado. Y el plato se saca solo de la carta del QR y del celular del mozo.</p></details>
     <details><summary>¿Tengo que instalar algo o comprar equipos?<i class="sw"></i></summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés, y se puede instalar como app desde el mismo navegador. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
     <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>Unos minutos: creás la cuenta, elegís qué tipo de local tenés y le sacás una foto a tu carta (o arrancás con una de ejemplo). Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
     <details><summary>¿Hace factura electrónica?<i class="sw"></i></summary><p>Sí. Al cobrar tocás “Facturar” y sale la factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal y te guiamos paso a paso.</p></details>
@@ -493,8 +501,9 @@ addEventListener('DOMContentLoaded',()=>{
     gsap.from('.factura',{clipPath:'inset(0 0 100% 0)',duration:1.1,ease:'power2.inOut',delay:.3,scrollTrigger:{trigger:'.factura',start:'top 90%',...una}});
     // el plato que se queda sin stock: arranca prendido y se apaga solo
     const mila=document.querySelector('.plato.sin');
+    const notif=document.querySelector('.notif');if(notif)notif.classList.add('esp');
     if(mila){const sw=mila.querySelector('.sw');mila.classList.remove('sin');sw.classList.add('on');
-      ScrollTrigger.create({trigger:mila,start:'top 80%',once:true,onEnter:()=>setTimeout(()=>{mila.classList.add('sin');sw.classList.remove('on')},900)})}
+      ScrollTrigger.create({trigger:mila,start:'top 80%',once:true,onEnter:()=>setTimeout(()=>{mila.classList.add('sin');sw.classList.remove('on');if(notif)setTimeout(()=>notif.classList.remove('esp'),700)},900)})}
     // lo de todos los días
     ScrollTrigger.batch('.ademas .item',{start:'top 90%',once:true,onEnter:b=>gsap.from(b,{y:18,autoAlpha:0,duration:.7,ease:sale,stagger:.08})});
     gsap.from('.funciona',{autoAlpha:0,y:12,duration:.8,ease:sale,scrollTrigger:{trigger:'.funciona',start:'top 92%',...una}});
