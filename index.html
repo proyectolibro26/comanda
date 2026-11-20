@@ -287,6 +287,33 @@ footer .legal a{color:inherit}
 .notif .n-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#0b1120;flex:none}
 .notif .n-ic i{width:24px;height:13px;border-radius:8px;background:#c4f82a;position:relative}.notif .n-ic i::after{content:"";position:absolute;right:2px;top:2px;width:9px;height:9px;border-radius:50%;background:#0b1120}
 .notif>div{flex:1;display:flex;flex-direction:column;gap:1px}.notif .n-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.notif .n-top b{font-weight:600}.notif>div>span{color:var(--muted)}
+.cq-btn{position:fixed;right:86px;bottom:22px;z-index:50;display:flex;align-items:center;gap:10px;height:48px;padding:0 18px 0 12px;border-radius:999px;border:0;cursor:pointer;background:var(--card);color:var(--ink);font:600 15px Inter,sans-serif;box-shadow:0 0 0 1px var(--line2),0 8px 22px -6px rgba(0,0,0,.45);transform:translateY(90px);opacity:0;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s,scale .16s ease-out}
+.cq-btn.ver{transform:none;opacity:1}.cq-btn:active{scale:.96}
+.cq-btn .sw{flex:none}
+.cq{position:fixed;right:18px;bottom:86px;z-index:60;padding:0;margin:0;width:min(390px,calc(100vw - 24px));height:min(580px,calc(100dvh - 120px));display:flex;flex-direction:column;border-radius:20px;background:var(--bg);box-shadow:0 0 0 1px var(--line2),0 24px 60px -12px rgba(0,0,0,.55);overflow:hidden;opacity:0;translate:0 16px;pointer-events:none;transition:opacity .22s ease-out,translate .3s cubic-bezier(.16,1,.3,1)}
+.cq.abierto{opacity:1;translate:0;pointer-events:auto}
+.cq-h{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 16px;background:var(--card);border-bottom:1px solid var(--line2)}
+.cq-h div{flex:1}.cq-h b{display:block;font-family:Unbounded,sans-serif;font-size:15px}.cq-h small{color:var(--muted);font-size:12.5px}
+.cq-x{width:40px;height:40px;border-radius:10px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}.cq-x:hover{background:var(--bg2);color:var(--ink)}
+.cq-m{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.cq-m p{margin:0;max-width:86%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;white-space:pre-wrap}
+.cq-m .bot{align-self:flex-start;background:var(--card);box-shadow:0 0 0 1px var(--line2);border-bottom-left-radius:5px}
+.cq-m .yo{align-self:flex-end;background:var(--ink);color:var(--bg);border-bottom-right-radius:5px}
+.cq-m .err{align-self:flex-start;color:var(--muted);font-size:14px;padding:4px 2px}.cq-m .err a{color:var(--acc)}
+.cq-chips{display:flex;flex-wrap:wrap;gap:8px}
+.cq-chips button{border:0;cursor:pointer;padding:8px 12px;border-radius:999px;background:var(--bg2);color:var(--ink);font:500 14px Inter,sans-serif;box-shadow:0 0 0 1px var(--line2);transition:box-shadow .16s ease-out,scale .16s ease-out}
+.cq-chips button:hover{box-shadow:0 0 0 1px var(--acc)}.cq-chips button:active{scale:.96}
+.cq-esc{align-self:flex-start;display:inline-block;width:46px;height:26px;border-radius:14px;background:var(--line);position:relative}
+.cq-esc i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--lima);animation:cqSw .9s cubic-bezier(.6,0,.4,1) infinite alternate}
+@keyframes cqSw{to{translate:20px 0}}
+@media (prefers-reduced-motion:reduce){.cq-esc i{animation:none;left:23px}}
+.cq-f{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line2);background:var(--card)}
+.cq-f input{flex:1;min-width:0;height:44px;border-radius:12px;border:0;padding:0 14px;background:var(--bg);color:var(--ink);font:16px Inter,sans-serif;box-shadow:0 0 0 1px var(--line2)}
+.cq-f input:focus{outline:none;box-shadow:0 0 0 2px var(--acc)}
+.cq-f button{height:44px;padding:0 16px;border-radius:12px;border:0;cursor:pointer;background:var(--lima);color:var(--sobre);font:700 15px Inter,sans-serif;transition:scale .16s ease-out}.cq-f button:active{scale:.96}.cq-f button:disabled{opacity:.5;cursor:default}
+.cq-pie{padding:0 14px 12px;background:var(--card);font-size:12.5px;color:var(--muted)}.cq-pie a{color:var(--acc)}
+@media(max-width:600px){.cq{right:0;left:0;bottom:0;width:100%;height:min(82dvh,640px);border-radius:20px 20px 0 0}.cq-btn{right:84px;bottom:20px;padding:0 16px 0 12px}.cq-btn span.t-larga{display:none}}
+.btn-cq{border:0;background:none;padding:0;color:var(--acc);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -460,7 +487,7 @@ footer .legal a{color:inherit}
 </div></section>
 
 <section id="preguntas"><div class="wrap">
-  <div class="sh"><h2>Lo que siempre nos preguntan</h2><p>¿No está tu pregunta? <a href="https://wa.me/5493412609941" target="_blank" rel="noopener">Escribinos por WhatsApp</a> y te contestamos nosotros.</p></div>
+  <div class="sh"><h2>Lo que siempre nos preguntan</h2><p>¿No está tu pregunta? <button type="button" class="btn-cq" data-consulta>Preguntale a la IA</button> o <a href="https://wa.me/5493412609941" target="_blank" rel="noopener">escribinos por WhatsApp</a>.</p></div>
   <div class="faq">
     <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien. La IA viene incluida en los dos planes.</p></details>
     <details><summary>¿Me avisa cuando se acaba algo?<i class="sw"></i></summary><p>Sí. Cuando un plato se queda sin stock o un insumo baja del mínimo que pusiste, te llega una notificación al celular, aunque tengas ta-ca cerrado. Y el plato se saca solo de la carta del QR y del celular del mozo.</p></details>
@@ -490,6 +517,13 @@ footer .legal a{color:inherit}
   <p class="legal">© 2026 ta-ca · un producto de <a href="https://romanweb.tech" target="_blank" rel="noopener">Roman Web</a> · Lucas Alexis Tavano · CUIT 20-35382779-1 · Rosario, Argentina</p>
 </div></footer>
 
+<button type="button" class="cq-btn" id="cqBtn" aria-controls="cq" aria-expanded="false"><i class="sw sm on" aria-hidden="true"></i><span>Preguntale<span class="t-larga"> a ta-ca</span></span></button>
+<section class="cq" id="cq" role="dialog" aria-modal="false" aria-labelledby="cqT" hidden>
+  <div class="cq-h"><span class="sw on" aria-hidden="true" style="--w:44px;--h:26px"></span><div><b id="cqT">Preguntale a ta-ca</b><small>Te responde una IA con la información de ta-ca</small></div><button type="button" class="cq-x" id="cqX" aria-label="Cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button></div>
+  <div class="cq-m" id="cqM" aria-live="polite"></div>
+  <form class="cq-f" id="cqF"><input id="cqI" name="q" autocomplete="off" maxlength="500" placeholder="Escribí tu pregunta" aria-label="Tu pregunta"><button id="cqS">Enviar</button></form>
+  <p class="cq-pie">¿Preferís hablar con una persona? <a href="https://wa.me/5493412609941" target="_blank" rel="noopener">Escribinos por WhatsApp</a>.</p>
+</section>
 <a id="waflot" href="https://wa.me/5493412609941?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20de%20ta-ca" target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"><svg class="ico"><use href="#i-wa"/></svg></a>
 
 <script src="/assets/js/gsap.min.js" defer></script>
@@ -579,6 +613,35 @@ const fin=document.querySelector('.encender');vista(fin,()=>setTimeout(()=>fin.c
 // WhatsApp flotante: solo después de la portada
 const wa=document.getElementById('waflot'),hero=document.querySelector('.hero');
 if('IntersectionObserver' in window){new IntersectionObserver(e=>wa.classList.toggle('ver',!e[0].isIntersecting),{threshold:0}).observe(hero)}else wa.classList.add('ver');
+
+// Asistente con IA: responde dudas sobre ta-ca
+(function(){
+  const btn=document.getElementById('cqBtn'),cq=document.getElementById('cq'),M=document.getElementById('cqM'),F=document.getElementById('cqF'),I=document.getElementById('cqI'),S=document.getElementById('cqS');
+  if(!btn||!cq)return;
+  let H=[];try{H=JSON.parse(sessionStorage.getItem('taca-cq')||'[]')}catch(e){}
+  const guardar=()=>{try{sessionStorage.setItem('taca-cq',JSON.stringify(H.slice(-20)))}catch(e){}};
+  const SUG=['¿Cuánto cuesta?','¿Cómo paso mi carta?','¿Hace factura ARCA?','¿Necesito comprar equipos?'];
+  function pintar(){M.textContent='';
+    const b0=document.createElement('p');b0.className='bot';b0.textContent='¡Hola! Soy el asistente de ta-ca. Preguntame lo que quieras del sistema: precios, cómo se carga la carta, factura, stock…';M.appendChild(b0);
+    if(!H.length){const c=document.createElement('div');c.className='cq-chips';SUG.forEach(t=>{const x=document.createElement('button');x.type='button';x.textContent=t;x.onclick=()=>enviar(t);c.appendChild(x)});M.appendChild(c)}
+    H.forEach(m=>{const p=document.createElement('p');p.className=m.rol==='user'?'yo':'bot';p.textContent=m.texto;M.appendChild(p)});M.scrollTop=M.scrollHeight}
+  function abrir(){cq.hidden=false;requestAnimationFrame(()=>cq.classList.add('abierto'));btn.setAttribute('aria-expanded','true');pintar();setTimeout(()=>I.focus(),60)}
+  function cerrar(){cq.classList.remove('abierto');btn.setAttribute('aria-expanded','false');setTimeout(()=>{if(!cq.classList.contains('abierto'))cq.hidden=true},250);btn.focus()}
+  window.abrirConsulta=abrir;
+  btn.onclick=()=>cq.classList.contains('abierto')?cerrar():abrir();
+  document.getElementById('cqX').onclick=cerrar;
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&cq.classList.contains('abierto'))cerrar()});
+  document.querySelectorAll('[data-consulta]').forEach(b=>b.addEventListener('click',abrir));
+  async function enviar(t){t=String(t||'').trim();if(!t||S.disabled)return;
+    H.push({rol:'user',texto:t.slice(0,500)});guardar();pintar();I.value='';S.disabled=true;
+    const esp=document.createElement('span');esp.className='cq-esc';esp.innerHTML='<i></i>';esp.setAttribute('aria-label','Escribiendo');M.appendChild(esp);M.scrollTop=M.scrollHeight;
+    try{const r=await fetch('/api/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mensajes:H.slice(-12)})});const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.texto)throw new Error(j.error||'No pude responder ahora.');H.push({rol:'assistant',texto:j.texto});guardar();pintar()}
+    catch(e){esp.remove();H.pop();guardar();const p=document.createElement('p');p.className='err';p.innerHTML=String(e.message||'No pude responder ahora.').replace(/WhatsApp\.?$/,'<a href="https://wa.me/5493412609941" target="_blank" rel="noopener">WhatsApp</a>.');M.appendChild(p);I.value=t}
+    finally{S.disabled=false;I.focus()}}
+  F.addEventListener('submit',e=>{e.preventDefault();enviar(I.value)});
+  if('IntersectionObserver' in window&&hero){new IntersectionObserver(e=>btn.classList.toggle('ver',!e[0].isIntersecting),{threshold:0}).observe(hero)}else btn.classList.add('ver');
+})();
 </script>
 </body>
 </html>

@@ -7,6 +7,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/consulta",
+      "destination": "/api/sistema?r=consulta"
+    },
+    {
       "source": "/api/push",
       "destination": "/api/sistema?r=push"
     },
