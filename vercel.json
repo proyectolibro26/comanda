@@ -1,10 +1,15 @@
 {
   "functions": {
     "api/*.js": {
-      "includeFiles": "nucleo.js"
+      "includeFiles": "nucleo.js",
+      "maxDuration": 60
     }
   },
   "rewrites": [
+    {
+      "source": "/api/ia",
+      "destination": "/api/sistema?r=ia"
+    },
     {
       "source": "/api/alerta",
       "destination": "/api/sistema?r=alerta"

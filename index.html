@@ -251,6 +251,22 @@ footer .legal a{color:inherit}
 #waflot .ico{width:30px;height:30px;stroke:none;fill:none}
 #waflot{background:#25D366;color:#fff}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important}}
+.foto .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:56px;align-items:center}
+.foto .sh{margin-bottom:0}.foto .sh h2 .lima-t{color:var(--acc)}
+.foto ul{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:14px}
+.foto li{display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45}.foto li .sw{margin-top:2px;flex:none}.foto li b{display:block}
+.fv{display:grid;grid-template-columns:minmax(0,.9fr) 34px minmax(0,1.1fr);align-items:center;gap:10px}
+.papel{position:relative;background:#fbf8f0;color:#2b2418;border-radius:10px;padding:22px 20px;rotate:-2.5deg;box-shadow:0 1px 2px oklch(0 0 0/.12),0 18px 40px oklch(0 0 0/.18);font-family:Georgia,'Times New Roman',serif;overflow:hidden}
+.papel h4{margin:0 0 10px;font-size:13px;letter-spacing:.18em;text-align:center;font-weight:700}
+.papel .ln{display:flex;gap:6px;font-size:13.5px;margin:7px 0}.papel .ln span:nth-child(2){flex:1;border-bottom:1.5px dotted #b9ad96;translate:0 -4px}
+.papel .scan{position:absolute;left:0;right:0;top:0;height:46px;background:linear-gradient(180deg,transparent,oklch(0.93 0.2 125/.55),transparent);pointer-events:none;opacity:0}
+.fv .fl{width:34px;height:24px;color:var(--acc)}
+.cargada{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 0 0 1px var(--line2),0 18px 40px oklch(0 0 0/.12)}
+.cargada .cab{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin:0 2px 10px;font-weight:600;letter-spacing:.04em}
+.cargada .row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-top:1px solid var(--line2);font-size:14px}
+.cargada .row:first-of-type{border-top:0}.cargada .row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cargada .row .sw{flex:none}.cargada .row small{color:var(--muted);font-size:12px;margin-right:6px}.cargada .row b{font-variant-numeric:tabular-nums}
+@media(max-width:960px){.foto .wrap{grid-template-columns:1fr;gap:36px}}
+@media(max-width:520px){.fv{grid-template-columns:1fr;gap:16px}.fv .fl{rotate:90deg;justify-self:center}.papel{rotate:-1.5deg}}
 </style>
 </head>
 <body>
@@ -373,6 +389,31 @@ footer .legal a{color:inherit}
   <p class="funciona">Funciona con <b>Mercado Pago</b>, <b>WhatsApp</b>, <b>ARCA</b>, cualquier impresora térmica de 80 mm y <b>Excel</b>. En el celular, la tablet o la compu que ya tenés, y se instala como app.</p>
 </div></section>
 
+<section id="foto" class="foto"><div class="wrap">
+  <div>
+    <div class="sh"><h2>Sacale una foto a tu carta. <span class="lima-t">En un minuto tenés el sistema armado.</span></h2><p>La IA lee tu carta impresa o el PDF y pasa los platos, las categorías y los precios. Vos revisás y listo.</p></div>
+    <ul>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu carta, desde una foto o un PDF</b>Separa las bebidas para la barra y la comida para la cocina.</span></li>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>¿Venís de Fudo o de un Excel?</b>Subís el archivo y traemos la carta, los insumos y los clientes.</span></li>
+      <li><span class="sw sm on" aria-hidden="true"></span><span><b>Tu salón, desde un plano o una foto</b>Te arma las mesas redondas, cuadradas y largas, la barra y las zonas.</span></li>
+    </ul>
+  </div>
+  <div class="fv" aria-label="Una carta impresa se convierte en la carta cargada en ta-ca">
+    <div class="papel" aria-hidden="true"><i class="scan"></i><h4>PIZZAS</h4>
+      <div class="ln"><span>Muzzarella</span><span></span><span>10.500</span></div><div class="ln"><span>Fugazzeta</span><span></span><span>11.500</span></div><div class="ln"><span>Especial</span><span></span><span>12.500</span></div>
+      <h4 style="margin-top:16px">BEBIDAS</h4>
+      <div class="ln"><span>Pinta IPA</span><span></span><span>5.500</span></div><div class="ln"><span>Gaseosa</span><span></span><span>2.500</span></div></div>
+    <svg class="fl" viewBox="0 0 34 24" aria-hidden="true"><path d="M2 12h26M20 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="cargada"><div class="cab"><span>CARGADO EN TA-CA</span><span>5 platos</span></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Muzzarella</span><small>Cocina</small><b>$10.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Fugazzeta</span><small>Cocina</small><b>$11.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Especial</span><small>Cocina</small><b>$12.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Pinta IPA</span><small>Barra</small><b>$5.500</b></div>
+      <div class="row"><span class="sw sm on" aria-hidden="true"></span><span class="n">Gaseosa</span><small>Barra</small><b>$2.500</b></div>
+    </div>
+  </div>
+</div></section>
+
 <section id="precios"><div class="wrap">
   <div class="sh"><h2>Dos planes, sin módulos sueltos</h2><p>Empezás con 14 días gratis. Sin tarjeta y sin permanencia.</p></div>
   <div class="tog" role="group" aria-label="Forma de pago"><button type="button" aria-pressed="true" data-per="mes">Mensual</button><button type="button" aria-pressed="false" data-per="anio">Anual <small>2 meses gratis</small></button></div>
@@ -392,8 +433,9 @@ footer .legal a{color:inherit}
 <section id="preguntas"><div class="wrap">
   <div class="sh"><h2>Lo que siempre nos preguntan</h2></div>
   <div class="faq">
+    <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien.</p></details>
     <details><summary>¿Tengo que instalar algo o comprar equipos?<i class="sw"></i></summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés, y se puede instalar como app desde el mismo navegador. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
-    <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>Unos minutos: creás la cuenta, ponés el nombre del local y la cantidad de mesas, y elegís arrancar con una carta de ejemplo o la tuya. Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
+    <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>Unos minutos: creás la cuenta, elegís qué tipo de local tenés y le sacás una foto a tu carta (o arrancás con una de ejemplo). Después imprimís los QR de las mesas y listo. En el plan Encendido la carta te la cargamos nosotros.</p></details>
     <details><summary>¿Hace factura electrónica?<i class="sw"></i></summary><p>Sí. Al cobrar tocás “Facturar” y sale la factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal y te guiamos paso a paso.</p></details>
     <details><summary>¿Qué pasa si se corta internet?<i class="sw"></i></summary><p>Tu equipo sigue trabajando: cada celular o compu guarda lo que hacés y lo sube solo cuando vuelve la conexión. El QR de los clientes sigue andando con los datos de su propio celular.</p></details>
     <details><summary>¿Cómo funciona el sistema de puntos?<i class="sw"></i></summary><p>Vos elegís cuántos puntos da cada compra (por ejemplo, 2%). El cliente los suma al pagar y los usa como descuento en el próximo pedido, en la caja o escribiendo PUNTOS en WhatsApp.</p></details>
@@ -447,6 +489,12 @@ addEventListener('DOMContentLoaded',()=>{
     // lo de todos los días
     ScrollTrigger.batch('.ademas .item',{start:'top 90%',once:true,onEnter:b=>gsap.from(b,{y:18,autoAlpha:0,duration:.7,ease:sale,stagger:.08})});
     gsap.from('.funciona',{autoAlpha:0,y:12,duration:.8,ease:sale,scrollTrigger:{trigger:'.funciona',start:'top 92%',...una}});
+    // la carta de papel se escanea y aparece cargada
+    const tl=gsap.timeline({scrollTrigger:{trigger:'.fv',start:'top 80%',...una}});
+    tl.fromTo('.papel .scan',{opacity:1,y:0},{y:240,duration:1.1,ease:'power1.inOut'}).to('.papel .scan',{opacity:0,duration:.2})
+      .from('.fv .fl',{autoAlpha:0,x:-8,duration:.4,ease:sale},'-=.6').from('.cargada',{autoAlpha:0,y:16,duration:.6,ease:sale},'-=.3')
+      .from('.cargada .row',{autoAlpha:0,x:-10,duration:.4,ease:sale,stagger:.12},'-=.2');
+    gsap.from('.foto li',{y:12,autoAlpha:0,duration:.6,ease:sale,stagger:.1,scrollTrigger:{trigger:'.foto ul',start:'top 88%',...una}});
     // precios
     gsap.from('.planes .plan',{y:40,autoAlpha:0,duration:1,ease:sale,stagger:.14,scrollTrigger:{trigger:'.planes',start:'top 85%',...una}});
     // preguntas
