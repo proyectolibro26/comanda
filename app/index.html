@@ -164,6 +164,7 @@ table.fac td small{display:block;color:var(--muted);font-size:12px}table.fac td.
 .qrmp-qr{background:#fff;padding:14px;border-radius:16px;box-shadow:0 0 0 1px var(--line);min-width:268px;min-height:268px;display:grid;place-items:center}
 .qrmp-est{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 0;min-height:34px}
 .qrmp-ayuda{font-size:14px;max-width:360px;margin:0}
+.qrpasos{margin:0 0 12px;padding-left:20px;line-height:1.5}.qrpasos li{margin:4px 0}
 .mpqr-aj{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.mpqr-aj h3{margin:0 0 8px;font-size:16px}
 .mpqr-fijo{display:flex;gap:16px;align-items:center;margin-top:10px}.mpqr-fijo #qrfijo{background:#fff;padding:8px;border-radius:10px;flex:none}
 .imp-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.imp-map label{margin:0}
@@ -2507,7 +2508,8 @@ Object.assign(A,FAC_ACC,AV_ACC);
 /* ---------- cobro en caja con QR de Mercado Pago ---------- */
 let QRP=null;
 const PROVS=['Buenos Aires','Capital Federal','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'];
-function qrMPDisponible(){return modoDemo()||(enNube()&&LID&&S.mpqr&&S.mpqr.activo)}
+function qrMPDisponible(){return modoDemo()||!!(enNube()&&LID)}
+function qrMPActivo(){return modoDemo()||!!(S.mpqr&&S.mpqr.activo)}
 function icoMP(){return'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></svg>'}
 function dibujarQR(id,texto,tam){const el=document.getElementById(id);if(!el)return;el.innerHTML='';try{new QRCode(el,{text:texto,width:tam,height:tam,colorDark:'#0b1120',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='No se pudo dibujar el QR'}}
 function vQRCobro(){const q=QRP;if(!q)return'';
@@ -2550,13 +2552,17 @@ let MPQRF={calle:'',numero:'',ciudad:'',provincia:'',lat:null,lng:null};
 document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(k)MPQRF[k]=e.target.value});
 document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(k)MPQRF[k]=e.target.value});
 const QR_ACC={
-  async cbQR(){if(!CB)return;const x=cbCalc();const otros=Object.entries(CB.pagos).filter(([m])=>m!=='mp').reduce((a,[,v])=>a+pnum(v),0);
+  async cbQR(){if(!CB)return;
+    if(!qrMPActivo()){const dueno=!rol||rol==='dueno';return modal(`<h2>Cobrar con QR de Mercado Pago</h2><p style="margin-top:0">Todavía no está activado en este local. Se activa una sola vez:</p><ol class="qrpasos"><li>Conectá la cuenta de Mercado Pago del local.</li><li>Cargá la dirección y tocá <b>Usar la ubicación de este equipo</b> estando en el local.</li><li>Tocá <b>Activar cobro con QR</b>.</li></ol>${dueno?'':'<p class="muted">Lo tiene que activar el dueño desde Ajustes.</p>'}<div class="btns"><button class="ghost" data-a="qrVolverCobro">Volver al cobro</button>${dueno?'<button class="primary" data-a="qrIrActivar">Activarlo ahora</button>':''}</div>`)}
+    const x=cbCalc();const otros=Object.entries(CB.pagos).filter(([m])=>m!=='mp').reduce((a,[,v])=>a+pnum(v),0);
     const monto=pnum(CB.pagos.mp)>0?pnum(CB.pagos.mp):Math.round(x.aPagar-otros);
     if(x.desc>x.max)return toast(`Descuento máximo: ${x.max}%`,1);if(!(monto>0))return toast('No queda nada para cobrar con QR',1);
     qrParar();QRP={monto,estado:'creando'};qrModal();
     try{const r=await qrLlamar({accion:'cobrar',monto,ref:CB.nombre});if(!QRP)return;Object.assign(QRP,{orden:r.orden,qr:r.qr,vence:r.vence||Date.now()+600000,estado:'pendiente'});qrModal();QRP.t=setInterval(qrTick,2500)}
     catch(e){if(!QRP)return;QRP.estado='error';QRP.error=e.message;qrModal()}},
   async qrCancelar(){const q=QRP;qrParar();if(q&&q.orden&&(q.estado==='pendiente')){try{const c=await qrLlamar({accion:'cancelar',orden:q.orden});if(c.estado==='pagado'){QRP=q;return qrPagado(c)}}catch(e){}}QRP=null;if(CB)cobroModal(CB.key);else closeModal()},
+  qrVolverCobro(){if(CB)cobroModal(CB.key);else closeModal()},
+  qrIrActivar(){closeModal();tab='mesas';MAS=false;if(MPC&&MPC.qr&&!MPC.qr.activo)MPC.qr=undefined;render();setTimeout(()=>{const el=document.querySelector('.mpqr-aj')||[...document.querySelectorAll('section.card h2')].find(h=>/Mercado Pago/.test(h.textContent));if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},400)},
   qrDemoPagar(){if(QRP)QRP.demoPagado=true;qrTick()},
   mqUbic(){if(!navigator.geolocation)return toast('Este equipo no puede dar la ubicación',1);navigator.geolocation.getCurrentPosition(p=>{MPQRF.lat=+p.coords.latitude.toFixed(6);MPQRF.lng=+p.coords.longitude.toFixed(6);render()},()=>toast('No pudimos tomar la ubicación. Revisá el permiso del navegador',1),{enableHighAccuracy:true,timeout:15000})},
   async mqActivar(){const d=MPQRF;if(!d.calle||!d.numero||!d.ciudad||!d.provincia)return toast('Completá la dirección del local',1);if(!d.lat)return toast('Tocá "Usar la ubicación de este equipo" estando en el local',1);
