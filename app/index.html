@@ -1074,7 +1074,7 @@ const pnum=x=>{const v=parseFloat(String(x??'').replace(/\./g,'').replace(',','.
 const pdec=x=>{const v=parseFloat(String(x??'').replace(',','.'));return isNaN(v)?0:v};
 const hm=ts=>new Date(ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
 const mins=ts=>Math.floor((Date.now()-ts)/60000);
-const hace=ts=>{const m=mins(ts);return m<1?'recién':m+' min'};
+const hace=ts=>{const m=mins(ts);return m<1?'recién':m<60?m+' min':m<1440?Math.floor(m/60)+' h '+(m%60?m%60+' min':''):Math.floor(m/1440)+' día'+(m>=2880?'s':'')};
 const prov=id=>S.proveedores.find(p=>p.id===id);
 const yo=()=>{const p=rol&&persona();return p?p.nombre:rol?ROLES[rol].nombre:'Cliente'};
 const costoReceta=r=>Object.entries(r).reduce((a,[i,c])=>a+c*(insumo(i)?insumo(i).costo:0),0);
@@ -1223,7 +1223,8 @@ function vSalon(){
   const del=abiertos().filter(p=>p.origen==='whatsapp');
   if(PL.edit&&rol==='dueno')return vPlanoEditor();
   const vp=PL.vista!=='lista';
-  return`<div class="ptitle"><div><h1>Salón</h1><small>Estado de cada mesa en vivo. Tocá una mesa para ver el detalle, tomar pedido o cobrar.</small></div><div class="vista-sw"><div class="seg" role="group" aria-label="Ver el salón como"><button class="${vp?'on':''}" data-a="salonVista" data-v="plano">Plano</button><button class="${vp?'':'on'}" data-a="salonVista" data-v="lista">Lista</button></div>${rol==='dueno'?'<button class="ghost" data-a="plEditar">Editar plano</button>':''}</div></div>
+  return`<div class="ptitle"><div><h1>Salón</h1><small>Estado de cada mesa en vivo. Tocá una mesa para ver el detalle, tomar pedido o cobrar.</small></div><div class="vista-sw"><div class="seg" role="group" aria-label="Ver el salón como"><button class="${vp?'on':''}" data-a="salonVista" data-v="plano">Plano</button><button class="${vp?'':'on'}" data-a="salonVista" data-v="lista">Lista</button></div>${rol==='dueno'?`<label class="btn-like btn-ia"><input type="file" data-iafile="plano" accept="image/*,application/pdf" hidden>${ico('ia')}Armar con IA</label><button class="ghost" data-a="plEditar">Editar plano</button>`:''}</div></div>
+${rol==='dueno'&&vp&&!(S.plano&&S.plano.items)?`<label class="ia-banner"><input type="file" data-iafile="plano" accept="image/*,application/pdf" hidden><span class="ia-ic">${ico('ia')}</span><span><b>Armá el plano de tu salón con IA</b><small>Subí una foto del salón, un croquis o el plano en PDF y ubicamos las mesas como están en tu local.</small></span><span class="ia-go">Subir foto</span></label>`:''}
 <div class="legend"><span><i></i>Libre</span><span><i style="border-color:#e6b866;background:#fffaf0"></i>Ocupada</span><span><i style="border-color:var(--bad);background:var(--badbg)"></i>Pidió la cuenta</span><span><i style="box-shadow:0 0 0 2px var(--blue)"></i>Llama al mozo</span></div>
 ${vp?vPlanoVer():`<div class="salon">${Array.from({length:S.mesas},(_,i)=>i+1).map(n=>{const e=estadoMesa(n);
   return`<button class="mesa-c ${e.cuenta?'cuenta':e.peds.length?'ocupada':''} ${e.llama?'llama':''}" data-a="verMesa" data-n="${n}"><b>Mesa ${n}</b>
