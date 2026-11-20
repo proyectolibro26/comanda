@@ -39,6 +39,36 @@ const HERR = {
       required: ['platos']
     }
   },
+  factura: {
+    name: 'cargar_compra',
+    description: 'Carga en el stock la mercadería de una factura o remito de proveedor.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        proveedor: { type: 'string', description: 'Nombre o razón social del proveedor' },
+        numero: { type: 'string', description: 'Número de factura o remito, si figura' },
+        fecha: { type: 'string', description: 'Fecha del comprobante (dd/mm/aaaa), si figura' },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              descripcion: { type: 'string', description: 'Producto tal como figura en la factura' },
+              cantidad: { type: 'number', description: 'Cantidad facturada' },
+              unidad: { type: 'string', description: 'Unidad facturada (u, kg, g, l, caja, bulto, pack...)' },
+              total: { type: 'number', description: 'Importe total de la línea en pesos, con descuentos aplicados' },
+              insumo_id: { type: 'string', description: 'id del insumo de la lista que es este producto. Vacío si no está en la lista.' },
+              cantidad_insumo: { type: 'number', description: 'La cantidad expresada en la unidad del insumo (ej.: 2 cajas de 12 = 24 u; 5000 g = 5 kg)' },
+              unidad_insumo: { type: 'string', enum: ['u', 'kg', 'l'], description: 'Unidad del insumo (la del insumo de la lista o la más lógica si es nuevo)' }
+            },
+            required: ['descripcion', 'cantidad', 'total', 'cantidad_insumo', 'unidad_insumo']
+          }
+        },
+        avisos: { type: 'string' }
+      },
+      required: ['items']
+    }
+  },
   plano: {
     name: 'armar_plano',
     description: 'Arma el plano del salón con mesas y elementos.',
@@ -86,6 +116,13 @@ Reglas:
 - La categoría es la sección donde aparece. Si no hay secciones, usá una general razonable (Platos, Bebidas, Postres).
 - area: "barra" para bebidas, tragos, cervezas, vinos, café e infusiones; "cocina" para el resto.
 - Si un precio no se lee, poné 0 y avisalo en avisos.`,
+  factura: `Sos el asistente de ta-ca, un sistema para bares y restaurantes de Argentina. Te paso la factura, remito o ticket de un proveedor. Cargá cada línea de mercadería con la herramienta cargar_compra.
+Reglas:
+- Una línea por producto. No inventes productos; si algo no se lee, avisalo en avisos.
+- total = importe final de la línea en pesos como número entero (sin puntos), con descuentos e IVA de la línea si figuran por línea.
+- Relacioná cada producto con el insumo de la lista del local cuando sea claramente lo mismo (ej.: "Coca Cola 500cc x12" con "Gaseosa 500 ml"; "Muzzarella La Serenísima" con "Muzzarella"). Si no hay uno parecido, dejá insumo_id vacío.
+- cantidad_insumo es la cantidad en la unidad del insumo: cajas o packs se multiplican por las unidades que traen; gramos se pasan a kg; cc o ml a litros.
+- Ignorá líneas que no son mercadería (fletes, percepciones, totales, subtotales).`,
   plano: `Sos el asistente de ta-ca, un sistema para bares y restaurantes. Te paso un plano, croquis o foto del salón de un local. Armá el plano con la herramienta armar_plano.
 Coordenadas: el ancho total mide 100 y el alto lo elegís vos (campo alto) para respetar las proporciones del local. x e y son la esquina superior izquierda; w y h, el ancho y el alto. Todo tiene que quedar dentro de 0..100 en x y 0..alto en y, sin superponerse (salvo las zonas, que van debajo).
 Mesas: forma "cuad" (cuadrada, unos 7x7), "red" (redonda, unos 7x7) o "larga" (rectangular, unos 14x7 o 7x14). Contá las sillas que se ven; si no se ven, 2 a 4 para chicas y 6 a 8 para largas. Si las mesas tienen número visible, ponelo.
@@ -98,7 +135,7 @@ module.exports = async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'La lectura con IA todavía no está activada', codigo: 'sin_clave' });
   try {
     const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const tipo = b.tipo === 'plano' ? 'plano' : 'carta';
+    const tipo = ['plano', 'factura'].includes(b.tipo) ? b.tipo : 'carta';
     const archivos = Array.isArray(b.archivos) ? b.archivos.slice(0, MAX_ARCHIVOS) : [];
     if (!archivos.length) return res.status(400).json({ error: 'Subí al menos una foto o un PDF' });
     let total = 0;
@@ -114,12 +151,13 @@ module.exports = async (req, res) => {
     const contenido = archivos.map(a => a.mime === 'application/pdf'
       ? { type: 'document', source: { type: 'base64', media_type: a.mime, data: a.data } }
       : { type: 'image', source: { type: 'base64', media_type: a.mime, data: a.data } });
-    contenido.push({ type: 'text', text: (tipo === 'carta' ? 'Esta es la carta del local.' : 'Este es el salón del local.') + ` Respondé únicamente llamando a la herramienta ${HERR[tipo].name}, sin texto aparte.` });
+    const ins = tipo === 'factura' && Array.isArray(b.insumos) ? b.insumos.slice(0, 300).map(i => `${String(i.id).slice(0, 40)} | ${String(i.nombre).slice(0, 60)} | ${['u', 'kg', 'l'].includes(i.u) ? i.u : 'u'}`).join('\n') : '';
+    contenido.push({ type: 'text', text: (tipo === 'carta' ? 'Esta es la carta del local.' : tipo === 'factura' ? `Esta es la factura del proveedor. Insumos del local (id | nombre | unidad):\n${ins || '(todavía no cargó insumos)'}\n` : 'Este es el salón del local.') + ` Respondé únicamente llamando a la herramienta ${HERR[tipo].name}, sin texto aparte.` });
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODELO, max_tokens: tipo === 'carta' ? 12000 : 6000, system: PROMPT[tipo], tools: [HERR[tipo]], messages: [{ role: 'user', content: contenido }] })
+      body: JSON.stringify({ model: MODELO, max_tokens: tipo === 'plano' ? 6000 : 12000, system: PROMPT[tipo], tools: [HERR[tipo]], messages: [{ role: 'user', content: contenido }] })
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
