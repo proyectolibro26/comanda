@@ -346,7 +346,8 @@ const A={
 const FORM={
   async entrar(d){LOGIN.msg='';const r=await sb.auth.signInWithPassword({email:d.email.trim(),password:d.pass});if(r.error){LOGIN={modo:'entrar',msg:'Mail o contraseña incorrectos.',mal:1,email:d.email.trim()};return render()}SES=r.data.session;await iniciar()},
   async crear(d){const r=await sb.auth.signUp({email:d.email.trim(),password:d.pass,options:{emailRedirectTo:location.origin+'/equipo/'}});if(r.error){LOGIN={modo:'crear',msg:r.error.message.includes('registered')?'Ese mail ya tiene cuenta: entrá o recuperá la contraseña.':'No se pudo crear la cuenta. Probá de nuevo.',mal:1};return render()}
-    if(r.data.session){SES=r.data.session;return iniciar()}LOGIN={modo:'entrar',msg:'Listo. Te mandamos un mail para confirmar la cuenta: abrilo y después entrá acá.'};render()},
+    if(r.data.user&&Array.isArray(r.data.user.identities)&&!r.data.user.identities.length){LOGIN={modo:'entrar',msg:'Ese mail ya tiene cuenta en ta-ca. Entrá con la misma contraseña que usás en la app (o tocá "Me olvidé la contraseña").',email:d.email.trim()};return render()}
+    if(r.data.session){SES=r.data.session;return iniciar()}LOGIN={modo:'entrar',msg:'Listo. Te mandamos un mail para confirmar la cuenta (mirá también en Spam): abrilo y después entrá acá.',email:d.email.trim()};render()},
   async olvido(d){await sb.auth.resetPasswordForEmail(d.email.trim(),{redirectTo:location.origin+'/equipo/'});LOGIN={modo:'entrar',msg:'Si ese mail tiene cuenta, te llegó un link para elegir otra contraseña.'};render()},
   async nueva(d){const r=await sb.auth.updateUser({password:d.pass});if(r.error){LOGIN={modo:'nueva',msg:'No se pudo cambiar. Probá de nuevo.',mal:1};return render()}LOGIN={modo:'entrar',msg:''};toast('Contraseña cambiada');await iniciar()},
   async guardarC(d,f){const c=D.contactos.find(x=>x.id===f.dataset.id);if(!c)return;
