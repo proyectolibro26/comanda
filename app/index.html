@@ -106,6 +106,13 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 .mesa-c.llama{box-shadow:0 0 0 3px var(--blue)}
 .mesa-c .chip{white-space:normal;text-align:left}
 .mesa-c .tot{margin-top:auto;font-weight:700}
+.tipos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:6px}
+.tipo-c{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:14px;border-radius:14px;background:var(--bg2,var(--card));border:1px solid var(--line);min-height:108px;transition-property:border-color,scale,background-color;transition-duration:.15s;cursor:pointer}
+.tipo-c:hover{border-color:var(--accd)}.tipo-c:active{scale:.96}
+.tipo-c .ico{width:30px;height:30px;color:var(--accd)}
+.tipo-c b{font:600 15px Inter,sans-serif;color:var(--txt)}.tipo-c small{font-size:12.5px;color:var(--muted);line-height:1.35}
+.tipo-c.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.tipo-sel{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin:4px 0 12px}.tipo-sel .ico{width:24px;height:24px;color:var(--accd)}.tipo-sel span{flex:1}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:12px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:4px;vertical-align:-1px;border:2px solid var(--line)}
 /* cocina */
@@ -330,6 +337,15 @@ html[data-tema=oscuro] .wa-h{background:#202c33}
 <symbol id="t-whatsapp" viewBox="0 0 24 24"><path d="M4.5 19.5 5.6 16A8 8 0 1 1 8.4 18.6Z"/><path d="M9 10h6M9 13.5h4"/></symbol>
 <symbol id="t-mesas" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
 <symbol id="t-menu" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="t-tipo-bar" viewBox="0 0 24 24"><path d="M5 4h14l-7 8zM12 12v8M8 20h8M15 4l3-2"/></symbol>
+<symbol id="t-tipo-cerveceria" viewBox="0 0 24 24"><path d="M6 8h10v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2zM16 10h1.5a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H16M6 8a2.5 2.5 0 0 1 2.5-3 3 3 0 0 1 5 0A2.5 2.5 0 0 1 16 8M10 12v5M13 12v5"/></symbol>
+<symbol id="t-tipo-restaurante" viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7M9 3v5M17 21V3c-2 1-3 3.5-3 7h3"/></symbol>
+<symbol id="t-tipo-cafeteria" viewBox="0 0 24 24"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5c.8 1-.8 2 0 3M12 3.5c.8 1-.8 2 0 3M4 21h12"/></symbol>
+<symbol id="t-tipo-pizzeria" viewBox="0 0 24 24"><path d="M3.5 6.5c5.5-3 11.5-3 17 0L12 21z"/><path d="M5 9c4.5-2 9.5-2 14 0"/><circle cx="10" cy="12" r="1"/><circle cx="14" cy="14" r="1"/><circle cx="12" cy="17" r=".6"/></symbol>
+<symbol id="t-tipo-hamburgueseria" viewBox="0 0 24 24"><path d="M4 11a8 6 0 0 1 16 0zM3 14h18M4.5 17h15a2.5 2.5 0 0 1-2.5 3h-10a2.5 2.5 0 0 1-2.5-3"/></symbol>
+<symbol id="t-tipo-parrilla" viewBox="0 0 24 24"><path d="M3.5 11h17M5 11a7 7 0 0 0 14 0M8.5 17.5 6.5 21M15.5 17.5l2 3.5M9 3c1 1.5-1 2.5 0 4.5M12.5 3c1 1.5-1 2.5 0 4.5M16 3c1 1.5-1 2.5 0 4.5"/></symbol>
+<symbol id="t-tipo-rotiseria" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 13H6.2zM9 8V6.5a3 3 0 0 1 6 0V8"/></symbol>
+<symbol id="t-tipo-otro" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="t-mas" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
 <symbol id="t-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
 <symbol id="t-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
@@ -724,8 +740,58 @@ function modoDemo(){return !NB||ls('taca-modo')==='demo'}
 function enNube(){return !!(NB&&!modoDemo()&&AUTH.user&&LID)}
 const EQUIPO_DEMO=[{id:'p-dueno',nombre:'Dueño',rol:'dueno',pin:'1234'},{id:'p-cajera',nombre:'Cajera',rol:'cajera',pin:'0000'},{id:'p-mozo',nombre:'Mozo',rol:'mozo',pin:'2222'},{id:'p-cocina',nombre:'Cocina',rol:'cocina',pin:'1111'}];
 const TIPOS=['Restaurante','Cervecería','Bar','Cafetería','Pizzería','Hamburguesería','Parrilla','Rotisería','Otro'];
+// tipo de local: ícono, texto, valores iniciales y carta de ejemplo
+const TIPO={
+  'Bar':{k:'bar',d:'Tragos, cerveza y algo para picar',mesas:12,envio:0,platos:['fernet','gintonic','pinta','papas','picada','hamb','gaseosa']},
+  'Cervecería':{k:'cerveceria',d:'Pintas, papas y hamburguesas',mesas:15,envio:0,platos:['ipa','honey','pinta','papascp','picada','hamb','gaseosa']},
+  'Restaurante':{k:'restaurante',d:'Platos, mesas y reservas',mesas:15,envio:1500,platos:['hamb','mila','pizza','cesar','papas','vino','gaseosa','pinta']},
+  'Cafetería':{k:'cafeteria',d:'Café, desayunos y meriendas',mesas:10,envio:0,platos:['cafeleche','cortado','medialunas','desayuno','tostado','jugo','torta']},
+  'Pizzería':{k:'pizzeria',d:'Pizzas, empanadas y delivery',mesas:10,envio:1500,platos:['pizza','especial','fugazzeta','empcarne','empjyq','gaseosa','pinta']},
+  'Hamburguesería':{k:'hamburgueseria',d:'Hamburguesas, papas y delivery',mesas:8,envio:1500,platos:['hamb','doble','hpollo','papas','papascp','gaseosa','pinta']},
+  'Parrilla':{k:'parrilla',d:'Carnes, guarniciones y vino',mesas:15,envio:0,platos:['bife','vacio','chori','provoleta','papas','ensalada','vino','gaseosa']},
+  'Rotisería':{k:'rotiseria',d:'Para llevar y delivery, sin mesas',mesas:0,envio:1500,platos:['mila','empcarne','empjyq','pizza','papas','gaseosa']},
+  'Otro':{k:'otro',d:'Arrancás con una carta general',mesas:10,envio:0,platos:['hamb','mila','pizza','cesar','papas','gaseosa','pinta']}
+};
+function cartaEjemplo(tipo){
+  const b=seed(),I={};b.insumos.forEach(x=>I[x.id]=x);
+  [['cafe','Café en grano','kg',3,28000,.5,'almacen'],['leche','Leche','l',20,1400,5,'almacen'],['medialuna','Medialunas','u',60,350,12,'almacen'],['jamon','Jamón cocido','kg',2,14000,.5,'almacen'],['queso','Queso de máquina','kg',2,11000,.5,'almacen'],['miga','Pan de miga','u',40,300,10,'almacen'],['torta','Torta (porción)','u',16,1800,4,'almacen'],['naranja','Naranjas','kg',10,1500,3,'verdu'],['ipa','Cerveza IPA','l',40,3800,10,'bebidas'],['honey','Cerveza Honey','l',40,3400,10,'bebidas'],['fernet','Fernet','l',4,16000,1,'bebidas'],['gin','Gin','l',3,22000,1,'bebidas'],['tonica','Agua tónica','u',36,900,12,'bebidas'],['vacio','Vacío','kg',8,13000,2,'frigo'],['bife','Bife de chorizo','kg',8,16000,2,'frigo'],['chori','Chorizo','u',30,900,8,'frigo'],['provo','Provoleta','u',12,2200,3,'almacen'],['tapas','Tapas de empanada','u',120,120,24,'almacen'],['vino','Vino tinto','u',24,4500,6,'bebidas']]
+    .forEach(([id,nombre,u,stock,costo,min,prov])=>I[id]={id,nombre,u,stock,costo,min,prov});
+  const P={};b.platos.forEach(x=>P[x.id]=x);
+  const N=(id,nombre,cat,area,precio,desc,receta,alias,mods)=>P[id]={id,nombre,cat,area,precio,desc,alias:alias||[],activo:true,receta,mods:mods||[]};
+  N('fernet','Fernet con cola','Tragos','barra',6000,'Vaso grande',{fernet:.07,gaseosa:1},['fernet','fernecito']);
+  N('gintonic','Gin tonic','Tragos','barra',7000,'Con pepino o limón',{gin:.06,tonica:1},['gin']);
+  N('ipa','Pinta IPA','Cervezas','barra',5500,'Amarga y aromática, 500 ml',{ipa:.5},['ipa']);
+  N('honey','Pinta Honey','Cervezas','barra',5000,'Con miel, 500 ml',{honey:.5},['honey','miel']);
+  N('papascp','Papas con cheddar y panceta','Para picar','cocina',8000,'Para compartir',{papa:.4,aceite:.08,cheddar:.06,panceta:.05},['cheddar']);
+  N('picada','Picada para 2','Para picar','cocina',14000,'Jamón, queso, papas y pan',{jamon:.1,queso:.15,papa:.2,aceite:.04,pan:1},['picada']);
+  N('vino','Vino tinto (botella)','Bebidas','barra',12000,'Malbec 750 ml',{vino:1},['vino','malbec']);
+  N('cafeleche','Café con leche','Cafetería','barra',3200,'Taza grande',{cafe:.012,leche:.15},['cafe con leche','lagrima']);
+  N('cortado','Cortado','Cafetería','barra',2800,'En jarrito',{cafe:.012,leche:.05},['cortado','cafe']);
+  N('medialunas','Medialunas (3)','Panadería','barra',3000,'De manteca',{medialuna:3},['medialuna','factura']);
+  N('desayuno','Desayuno completo','Desayunos','barra',7500,'Café con leche, 2 medialunas y jugo',{cafe:.012,leche:.15,medialuna:2,naranja:.4},['desayuno','combo']);
+  N('tostado','Tostado de jamón y queso','Panadería','cocina',6500,'En pan de miga',{miga:2,jamon:.05,queso:.05},['tostado']);
+  N('jugo','Exprimido de naranja','Bebidas','barra',3500,'Vaso grande',{naranja:.6},['jugo','exprimido']);
+  N('torta','Porción de torta','Pastelería','barra',4500,'Del día',{torta:1},['torta','postre']);
+  N('especial','Pizza especial','Pizzas','cocina',12500,'Muzzarella y jamón',{harina:.3,muzza:.25,salsa:.12,jamon:.08},['especial','jamon']);
+  N('fugazzeta','Fugazzeta','Pizzas','cocina',11500,'Rellena de muzzarella y cebolla',{harina:.35,muzza:.35},['fugazzeta','fuga']);
+  N('empcarne','Empanada de carne','Empanadas','cocina',1500,'Cortada a cuchillo',{tapas:1,carne:.04},['empanada','carne']);
+  N('empjyq','Empanada de jamón y queso','Empanadas','cocina',1500,'Al horno',{tapas:1,jamon:.02,queso:.03},['jyq','jamon y queso']);
+  N('doble','Hamburguesa doble cheddar','Hamburguesas','cocina',11500,'Doble carne, doble cheddar y papas',{pan:1,carne:.36,cheddar:.08,papa:.25,aceite:.05},['doble'],[{id:'xp',nombre:'Con panceta',tipo:'agrega',ins:'panceta',cant:.05,precio:2000}]);
+  N('hpollo','Hamburguesa de pollo','Hamburguesas','cocina',9000,'Pollo grillado, lechuga y tomate',{pan:1,pollo:.15,lechuga:.02,tomate:.03},['pollo']);
+  N('bife','Bife de chorizo','Parrilla','cocina',18000,'400 g',{bife:.4},['bife'],[{id:'jp',nombre:'Jugoso',tipo:'nota',ins:'',cant:0,precio:0},{id:'ap',nombre:'A punto',tipo:'nota',ins:'',cant:0,precio:0},{id:'bc',nombre:'Bien cocido',tipo:'nota',ins:'',cant:0,precio:0}]);
+  N('vacio','Vacío','Parrilla','cocina',16000,'400 g',{vacio:.4},['vacio']);
+  N('chori','Choripán','Parrilla','cocina',5000,'Con chimichurri',{chori:1,pan:1},['chori']);
+  N('provoleta','Provoleta','Parrilla','cocina',6500,'Con orégano',{provo:1},['provo']);
+  N('ensalada','Ensalada mixta','Guarniciones','cocina',4500,'Lechuga y tomate',{lechuga:.1,tomate:.15},['ensalada']);
+  if(P.hamb&&tipo==='Hamburguesería')P.hamb.cat='Hamburguesas';
+  if(P.pizza&&tipo==='Pizzería')P.pizza.cat='Pizzas';
+  const lista=(TIPO[tipo]||TIPO.Otro).platos.map(id=>JSON.parse(JSON.stringify(P[id]))).filter(Boolean);
+  const usados=new Set();lista.forEach(pl=>{Object.keys(pl.receta).forEach(k=>usados.add(k));(pl.mods||[]).forEach(m=>{if(m.ins)usados.add(m.ins)})});
+  const insumos=[...usados].map(k=>I[k]).filter(Boolean).map(x=>Object.assign({},x));
+  const provs=new Set(insumos.map(x=>x.prov));
+  return{insumos,platos:lista,proveedores:b.proveedores.filter(x=>provs.has(x.id))}
+}
 function seedVacio(nombre){const s=seed();Object.assign(s,{negocio:nombre,insumos:[],platos:[],proveedores:[],equipo:[],setup:false,apertura:0,alias:'',tipo:''});s.wa={msgs:[],step:'inicio',draft:{},ultimo:null,tel:'341 555-0101'};return s}
-function cartaEjemplo(){const s=seed();return{insumos:s.insumos,platos:s.platos,proveedores:s.proveedores}}
 function persona(){return(S.equipo||[]).find(p=>p.id===personaId)||null}
 function errMsg(e){const m=String((e&&(e.message||e.error_description||e.msg))||e||'');
   if(/invalid login/i.test(m))return'Email o contraseña incorrectos';
@@ -881,14 +947,15 @@ function vBienvenida(){
   W=W||{paso:1,equipo:[]};const p=W.paso,pasos=['Tu local','Tu PIN','Tu carta','Tu equipo'];
   const barra=`<div style="display:flex;gap:6px;margin:14px 0 18px">${pasos.map((t,i)=>`<div style="flex:1;text-align:center;font-size:12px;font-weight:600;color:${i+1<=p?'var(--accd)':'var(--muted)'}"><div style="height:5px;border-radius:3px;background:${i+1<=p?'var(--acc)':'var(--line)'};margin-bottom:5px"></div>${t}</div>`).join('')}</div>`;
   let c='';
-  if(p===1)c=`<h2>Contanos de tu local</h2><form data-f="w1"><label>Nombre<input name="negocio" value="${esc(S.negocio)}" required></label>
-<label>¿Qué es?<select name="tipo">${TIPOS.map(t=>`<option ${S.tipo===t?'selected':''}>${t}</option>`).join('')}</select></label>
-<div class="inline"><label>Cantidad de mesas<input name="mesas" type="number" min="0" max="60" value="${S.mesas||10}" required></label><label>Costo de envío (si hacés delivery)<input name="envio" inputmode="decimal" value="${S.envio||0}"></label></div>
+  if(p===1&&!W.tipoOk)c=`<h2>¿Qué tipo de local tenés?</h2><p class="muted" style="margin-top:0">Así te armamos la carta de ejemplo, las mesas y el delivery para arrancar. Después cambiás lo que quieras.</p>
+<div class="tipos">${TIPOS.map(t=>`<button type="button" class="tipo-c${S.tipo===t?' on':''}" data-a="wTipo" data-t="${t}">${ico('tipo-'+TIPO[t].k)}<b>${t==='Rotisería'?'Rotisería y delivery':t}</b><small>${TIPO[t].d}</small></button>`).join('')}</div>`;
+  else if(p===1)c=`<h2>Contanos de tu local</h2><div class="tipo-sel">${ico('tipo-'+(TIPO[S.tipo]?TIPO[S.tipo].k:'otro'))}<span><b>${esc(S.tipo==='Rotisería'?'Rotisería y delivery':S.tipo)}</b></span><button type="button" class="link" data-a="wTipoCambiar">Cambiar</button></div><form data-f="w1"><input type="hidden" name="tipo" value="${esc(S.tipo)}"><label>Nombre<input name="negocio" value="${esc(S.negocio)}" required></label>
+<div class="inline"><label>Cantidad de mesas${S.tipo==='Rotisería'?' (0 si no tenés salón)':''}<input name="mesas" type="number" min="0" max="60" value="${S.mesas??10}" required></label><label>Costo de envío (si hacés delivery)<input name="envio" inputmode="decimal" value="${S.envio||0}"></label></div>
 <label>Alias para transferencias (opcional)<input name="alias" value="${esc(S.alias||'')}" placeholder="ej: mi.local.mp"></label><button class="primary">Seguir →</button></form>`;
   if(p===2)c=`<h2>Tu PIN de dueño</h2><p class="muted" style="margin-top:0">Con este PIN entrás vos en cualquier equipo del local. Ves todo, incluido el saldo de caja.</p><form data-f="w2"><label>Tu nombre<input name="nombre" value="${esc(W.nombre||'')}" required></label>
 <div class="inline"><label>PIN (4 a 6 números)<input name="pin" type="text" inputmode="numeric" class="pin" autocomplete="off" pattern="[0-9]{4,6}" required autocomplete="off"></label><label>Repetilo<input name="pin2" type="text" inputmode="numeric" class="pin" autocomplete="off" required autocomplete="off"></label></div><div class="btns"><button type="button" class="ghost" data-a="wPaso" data-p="1">← Volver</button><button class="primary">Seguir →</button></div></form>`;
   if(p===3)c=`<h2>Tu carta</h2><p class="muted" style="margin-top:0">Después podés cambiar todo en <b>Carta y recetas</b>.</p>
-<div style="display:grid;gap:10px"><button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="ejemplo"><b>Empezar con una carta de ejemplo</b><small>Hamburguesas, milanesas, pizza y bebidas, con sus recetas e insumos. Editás precios y sacás lo que no va.</small></button>
+<div style="display:grid;gap:10px"><button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="ejemplo"><b>Empezar con una carta de ejemplo${S.tipo&&S.tipo!=='Otro'?' de '+esc((S.tipo==='Rotisería'?'rotisería':S.tipo.toLowerCase())):''}</b><small>${esc(cartaEjemplo(S.tipo).platos.map(x=>x.nombre).slice(0,5).join(', '))} y más, con sus recetas e insumos. Editás precios y sacás lo que no va.</small></button>
 <button class="mesa-c" style="min-height:0" data-a="wCarta" data-c="vacia"><b>Empezar con la carta vacía</b><small>Cargás tus platos e insumos desde cero.</small></button></div><div class="btns"><button class="ghost" data-a="wPaso" data-p="2">← Volver</button></div>`;
   if(p===4)c=`<h2>Tu equipo</h2><p class="muted" style="margin-top:0">Cada persona entra con su PIN y ve solo lo que le toca. Podés sumar gente después en <b>Ajustes</b>.</p>
 ${W.equipo.map((x,i)=>`<div class="row"><span><b>${esc(x.nombre)}</b> · ${ROLES[x.rol].nombre}</span><button class="small ghost bad" data-a="wQuitar" data-i="${i}">Quitar</button></div>`).join('')}
@@ -1918,7 +1985,9 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
 <div class="btns" style="margin-top:14px">${x.plan==='suspendido'?`<button data-a="admSusp" data-id="${esc(x.id)}" data-p="${x.pagado_hasta&&new Date(x.pagado_hasta)>Date.now()?'activo':'prueba'}">Reactivar</button>`:`<button class="ghost bad" data-a="admSusp" data-id="${esc(x.id)}" data-p="suspendido">Suspender</button>`}<button type="button" class="ghost" data-a="close">Cerrar</button></div>`)},
   async admSusp(b){const p=b.dataset.p;if(p==='suspendido'&&!confirm('¿Suspender este local? Por ahora queda marcado en el panel.'))return;await admGuardar(b.dataset.id,p,0,null)},
   wPaso(b){W.paso=+b.dataset.p;render()},
-  wCarta(b){if(b.dataset.c==='ejemplo'){const c=cartaEjemplo();S.insumos=c.insumos;S.platos=c.platos;S.proveedores=c.proveedores}else{S.insumos=[];S.platos=[];S.proveedores=[]}W.carta=b.dataset.c;W.paso=4;save();render()},
+  wTipo(b){const t=b.dataset.t,x=TIPO[t]||TIPO.Otro;S.tipo=t;S.mesas=x.mesas;S.envio=x.envio;W.tipoOk=true;save();render()},
+  wTipoCambiar(){W.tipoOk=false;render()},
+  wCarta(b){if(b.dataset.c==='ejemplo'){const c=cartaEjemplo(S.tipo);S.insumos=c.insumos;S.platos=c.platos;S.proveedores=c.proveedores}else{S.insumos=[];S.platos=[];S.proveedores=[]}W.carta=b.dataset.c;W.paso=4;save();render()},
   wQuitar(b){W.equipo.splice(+b.dataset.i,1);render()},
   wFin(){const yoP={id:uid(),nombre:W.nombre,rol:'dueno',pin:W.pin};S.equipo=[yoP].concat(W.equipo.map(x=>Object.assign({id:uid()},x)));S.setup=true;
     audit('Local creado',`${S.negocio} · ${S.equipo.length} persona${S.equipo.length>1?'s':''} en el equipo`);

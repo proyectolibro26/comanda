@@ -14,7 +14,7 @@ const disp=p=>{const e=Object.entries(p.receta);if(!e.length)return 999;return M
 function lineInfo(l){
   const p=plato(l.id),mods=(l.mods||[]).map(m=>p.mods.find(x=>x.id===m)).filter(Boolean);
   const receta={...p.receta};
-  mods.forEach(m=>{if(m.tipo==='quita')delete receta[m.ins];else receta[m.ins]=r3((receta[m.ins]||0)+m.cant)});
+  mods.forEach(m=>{if(!m.ins||m.tipo==='nota')return;if(m.tipo==='quita')delete receta[m.ins];else receta[m.ins]=r3((receta[m.ins]||0)+m.cant)});
   return{p,mods,receta,precio:p.precio+mods.reduce((a,m)=>a+(+m.precio||0),0)};
 }
 function needFor(lines){const need={};lines.forEach(l=>{const{receta}=lineInfo(l);Object.entries(receta).forEach(([i,c])=>need[i]=r3((need[i]||0)+c*l.cant))});return need}
