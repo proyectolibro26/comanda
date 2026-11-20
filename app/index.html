@@ -729,6 +729,7 @@ function cartaEjemplo(){const s=seed();return{insumos:s.insumos,platos:s.platos,
 function persona(){return(S.equipo||[]).find(p=>p.id===personaId)||null}
 function errMsg(e){const m=String((e&&(e.message||e.error_description||e.msg))||e||'');
   if(/invalid login/i.test(m))return'Email o contraseña incorrectos';
+  if(/sending.*email|error sending|smtp/i.test(m))return'No pudimos mandar el email en este momento. Probá de nuevo en unos minutos o escribinos por WhatsApp';
   if(/not confirmed/i.test(m))return'Todavía no confirmaste tu email: revisá tu casilla (y la carpeta de spam)';
   if(/already registered|already been registered/i.test(m))return'Ya hay una cuenta con ese email: entrá con tu contraseña';
   if(/at least 6|password should/i.test(m))return'La contraseña tiene que tener al menos 6 caracteres';
