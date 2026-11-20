@@ -43,7 +43,10 @@ Información de ta-ca:
 - Sin internet: cada equipo sigue trabajando y sube todo cuando vuelve la conexión; el QR del cliente usa los datos del celular del cliente.
 - Caja: cada cajera abre y cierra su turno contando la plata; el saldo esperado y la diferencia los ve solo el dueño.
 - Puntos: el dueño elige cuántos puntos da cada compra (por ejemplo 2%); se usan como descuento en la caja, en el próximo pedido o por WhatsApp.
-- Mercado Pago: el cliente puede pagar la cuenta desde la mesa y el pago entra solo a la caja.
+- Mercado Pago (los dos planes, la plata va directo a la cuenta del local): el cliente paga la cuenta desde la carta del QR con su cuenta o una tarjeta, o con el QR de Mercado Pago pegado en su mesa usando Mercado Pago o la app de su banco, sin levantarse. En la caja, "Cobrar con QR" muestra un QR con el monto exacto; mientras espera, la cajera sigue usando la app y el cobro se registra solo cuando el cliente paga.
+- Fotos en la carta: el dueño sube la foto de cada plato desde el celular y el cliente la ve en la carta del QR.
+- PedidosYa y Rappi: todavía no hay conexión; está en camino. No prometas fecha.
+- Si preguntan por algo que ta-ca no hace, decilo con honestidad y ofrecé hablar por WhatsApp.
 - WhatsApp de Roman Web para hablar con una persona: +54 9 341 260-9941. Email: hola@ta-ca.com.ar.`;
 
 module.exports = async (req, res) => {

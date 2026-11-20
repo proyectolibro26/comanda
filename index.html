@@ -165,13 +165,13 @@ section.pegada{padding-top:88px}
 @media(max-width:860px){.tres{grid-template-columns:1fr}.bloque.wa{grid-row:auto}}
 
 /* y además */
-.ademas{display:grid;grid-template-columns:repeat(3,1fr);gap:0 40px}
+.ademas{display:grid;grid-template-columns:repeat(4,1fr);gap:0 36px}
 .item{border-top:1px solid var(--line);padding:22px 0 26px}
 .item h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
 .item p{margin:0;color:var(--muted);font-size:16px}
 .funciona{margin:40px 0 0;font-size:18px;max-width:70ch}
 .funciona b{font-weight:600}
-@media(max-width:900px){.ademas{grid-template-columns:1fr 1fr}}
+@media(max-width:1100px){.ademas{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.ademas{grid-template-columns:1fr}}
 
 /* precios */
@@ -385,6 +385,7 @@ footer .legal a{color:inherit}
   <div class="pares">
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Venden platos que ya no hay y te enterás en cocina.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Si se termina un insumo, el plato se apaga solo</b>, en el QR y para el mozo.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>El mozo no ve el stock cuando toma el pedido.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Stock en vivo</b> en todos los equipos del local.</span></div></div>
+    <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Para pagar, el cliente espera que le traigan la cuenta y el posnet.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Paga desde la mesa</b> con Mercado Pago o la app de su banco, y la cuenta se cierra sola en caja.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Mesas, WhatsApp o factura se pagan como módulos aparte.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Sin módulos sueltos:</b> mesas, stock y factura ARCA vienen en los dos planes.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Aumentos sorpresa y soporte que de noche no atiende.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Soporte por WhatsApp</b>, también en el horario del servicio.</span></div></div>
     <div class="par"><div class="no"><svg class="ico mk"><use href="#i-no"/></svg><span class="sr">Con otros sistemas: </span><span>Instalaciones, equipos especiales y técnicos que cobran.</span></div><div class="si"><svg class="ico mk ok"><use href="#i-si"/></svg><span class="sr">Con ta-ca: </span><span><b>Abrís el link y listo.</b> Usás los equipos que ya tenés.</span></div></div>
@@ -457,6 +458,8 @@ footer .legal a{color:inherit}
 <section id="ademas" class="pegada"><div class="wrap">
   <div class="sh"><h2>Y todo lo de todos los días</h2></div>
   <div class="ademas">
+    <div class="item"><h3>Cobro con QR</h3><p>En la caja aparece un QR con el monto exacto y cada mesa tiene el suyo. Cuando el cliente paga, el cobro se registra solo.</p></div>
+    <div class="item"><h3>Fotos en la carta</h3><p>Le sacás una foto a cada plato desde el celular y tus clientes la ven en la carta del QR antes de pedir.</p></div>
     <div class="item"><h3>Caja con turnos</h3><p>Cada cajera abre y cierra su turno con cierre a ciegas. El saldo esperado lo ve solo el dueño.</p></div>
     <div class="item"><h3>Cierre y reportes</h3><p>Cerrás el día en un minuto. Semana o mes comparados, y el Excel listo para el contador.</p></div>
     <div class="item"><h3>Puntos para tus clientes</h3><p>Suman con cada compra y los usan en el próximo pedido, en la caja o por WhatsApp.</p></div>
@@ -464,7 +467,7 @@ footer .legal a{color:inherit}
     <div class="item"><h3>Tu equipo, con su PIN</h3><p>Cada persona ve solo lo suyo. Copia de seguridad todas las noches.</p></div>
     <div class="item"><h3>Si se corta internet</h3><p>Tu equipo sigue cargando y todo se sube solo al volver. El QR del cliente usa sus propios datos.</p></div>
   </div>
-  <p class="funciona">Funciona con <b>Mercado Pago</b>, <b>WhatsApp</b>, <b>ARCA</b>, cualquier impresora térmica de 80 mm y <b>Excel</b>. En el celular, la tablet o la compu que ya tenés, y se instala como app.</p>
+  <p class="funciona">Funciona con <b>Mercado Pago</b> (link y QR), <b>WhatsApp</b>, <b>ARCA</b>, cualquier impresora térmica de 80 mm y <b>Excel</b>. En el celular, la tablet o la compu que ya tenés, y se instala como app.</p>
 </div></section>
 
 <section id="precios"><div class="wrap">
@@ -482,7 +485,7 @@ footer .legal a{color:inherit}
       <ul class="llaves-p"><li class="ll on"><span>QR en las mesas, salón, cocina y barra<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on"><span>Caja, stock por receta y cierre del día<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on"><span>Factura electrónica ARCA<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on"><span>Carta, salón y facturas con IA<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on plus"><span>Pedidos y reservas por WhatsApp<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on plus"><span>Te armamos las recetas y el stock con vos<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li><li class="ll on plus"><span>Soporte prioritario, también de noche<span class="sr">: incluido</span></span><i class="sw sm on" aria-hidden="true"></i></li></ul>
       <a class="btn p" href="/app?crear=1&amp;plan=encendido">Empezar gratis con Encendido</a></div>
   </div>
-  <p class="mas-p">En los dos planes: reservas, mostrador y para llevar, puntos para tus clientes, avisos al celular, Excel para el contador y personas sin límite.</p>
+  <p class="mas-p">En los dos planes: cobro con QR de Mercado Pago, fotos en la carta, reservas, mostrador y para llevar, puntos para tus clientes, avisos al celular, Excel para el contador y personas sin límite.</p>
   <p class="nota">Precios finales en pesos argentinos. Pagás con Mercado Pago o transferencia. Si un mes no pagás, tus datos quedan guardados.</p>
 </div></section>
 
@@ -491,6 +494,8 @@ footer .legal a{color:inherit}
   <div class="faq">
     <details><summary>¿Tengo que cargar toda la carta a mano?<i class="sw"></i></summary><p>No. Le sacás una foto a tu carta (o subís el PDF) y la IA pasa los platos, las categorías y los precios en un minuto. Si venís de Fudo o tenés todo en Excel, subís ese archivo. Antes de guardar, revisás que esté todo bien. La IA viene incluida en los dos planes.</p></details>
     <details><summary>¿Me avisa cuando se acaba algo?<i class="sw"></i></summary><p>Sí. Cuando un plato se queda sin stock o un insumo baja del mínimo que pusiste, te llega una notificación al celular, aunque tengas ta-ca cerrado. Y el plato se saca solo de la carta del QR y del celular del mozo.</p></details>
+    <details><summary>¿Los clientes pueden pagar con QR?<i class="sw"></i></summary><p>Sí, con Mercado Pago o la app de cualquier banco. Desde la mesa, el cliente toca “Pagar” en la carta y paga sin levantarse. En la caja, tocás “Cobrar con QR” y aparece el código con el monto exacto. El pago entra directo a tu cuenta de Mercado Pago y la cuenta se cierra sola.</p></details>
+    <details><summary>¿Se conecta con PedidosYa o Rappi?<i class="sw"></i></summary><p>Todavía no. Hoy entran solos a la cocina los pedidos del QR de las mesas, del mostrador y del WhatsApp. La conexión con PedidosYa y Rappi está en camino.</p></details>
     <details><summary>¿Tengo que instalar algo o comprar equipos?<i class="sw"></i></summary><p>No. ta-ca funciona en el navegador del celular, la tablet o la compu que ya tenés, y se puede instalar como app desde el mismo navegador. Para imprimir comandas sirve cualquier impresora térmica de 80 mm.</p></details>
     <details><summary>¿Cuánto tardo en empezar?<i class="sw"></i></summary><p>La carta, en un minuto: creás la cuenta, elegís qué tipo de local tenés y le sacás una foto a tu carta. Después armás el plano del salón e imprimís los QR de las mesas, y ya podés atender. En el plan Encendido te armamos las recetas y el stock, y revisamos la carta con vos.</p></details>
     <details><summary>¿Hace factura electrónica?<i class="sw"></i></summary><p>Sí. Al cobrar tocás “Facturar” y sale la factura A, B o C con el CAE y el QR de ARCA. Lo configurás una sola vez en la web de ARCA con tu clave fiscal y te guiamos paso a paso.</p></details>
