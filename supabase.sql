@@ -148,6 +148,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     'pausado', taca_estado_plan(plan, prueba_hasta, pagado_hasta) = 'bloqueado',
     'negocio', data->'negocio',
     'mesas',   data->'mesas',
+    'qrmesa',  coalesce((data->'mpqr'->>'mesas')::boolean, false),
     'platos',  (select coalesce(jsonb_agg(x), '[]'::jsonb) from jsonb_array_elements(coalesce(data->'platos', '[]'::jsonb)) x
                 where coalesce((x->>'activo')::boolean, true)),
     'insumos', (select coalesce(jsonb_agg(jsonb_build_object('id', x->'id', 'stock', x->'stock')), '[]'::jsonb)
@@ -805,3 +806,7 @@ alter table public.taca_mp_cuentas add column if not exists qr_store_id text;
 alter table public.taca_mp_cuentas add column if not exists qr_pos_id   text;
 alter table public.taca_mp_cuentas add column if not exists qr_pos_ext  text;
 alter table public.taca_mp_cuentas add column if not exists qr_estatico text;
+
+-- QR de pago en cada mesa (una "caja" de Mercado Pago por mesa) y cobros de mesa hechos con ese QR.
+alter table public.taca_mp_cuentas add column if not exists qr_mesas jsonb;
+alter table public.taca_mp_mesa    add column if not exists orden text;

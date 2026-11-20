@@ -164,6 +164,8 @@ table.fac td small{display:block;color:var(--muted);font-size:12px}table.fac td.
 .qrmp-qr{background:#fff;padding:14px;border-radius:16px;box-shadow:0 0 0 1px var(--line);min-width:268px;min-height:268px;display:grid;place-items:center}
 .qrmp-est{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 0;min-height:34px}
 .qrmp-ayuda{font-size:14px;max-width:360px;margin:0}
+.paga-op{display:grid;gap:10px;margin:6px 0 4px}.paga-op button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:14px 16px;width:100%}.paga-op button small{font-weight:400;opacity:.9;font-size:13px;color:inherit}.paga-op .mp small{color:#fff}.paga-op .qr-op{border:1.5px solid #009ee3;font-weight:600}
+.qrmp .qrpasos{text-align:left;margin:12px auto;max-width:340px}
 .qrpasos{margin:0 0 12px;padding-left:20px;line-height:1.5}.qrpasos li{margin:4px 0}
 .mpqr-aj{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.mpqr-aj h3{margin:0 0 8px;font-size:16px}
 .mpqr-fijo{display:flex;gap:16px;align-items:center;margin-top:10px}.mpqr-fijo #qrfijo{background:#fff;padding:8px;border-radius:10px;flex:none}
@@ -631,7 +633,7 @@ async function cargarCarta(){
   try{const r=await NB.carta(CLID,clienteMode);
     if(!r){cartaError='No encontramos este local. Pedile ayuda al mozo.';cartaOk=false;return renderSafe()}
     if(r.pausado){cartaError='Este local no está tomando pedidos por QR en este momento. Pedile la carta al mozo.';cartaOk=false;return renderSafe()}
-    S={negocio:r.negocio,mesas:r.mesas,platos:r.platos||[],insumos:r.insumos||[],pedidos:r.pedidos||[],llamados:r.llamados||[],envio:0};cartaOk=true;cartaError='';renderSafe()}
+    S={negocio:r.negocio,mesas:r.mesas,qrmesa:!!r.qrmesa,platos:r.platos||[],insumos:r.insumos||[],pedidos:r.pedidos||[],llamados:r.llamados||[],envio:0};cartaOk=true;cartaError='';renderSafe()}
   catch(e){if(!cartaOk){cartaError='Sin conexión. Revisá internet y volvé a escanear.';renderSafe()}}
 }
 async function accionCliente(tipo,ok){
@@ -668,6 +670,7 @@ function supaNube(sb){
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No pudimos leer el archivo');return j},
     async push(datos){const h={'Content-Type':'application/json'};if(EQ)h['x-equipo']=EQ.t;else{const t=await this.auth.token();if(t)h.Authorization='Bearer '+t}
       const r=await fetch('/api/push',{method:'POST',headers:h,body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo');return j},
+    async mpqrMesa(datos){const r=await fetch('/api/mp-qr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'No se pudo, probá de nuevo');e.pagado=j.pagado;throw e}return j},
     async mpqr(datos){const h={'Content-Type':'application/json'};if(EQ)h['x-equipo']=EQ.t;else{const t=await this.auth.token();if(t)h.Authorization='Bearer '+t}
       const r=await fetch('/api/mp-qr',{method:'POST',headers:h,body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'Mercado Pago no respondió');e.codigo=j.codigo;e.ciudades=j.ciudades;throw e}return j},
     async pushClave(){const r=await fetch('/api/push');const j=await r.json();if(!r.ok||!j.clave)throw new Error('sin clave');return j.clave},
@@ -1879,7 +1882,11 @@ const A={
   async pedirCuenta(){if(cloudClient())return accionCliente('cuenta','Avisamos a la caja 🧾');abiertos().filter(p=>p.origen==='mesa'&&p.mesa===C.mesa).forEach(p=>p.pideCuenta=true);save();render();toast('Avisamos a la caja 🧾')},
   pagarMesa(b){
     const t=S.pedidos.filter(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.anulado&&!p.cobrado).reduce((a,p)=>a+p.total,0),pidio=S.pedidos.some(p=>p.origen==='mesa'&&p.mesa===C.mesa&&!p.cobrado&&p.pideCuenta);
-    if(cloudClient()&&!MPM.sin)return pagarMesaNube(b,t,pidio);
+    if(cloudClient()&&!MPM.sin&&S.qrmesa&&!(b&&b.dataset.directo))return modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted" style="margin-top:0">Elegí cómo querés pagar. No hace falta que te levantes.</p>
+<div class="paga-op"><button class="mp" data-a="pagarMesa" data-directo="1">Pagar con Mercado Pago<small>Desde este celular, con tu cuenta o una tarjeta</small></button>
+<button class="ghost qr-op" data-a="pagarQRMesa">Pagar con el QR de la mesa<small>Escaneás el QR pegado en tu mesa con Mercado Pago o la app de tu banco</small></button></div>
+<div class="btns"><button class="ghost" data-a="close">Volver</button></div>`);
+    if(cloudClient()&&!MPM.sin){if(b&&b.dataset.directo)closeModal();return pagarMesaNube(b&&b.dataset.directo?null:b,t,pidio)}
     if(cloudClient())return modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted">El pago con Mercado Pago desde el celular todavía no está activo en este local. Pedí la cuenta y el mozo te acerca el QR de Mercado Pago o el posnet para pagar en la mesa.</p><div class="btns"><button class="ghost" data-a="close">Volver</button>${pidio?'<span class="chip ok">Cuenta pedida ✓</span>':'<button class="primary" data-a="cuentaYCerrar">🧾 Pedir la cuenta</button>'}</div>`);
     modal(`<h2>Pagar ${fmt(t)}</h2><p class="muted">En la versión real acá se abre el checkout de Mercado Pago y el pago se acredita solo en caja. En esta demo podés simular el pago aprobado.</p><div class="btns"><button class="ghost" data-a="close">Volver</button><button class="mp" data-a="mpOk">Simular pago aprobado</button></div>`);
   },
@@ -2548,7 +2555,7 @@ function qrParar(){if(QRP&&QRP.t){clearInterval(QRP.t);QRP.t=null}}
 async function qrPagado(r){qrParar();const q=QRP;QRP=null;if(!CB)return;
   const otros=Object.entries(CB.pagos).filter(([m])=>m!=='mp').reduce((a,[,v])=>a+pnum(v),0);
   CB.pagos.mp=String(Math.round((r.monto||q.monto)));if(!otros){Object.keys(CB.pagos).forEach(m=>{if(m!=='mp')CB.pagos[m]=''})}
-  CB.mpPago=r.pago;CB.mpOrden=q.orden;toast('✓ Pagado con Mercado Pago');A.cbOk();if($('#modal').innerHTML.trim())cobroModal(CB.key)}
+  CB.mpPago=r.pago;CB.mpOrden=q.orden;toast('✓ Pagado con Mercado Pago');const key=CB.key;A.cbOk();if(CB&&CB.key===key)cobroModal(key)}
 async function qrTick(){const q=QRP;if(!q||!q.orden||q.ocupado)return;q.ocupado=true;
   try{const abierto=!!document.getElementById('qrmp');const r=await qrLlamar({accion:'consultar',orden:q.orden});
     if(QRP!==q)return;if(r.estado==='pagado')return qrPagado(r);
@@ -2561,12 +2568,51 @@ function vMPQR(){if(!MPC||!MPC.conectado)return'';
   const q=MPC.qr,h='<div class="mpqr-aj"><h3>Cobrar en la caja con QR</h3>';
   if(!q)return h+'<p class="muted">Cargando…</p></div>';
   if(q.error)return h+'<p class="muted">No pudimos consultar. Revisá internet.</p></div>';
-  if(q.activo)return h+`<p style="margin-top:0"><span class="chip ok">✓ Activado</span> Al cobrar tocás <b>Cobrar con QR</b>: aparece el QR con el monto y el cobro se registra solo cuando el cliente paga.</p>${q.estatico?`<div class="mpqr-fijo"><div id="qrfijo"></div><div><b>QR fijo de la caja</b><p class="muted" style="margin:4px 0 10px;font-size:14px">Imprimilo y pegalo en el mostrador: cuando generás un cobro, este QR cobra ese monto.</p><button class="small" data-a="qrImprimir">Imprimir QR de la caja</button></div></div>`:''}</div>`;
+  if(q.activo)return h+`<p style="margin-top:0"><span class="chip ok">✓ Activado</span> Al cobrar tocás <b>Cobrar con QR</b>: aparece el QR con el monto y el cobro se registra solo cuando el cliente paga.</p>${q.estatico?`<div class="mpqr-fijo"><div id="qrfijo"></div><div><b>QR fijo de la caja</b><p class="muted" style="margin:4px 0 10px;font-size:14px">Imprimilo y pegalo en el mostrador: cuando generás un cobro, este QR cobra ese monto.</p><button class="small" data-a="qrImprimir">Imprimir QR de la caja</button></div></div>`:''}</div>`+vMPQRMesas(q);
   const d=MPQRF;return h+`<p class="muted" style="margin-top:0">El cliente escanea un QR con el monto exacto y paga con Mercado Pago o la app de su banco. Para activarlo, Mercado Pago pide la dirección del local (una sola vez).</p>
 <div class="inline"><label>Calle<input data-mq="calle" value="${esc(d.calle)}" placeholder="Pellegrini"></label><label style="max-width:120px">Número<input data-mq="numero" inputmode="numeric" value="${esc(d.numero)}" placeholder="1234"></label></div>
 <div class="inline"><label>${d.ciudades?'Ciudad, partido o departamento':'Ciudad'}${d.ciudades?`<select data-mq="ciudad"><option value="">Elegí de la lista de Mercado Pago</option>${d.ciudades.map(c=>`<option ${d.ciudad===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`:`<input data-mq="ciudad" value="${esc(d.ciudad)}" placeholder="Rosario">`}</label><label>Provincia<select data-mq="provincia"><option value="">Elegí</option>${PROVS.map(p=>`<option ${d.provincia===p?'selected':''}>${p}</option>`).join('')}</select></label></div>
 <p style="font-size:14px;margin:6px 0">${d.lat?'<span class="chip ok">✓ Ubicación tomada</span>':'Ubicación: tocá el botón estando en el local.'} <button class="small" data-a="mqUbic">${d.lat?'Volver a tomar':'Usar la ubicación de este equipo'}</button></p>
 <div class="btns"><button class="primary" data-a="mqActivar">Activar cobro con QR</button></div></div>`}
+let QRM=null;
+function vQRMesa(){const q=QRM;if(!q)return'';
+  const est=q.estado==='creando'?'<span class="ia-sw" aria-hidden="true"><i></i></span> Preparando el cobro…':q.estado==='pendiente'?'<span class="ia-sw" aria-hidden="true"><i></i></span> Esperando el pago…':q.estado==='pagado'?'<span class="chip ok">✓ Pagado</span> ¡Gracias! La mesa ya quedó cobrada.':q.estado==='vencido'?'Pasaron 10 minutos sin pago. Tocá "Volver a intentar".':esc(q.error||'No se pudo. Pedile la cuenta al mozo.');
+  return`<h2>${q.estado==='pagado'?'¡Listo!':'Pagá con el QR de tu mesa'}</h2>${q.estado==='pagado'?'':`<div class="qrmp"><div class="qrmp-monto num">${q.total?fmt(q.total):''}</div>
+<ol class="qrpasos"><li>Abrí <b>Mercado Pago</b> o la app de tu banco y elegí <b>pagar con QR</b>.</li><li>Escaneá el QR de Mercado Pago que está en la <b>Mesa ${C.mesa}</b>.</li><li>Te va a aparecer ${q.total?'<b>'+fmt(q.total)+'</b>':'el total'}: confirmá el pago.</li></ol></div>`}
+<p class="qrmp-est" role="status">${est}</p>
+<div class="btns">${q.estado==='vencido'||q.estado==='error'?'<button class="primary" data-a="pagarQRMesa">Volver a intentar</button>':''}<button class="${q.estado==='pagado'?'primary':'ghost'}" data-a="qrMesaCerrar">${q.estado==='pagado'?'Listo':'Volver'}</button></div>`}
+function qrMesaModal(){modal(vQRMesa())}
+function qrMesaParar(){if(QRM&&QRM.t){clearInterval(QRM.t);QRM.t=null}}
+async function qrMesaTick(){const q=QRM;if(!q||!q.cobro||q.ocupado)return;q.ocupado=true;
+  try{const r=await NB.mpqrMesa({accion:'mesa-consultar',local:CLID,cobro:q.cobro});if(QRM!==q)return;
+    if(r.estado==='pagado'){qrMesaParar();q.estado='pagado';if(document.querySelector('#modal .qrmp-est'))qrMesaModal();cargarCarta();return}
+    if(r.estado==='vencido'||r.estado==='cancelado'||Date.now()>q.vence+15000){qrMesaParar();q.estado='vencido';if(document.querySelector('#modal .qrmp-est'))qrMesaModal()}}
+  catch(e){}finally{q.ocupado=false}}
+const QRMESA_ACC={
+  async pagarQRMesa(){qrMesaParar();QRM={estado:'creando'};qrMesaModal();
+    try{const r=await NB.mpqrMesa({accion:'mesa-cobrar',local:CLID,mesa:C.mesa});if(!QRM)return;Object.assign(QRM,{cobro:r.cobro,total:r.total,vence:r.vence||Date.now()+600000,estado:'pendiente'});qrMesaModal();QRM.t=setInterval(qrMesaTick,3000)}
+    catch(e){if(!QRM)return;if(e.pagado){QRM.estado='pagado';cargarCarta()}else{QRM.estado='error';QRM.error=e.message}qrMesaModal()}},
+  qrMesaCerrar(){qrMesaParar();QRM=null;closeModal();cargarCarta()},
+  async mqMesas(b){if(b){b.disabled=true;b.textContent='Creando los QR…'}
+    try{let r;for(let i=0;i<4;i++){r=await NB.mpqr({accion:'mesas',local:LID});if(!r.faltan)break}
+      MPC.qr=Object.assign({},MPC.qr,{mesas:r.mesas});S.mpqr=Object.assign({},S.mpqr,{activo:true,mesas:true});save();render();toast(r.faltan?`Faltan ${r.faltan} mesas: tocá de nuevo`:'Listo: cada mesa tiene su QR de pago')}
+    catch(e){if(b){b.disabled=false;b.textContent='Crear QR de pago de las mesas'}toast(e.message,1)}},
+  mqMesasOff(){S.mpqr=Object.assign({},S.mpqr,{mesas:false});save();render();toast('Los clientes ya no ven la opción de pagar con el QR de la mesa')},
+  mqMesasOn(){S.mpqr=Object.assign({},S.mpqr,{mesas:true});save();render();toast('Los clientes ya pueden pagar con el QR de la mesa')},
+  mqMesasImprimir(){const m=(MPC&&MPC.qr&&MPC.qr.mesas)||{},ks=Object.keys(m).map(Number).sort((a,b)=>a-b);if(!ks.length)return;
+    const imgs=ks.map(n=>{const tmp=document.createElement('div');new QRCode(tmp,{text:m[n],width:480,height:480,correctLevel:QRCode.CorrectLevel.M});return{n,tmp}});
+    setTimeout(()=>{const w=window.open('','_blank');if(!w)return toast('Permití las ventanas emergentes para imprimir',1);
+      const cel=imgs.map(({n,tmp})=>{const c=tmp.querySelector('canvas'),src=c?c.toDataURL('image/png'):(tmp.querySelector('img')||{}).src;return`<div class="t"><b>Mesa ${n}</b><img src="${src}" alt="QR de pago mesa ${n}"><p>Pagá con Mercado Pago<br>o la app de tu banco</p><small>Primero tocá "Pagar con el QR de la mesa" en la carta</small></div>`}).join('');
+      w.document.write(`<!doctype html><title>QR de pago de las mesas</title><style>body{font-family:system-ui,sans-serif;margin:10mm}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:8mm}.t{border:1px dashed #999;border-radius:6px;padding:6mm;text-align:center;break-inside:avoid}.t b{font-size:20px}.t img{width:55mm;height:55mm;display:block;margin:4mm auto}.t p{margin:2mm 0;font-size:14px}.t small{color:#555;font-size:11px}h1{font-size:16px;margin:0 0 6mm}</style><h1>${esc(S.negocio||'')} · QR de pago de las mesas</h1><div class="g">${cel}</div><script>onload=()=>setTimeout(()=>print(),400)<\/script>`);w.document.close()},150)}
+};
+Object.assign(A,QRMESA_ACC);
+function vMPQRMesas(q){const m=q.mesas||{},hay=Object.keys(m).length,tot=+S.mesas||0,on=!!(S.mpqr&&S.mpqr.mesas);
+  const h='<div class="mpqr-aj"><h3>QR de pago en cada mesa</h3>';
+  if(!hay)return h+`<p class="muted" style="margin-top:0">Un QR de Mercado Pago pegado en cada mesa, al lado del de la carta. El cliente toca <b>Pagar con el QR de la mesa</b> y lo escanea con Mercado Pago o la app de su banco, sin levantarse. Se cobra solo en caja.</p><div class="btns"><button class="primary" data-a="mqMesas">Crear QR de pago de las ${tot} mesas</button></div></div>`;
+  return h+`<p style="margin-top:0"><span class="chip ${on?'ok':'warn'}">${on?'✓ Activo':'Apagado'}</span> ${hay} ${hay===1?'mesa tiene':'mesas tienen'} QR de pago.${hay<tot?` Faltan ${tot-hay}.`:''}</p>
+<div class="btns">${hay<tot?'<button class="primary" data-a="mqMesas">Crear los que faltan</button>':''}<button data-a="mqMesasImprimir">Imprimir QR de pago de las mesas</button>${on?'<button class="ghost" data-a="mqMesasOff">Apagar</button>':'<button data-a="mqMesasOn">Encender</button>'}</div></div>`}
+// respaldo: si un cliente pagó con el QR de la mesa y cerró el celular, la caja lo registra igual
+setInterval(()=>{try{if(!enNube()||!LID||clienteMode||!(S.mpqr&&S.mpqr.mesas)||!NB||!NB.mpqr)return;if(!(S.pedidos||[]).some(p=>p.origen==='mesa'&&!p.cobrado&&!p.anulado))return;NB.mpqr({accion:'revisar',local:LID}).catch(()=>{})}catch(e){}},45000);
 let MPQRF={calle:'',numero:'',ciudad:'',provincia:'',lat:null,lng:null};
 document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(k)MPQRF[k]=e.target.value});
 document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.mq;if(!k)return;MPQRF[k]=e.target.value;if(k==='provincia'&&MPQRF.ciudades){MPQRF.ciudades=null;MPQRF.ciudad='';render()}});
