@@ -1063,3 +1063,7 @@ begin
   );
 end $$;
 grant execute on function public.taca_vt_resumen(text) to authenticated;
+-- Permisos base de las tablas del equipo (las políticas RLS deciden qué ve cada uno).
+grant select, insert, update, delete on public.taca_vt_equipo, public.taca_vt_config, public.taca_vt_contactos, public.taca_vt_actividad, public.taca_vt_tareas, public.taca_vt_objetivos to authenticated;
+grant usage, select on sequence public.taca_vt_actividad_id_seq to authenticated;
+grant execute on function public.taca_vt_yo_id(), public.taca_vt_soy_admin(), public.taca_vt_soy_socio() to authenticated;
