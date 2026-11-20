@@ -773,3 +773,29 @@ create table if not exists public.taca_ajustes (
 alter table public.taca_ajustes enable row level security;
 revoke all on public.taca_ajustes from anon, authenticated;
 grant select, insert, update on public.taca_ajustes to service_role;
+
+
+-- Avisos con la app cerrada (notificaciones push). Solo los maneja el servidor (service_role).
+create table if not exists public.taca_push (
+  endpoint  text primary key,
+  local_id  text not null references public.taca_locales(id) on delete cascade,
+  p256dh    text not null,
+  auth      text not null,
+  user_id   uuid,
+  equipo_id bigint,
+  creado    timestamptz not null default now()
+);
+create index if not exists taca_push_local on public.taca_push(local_id);
+alter table public.taca_push enable row level security;
+revoke all on public.taca_push from anon, authenticated;
+grant select, insert, update, delete on public.taca_push to service_role;
+
+create table if not exists public.taca_push_avisos (
+  local_id text not null,
+  clave    text not null,
+  ts       timestamptz not null default now(),
+  primary key (local_id, clave)
+);
+alter table public.taca_push_avisos enable row level security;
+revoke all on public.taca_push_avisos from anon, authenticated;
+grant select, insert, update, delete on public.taca_push_avisos to service_role;

@@ -1,12 +1,13 @@
 // Varias funciones chicas en una sola (el plan gratis de Vercel permite hasta 12).
 // Las direcciones de siempre siguen andando por las reglas de vercel.json:
-//   /api/alerta  /api/respaldo  /api/estado  /api/wa-suscribir  /api/ia
+//   /api/alerta  /api/respaldo  /api/estado  /api/wa-suscribir  /api/ia  /api/push
 const H = {
   alerta: require('./_h_alerta'),
   respaldo: require('./_h_respaldo'),
   estado: require('./_h_estado'),
   'wa-suscribir': require('./_h_wa_suscribir'),
-  ia: require('./_h_ia')
+  ia: require('./_h_ia'),
+  push: require('./_h_push')
 };
 module.exports = (req, res) => {
   const r = String((req.query && req.query.r) || '');

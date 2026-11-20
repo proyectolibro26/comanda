@@ -651,6 +651,9 @@ function supaNube(sb){
     adminWa:(local,phoneId,numero)=>rpc('taca_admin_wa',{p_local:local,p_phone_id:phoneId,p_numero:numero}),
     async ia(tipo,archivos,extra){const t=await this.auth.token();const ac=new AbortController(),to=setTimeout(()=>ac.abort(),75000);let r;try{r=await fetch('/api/ia',{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(Object.assign({tipo,archivos},extra||{}))})}catch(e){throw new Error(e.name==='AbortError'?'Tardó demasiado. Probá con menos fotos':'Sin conexión. Probá de nuevo')}finally{clearTimeout(to)}
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No pudimos leer el archivo');return j},
+    async push(datos){const h={'Content-Type':'application/json'};if(EQ)h['x-equipo']=EQ.t;else{const t=await this.auth.token();if(t)h.Authorization='Bearer '+t}
+      const r=await fetch('/api/push',{method:'POST',headers:h,body:JSON.stringify(datos)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo');return j},
+    async pushClave(){const r=await fetch('/api/push');const j=await r.json();if(!r.ok||!j.clave)throw new Error('sin clave');return j.clave},
     async waSuscribir(waba){const t=await this.auth.token();const r=await fetch('/api/wa-suscribir',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({waba})});
       const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo suscribir');return j},
     async waEnviar(local,tel,texto){const t=await this.auth.token();const r=await fetch('/api/wa-enviar',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,tel,texto})});
@@ -1315,7 +1318,7 @@ function vStock(){
   const dueno=rol==='dueno',bajos=S.insumos.filter(i=>i.stock<=i.min),tv=S.insumos.reduce((a,i)=>a+i.stock*i.costo,0);
   const porProv={};bajos.forEach(i=>{(porProv[i.prov]=porProv[i.prov]||[]).push(i)});
   return`<div class="ptitle"><div><h1>Stock y compras</h1><small>Cada plato vendido descuenta los insumos de su receta (con sus modificadores). La carta marca "agotado" sola.</small></div>${dueno?`<div class="btns" style="margin:0"><label class="btn-like btn-ia"><input type="file" data-iafile="factura" accept="image/*,application/pdf" multiple hidden>${ico('ia')}Cargar factura con IA</label><button class="ghost" data-a="impAbrir" data-t="insumos">Importar Excel</button></div>`:''}</div>
-${dueno&&'Notification' in window&&Notification.permission==='default'&&ls('taca-avisos-stock')!=='off'?'<div class="ia-banner" style="cursor:default"><span class="ia-ic">'+ico('stock')+'</span><span><b>¿Te avisamos cuando algo se agota?</b><small>Te llega una notificación en este equipo cuando un plato se queda sin stock o un insumo baja del mínimo.</small></span><button class="ia-go" data-a="avisosPedir" style="border:0;cursor:pointer">Activar</button></div>':''}
+${dueno&&'Notification' in window&&Notification.permission==='default'&&ls('taca-avisos-stock')!=='off'?'<div class="ia-banner" style="cursor:default"><span class="ia-ic">'+ico('stock')+'</span><span><b>¿Te avisamos cuando algo se agota?</b><small>Te llega una notificación cuando un plato se queda sin stock o un insumo baja del mínimo, aunque ta-ca esté cerrado.</small></span><button class="ia-go" data-a="avisosPedir" style="border:0;cursor:pointer">Activar</button></div>':''}
 ${bajos.length?`<div class="card" style="border-color:var(--warn)"><h2>⚠️ Para reponer — pedido sugerido</h2>${Object.entries(porProv).map(([pid,l])=>{const pv=prov(pid)||{nombre:'Sin proveedor',tel:''};return`<div class="grp"><div class="row"><b>${esc(pv.nombre)}</b><small style="display:inline">${esc(pv.tel)}</small></div><small>${l.map(i=>`${esc(i.nombre)}: quedan ${num(i.stock)} ${i.u} → pedir ${num(sugerido(i))} ${i.u}`).join(' · ')}</small>${dueno?`<div class="btns"><button class="small" data-a="copiarPedidoProv" data-p="${pid}">📋 Copiar pedido para WhatsApp</button></div>`:''}</div>`}).join('')}</div>`:''}
 <div class="grid2"><div>
 <section class="card"><h2>Mercadería</h2><div class="tablewrap"><table><thead><tr><th>Insumo</th><th class="n">Stock</th><th class="n">Mínimo</th>${dueno?'<th class="n">Costo</th><th class="n">Valor</th><th></th>':''}</tr></thead><tbody>
@@ -1753,6 +1756,7 @@ function render(){
   const app=$('#app');document.body.classList.remove('con-bnav');render2();const tf=document.getElementById('temaflot');if(tf)tf.remove();
   if(!pantallaMode&&!clienteMode&&!app.querySelector('header.top')){const d=document.createElement('div');d.id='temaflot';d.innerHTML=botonTema(1);document.body.appendChild(d)}
   avisosStock();
+  if(!PUSH.intentado&&rol&&enNube()&&LID){PUSH.intentado=true;setTimeout(()=>pushActivar(true),3000)}
 }
 function render2(){
   const app=$('#app');
@@ -2456,17 +2460,36 @@ function avisosStock(){try{if(!rol||clienteMode||pantallaMode||!S.platos)return;
   if(!STK.base){STK.base=ahora;return}
   const nuevos=[...ahora.entries()].filter(([k])=>!STK.base.has(k));STK.base=ahora;if(!nuevos.length)return;
   const txt=nuevos.map(([,t])=>t),corto=txt.length>2?`${txt[0]} y ${txt.length-1} más`:txt.join(' · ');
+  pushAvisar(nuevos.some(([k])=>k[0]==='p')?'Se agotó un plato':'Stock bajo',nuevos);
   toast('⚠️ '+corto,1);try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}
   if(ls('taca-avisos-stock')!=='off'&&'Notification' in window&&Notification.permission==='granted'){
     const titulo=nuevos.some(([k])=>k[0]==='p')?'Se agotó un plato':'Stock bajo',cuerpo=txt.join('\n');
     try{navigator.serviceWorker&&navigator.serviceWorker.ready?navigator.serviceWorker.ready.then(r=>r.showNotification(titulo,{body:cuerpo,icon:'/icono-192.png',tag:'taca-stock',renotify:true})).catch(()=>new Notification(titulo,{body:cuerpo})):new Notification(titulo,{body:cuerpo})}catch(e){}}}catch(e){}}
 function vAvisosStock(){const sop='Notification' in window,perm=sop?Notification.permission:'no',on=ls('taca-avisos-stock')!=='off';
-  return`<section class="card"><h2>Avisos de stock</h2><p class="muted" style="margin-top:0">Cuando un plato se agota o un insumo baja de su mínimo, aparece un aviso en pantalla${sop?' y, si lo activás, una notificación en este equipo (aunque estés en otra app)':''}.</p>
+  return`<section class="card"><h2>Avisos de stock</h2><p class="muted" style="margin-top:0">Cuando un plato se agota o un insumo baja de su mínimo, aparece un aviso en pantalla${sop?' y, si lo activás, una notificación en este equipo, aunque ta-ca esté cerrado':''}.</p>
 ${!sop?'<p class="muted" style="font-size:14px">Este navegador no permite notificaciones: vas a ver el aviso dentro de ta-ca.</p>':perm==='granted'?`<div class="row"><span>Notificaciones en este equipo</span><label class="sw-l"><input type="checkbox" data-a="avisosToggle" ${on?'checked':''}> ${on?'Activadas':'Pausadas'}</label></div>`:perm==='denied'?'<p class="muted" style="font-size:14px">Las notificaciones están bloqueadas en este navegador. Habilitalas desde el candado de la barra de direcciones.</p>':'<div class="btns"><button class="primary" data-a="avisosPedir">Activar notificaciones en este equipo</button></div>'}
-<p class="muted" style="font-size:13px;margin:10px 0 0">El mínimo de cada insumo lo cambiás en Stock y compras › + Compra.</p></section>`}
+${perm==='granted'&&on&&enNube()&&!modoDemo()?'<div class="btns"><button class="small" data-a="avisosProbar">Mandar un aviso de prueba</button></div>':''}
+${esIOS()&&!esApp()?'<p class="chip warn" style="white-space:normal;margin-top:10px">En iPhone, para recibir avisos con ta-ca cerrado, primero instalala: botón Compartir › Agregar a inicio, y abrila desde ese ícono.</p>':''}
+<p class="muted" style="font-size:13px;margin:10px 0 0">El mínimo de cada insumo lo cambiás en Stock y compras › + Compra. Con los avisos activados te llegan aunque ta-ca esté cerrado.</p></section>`}
+
+/* ---------- avisos con la app cerrada (push) ---------- */
+const PUSH={ok:false,intentado:false};
+function pushSoportado(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window&&location.protocol==='https:'}
+async function pushActivar(silencioso){
+  if(!pushSoportado()||modoDemo()||!enNube()||!LID||Notification.permission!=='granted'||ls('taca-avisos-stock')==='off')return false;
+  try{const reg=await navigator.serviceWorker.ready,clave=await NB.pushClave(),u8=Uint8Array.from(atob(clave.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+    let sub=await reg.pushManager.getSubscription();
+    if(sub){const k=sub.options&&sub.options.applicationServerKey?new Uint8Array(sub.options.applicationServerKey):null;if(k&&(k.length!==u8.length||k.some((x,i)=>x!==u8[i]))){await sub.unsubscribe();sub=null}}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8});
+    const j=sub.toJSON();await NB.push({accion:'suscribir',local:LID,sub:{endpoint:j.endpoint,keys:j.keys}});ls('taca-push-ep',j.endpoint);PUSH.ok=true;return true}
+  catch(e){if(!silencioso)toast('No pudimos activar los avisos con la app cerrada en este equipo',1);return false}}
+async function pushDesactivar(){try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){const ep=sub.endpoint;await sub.unsubscribe();await NB.push({accion:'quitar',endpoint:ep})}}catch(e){}ls('taca-push-ep',null);PUSH.ok=false}
+function pushAvisar(titulo,lista){if(modoDemo()||!enNube()||!LID)return;NB.push({accion:'avisar',local:LID,titulo,avisos:lista.map(([clave,texto])=>({clave,texto})),excepto:ls('taca-push-ep')||''}).catch(()=>{})}
+
 const AV_ACC={
-  async avisosPedir(){try{const r=await Notification.requestPermission();if(r==='granted'){ls('taca-avisos-stock','on');toast('Listo: te avisamos cuando algo se agote')}}catch(e){}render()},
-  avisosToggle(b){ls('taca-avisos-stock',b.checked?'on':'off');render()}
+  async avisosPedir(){try{const r=await Notification.requestPermission();if(r==='granted'){ls('taca-avisos-stock','on');const p=await pushActivar();toast(p?'Listo: te avisamos aunque ta-ca esté cerrado':'Listo: te avisamos cuando algo se agote')}}catch(e){}render()},
+  async avisosProbar(){try{await pushActivar(true);const r=await NB.push({accion:'prueba',local:LID});toast(r.enviados?`Mandamos un aviso de prueba a ${r.enviados} equipo${r.enviados===1?'':'s'}`:'No hay equipos con avisos activados',r.enviados?0:1)}catch(e){toast(e.message,1)}},
+  async avisosToggle(b){ls('taca-avisos-stock',b.checked?'on':'off');if(b.checked)await pushActivar();else await pushDesactivar();render()}
 };
 Object.assign(A,FAC_ACC,AV_ACC);
 

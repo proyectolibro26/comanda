@@ -2,7 +2,7 @@
 // La página y nucleo.js: primero la red (así siempre llega la última versión) y si no hay, la copia guardada.
 // Librerías y tipografías de otros sitios: la copia guardada, y se actualiza por detrás.
 // Nunca se guardan /api ni Supabase: esos datos los maneja la app con su propia cola de cambios.
-const CACHE = 'taca-v9';
+const CACHE = 'taca-v10';
 const BASE = ['/app', '/nucleo.js', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png'];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
@@ -39,4 +39,21 @@ self.addEventListener('fetch', e => {
       return x || red;
     })));
   }
+});
+
+// Avisos con la app cerrada (stock agotado, etc.): llegan cifrados desde /api/push.
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { cuerpo: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.titulo || 'ta-ca', {
+    body: d.cuerpo || '', icon: '/icono-192.png', badge: '/icono-192.png', tag: d.tag || 'taca', renotify: true, data: { url: d.url || '/app' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/app';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    const c = cs.find(x => new URL(x.url).pathname.startsWith('/app'));
+    return c ? c.focus() : self.clients.openWindow(url);
+  }));
 });
