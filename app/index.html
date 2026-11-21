@@ -693,6 +693,7 @@ function supaNube(sb){
       const j=await r.json().catch(()=>({}));if(!r.ok||!j.url)throw new Error(j.error||'No se pudo iniciar el pago');return j},
     adminLocales:()=>rpc('taca_admin_locales'),
     ventasEquipo:mes=>rpc('taca_vt_resumen',{p_mes:mes}),
+    soyVendedor:()=>rpc('taca_vt_yo_id'),
     async mpCuenta(local){const t=await this.auth.token();const r=await fetch('/api/mp-cuenta?local='+encodeURIComponent(local),{headers:{Authorization:'Bearer '+t}});
       const j=await r.json().catch(()=>({}));if(r.status===503)return{sinConfig:true};if(!r.ok)throw new Error(j.error||'No se pudo consultar');return j},
     async mpCuentaAccion(local,accion){const t=await this.auth.token();const r=await fetch('/api/mp-cuenta',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local,accion})});
@@ -953,7 +954,7 @@ async function arrancarCuentas(){
   if(AUTH.user){verAdmin();if(LID)conectar();else despuesDeEntrar()}
   render();
 }
-function verAdmin(){if(NB&&NB.esAdmin&&AUTH.user&&!EQ)NB.esAdmin().then(a=>{if(!!a!==!!AUTH.admin){AUTH.admin=!!a;renderSafe()}}).catch(()=>{})}
+function verAdmin(){if(NB&&NB.esAdmin&&AUTH.user&&!EQ)NB.esAdmin().then(a=>{if(!!a!==!!AUTH.admin){AUTH.admin=!!a;renderSafe()}}).catch(()=>{});if(NB&&NB.soyVendedor&&AUTH.user&&!EQ)NB.soyVendedor().then(v=>{if(!!v!==!!AUTH.vendedor){AUTH.vendedor=!!v;renderSafe()}}).catch(()=>{})}
 async function despuesDeEntrar(){
   verAdmin();
   if(LID){conectar();return}
@@ -1000,7 +1001,7 @@ function vLocales(){
 ${l.length?`<h2 style="text-align:left;margin-top:18px">Elegí el local</h2>${l.map(x=>{const e=x.estado||estadoPlan(x.plan,x.prueba_hasta,x.pagado_hasta),d=x.plan==='prueba'?Math.ceil((new Date(x.prueba_hasta)-Date.now())/864e5):null;
   return`<button class="mesa-c" style="width:100%;min-height:0;margin-bottom:8px" data-a="elegirLocal" data-id="${esc(x.id)}"><b>${esc(x.nombre)}</b><small>${x.rol==='dueno'?'Dueño':esc(x.rol)}${e==='bloqueado'?' · <b style="color:var(--bad)">en pausa</b>':e==='gracia'?' · vencido':x.plan==='activo'?' · abono al día':d!==null?' · prueba: quedan '+d+' días':''}</small></button>`}).join('')}`:'<p class="muted" style="margin-top:16px">Todavía no tenés ningún local en ta-ca.</p>'}
 <form data-f="nuevoLocal" class="inline" style="margin-top:10px;text-align:left"><label>${l.length?'Sumar otro local':'Creá tu local'}<input name="nombre" placeholder="Nombre del local" required></label><button class="primary">Crear</button></form>
-${AUTH.admin?'<p style="margin-top:14px"><button data-a="admAbrir">🛠 Panel Roman Web</button></p>':''}<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
+${AUTH.admin||AUTH.vendedor?`<p style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}${AUTH.vendedor?'<a class="btn" style="text-decoration:none" href="/equipo/">📈 Equipo de ventas</a>':''}</p>`:''}<p style="margin-top:16px"><button class="link" data-a="cerrarSesion">Cerrar sesión</button></p></div></div>`;
 }
 /* ---------- panel de Roman Web (solo admins) ---------- */
 const ADM={lista:null,f:'todos',q:'',cargando:false};
@@ -1124,7 +1125,7 @@ function vCuenta(){
 ${(()=>{const p=infoPlan();if(!p)return'';const t=p.plan==='suspendido'?'Suspendido':p.est==='gracia'?`Vencido · se pausa en ${p.corte} día${p.corte>1?'s':''}`:p.plan==='activo'?`${SY.info.abono?'Plan '+(PLANES.find(x=>x.id===SY.info.abono)||{nombre:SY.info.abono}).nombre+' · ':''}al día hasta ${fecha(p.vence)}`:`Prueba gratis · quedan ${p.dias} días`;
   return`<div class="row"><span>Plan</span><b class="${p.est!=='ok'||(p.dias!==null&&p.dias<=3)?'badt':''}">${t}</b></div>${SY.info.mp_estado?`<div class="row"><span>Mercado Pago</span><b>${{authorized:'Débito automático activo ✓',pending:'Esperando que cargues la tarjeta',paused:'Pausado',cancelled:'Dado de baja'}[SY.info.mp_estado]||esc(SY.info.mp_estado)}</b></div>`:''}<div class="btns" style="margin-top:4px"><button class="${p.plan==='activo'&&p.est==='ok'?'':'primary'}" data-a="verPlanes">${p.plan==='activo'?'Ver planes':'Elegir plan'}</button></div>`})()}
 <p class="muted" style="font-size:14px">Para sumar la tablet de cocina o el celular del mozo usá <b>📲 Equipos del local › Vincular un equipo</b>: así no tenés que poner tu contraseña en esos equipos.</p>
-<div class="btns"><a class="btn" style="text-decoration:none" href="https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent('Hola, necesito ayuda con ta-ca (local '+(S.negocio||'')+')')}" target="_blank" rel="noopener">💬 Soporte por WhatsApp</a><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
+<div class="btns">${AUTH.vendedor?'<a class="btn" style="text-decoration:none" href="/equipo/">📈 Equipo de ventas</a>':''}<a class="btn" style="text-decoration:none" href="https://wa.me/${CONTACTO_PAGO.whatsapp}?text=${encodeURIComponent('Hola, necesito ayuda con ta-ca (local '+(S.negocio||'')+')')}" target="_blank" rel="noopener">💬 Soporte por WhatsApp</a><button data-a="cambiarLocal">Cambiar de local</button>${AUTH.admin?'<button data-a="admAbrir">🛠 Panel Roman Web</button>':''}<button class="ghost bad" data-a="cerrarSesion">Cerrar sesión en este equipo</button></div></section>`;
 }
 
 const C={mesa:1,cart:[]};
@@ -2136,7 +2137,7 @@ ${(d.egresos||[]).length?`<h3 style="margin:14px 0 6px">Gastos</h3>${d.egresos.m
   waVer(b){WAV=b.dataset.tel;render()},
   verPlanes(){modal(`<h2>Planes de ta-ca</h2>${vPlanes()}<div class="btns"><button class="ghost" data-a="close">Cerrar</button></div>`,true)},
   async yaPague(b){b.disabled=true;b.textContent='Revisando…';await refrescarInfo();if(bloqueado()){toast('Todavía figura sin pagar. Si ya pagaste, en un rato se activa.',1);render()}},
-  cerrarSesion(){if(EQ)return A.desvincularEste();AUTH.admin=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
+  cerrarSesion(){if(EQ)return A.desvincularEste();AUTH.admin=false;AUTH.vendedor=false;AUTH.panel=false;ADM.lista=null;salirTodo(true)},
   admAbrir(){AUTH.panel=true;closeModal();cargarAdmin()},
   admCerrar(){AUTH.panel=false;render()},
   admRecargar(){cargarAdmin()},

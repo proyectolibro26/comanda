@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#0b1120">
 <link rel="icon" href="/icono-192.png">
 <link rel="apple-touch-icon" href="/icono-180.png">
+<link rel="manifest" href="/equipo/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ta-ca Equipo">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 @font-face{font-family:Unbounded;src:url(/assets/fonts/unbounded.woff) format('woff');font-weight:400 900;font-display:swap}
@@ -392,11 +395,12 @@ async function iniciar(){
   YO=miembro(id)||null;CARG=false;render();
 }
 (async()=>{
-  try{sb=window.supabase.createClient(NUBE.url,NUBE.key,{auth:{persistSession:true,detectSessionInUrl:true,storageKey:'taca-equipo'}})}catch(e){sb=null}
+  try{sb=window.supabase.createClient(NUBE.url,NUBE.key,{auth:{persistSession:true,detectSessionInUrl:true}})}catch(e){sb=null}
   if(!sb)return render();
   sb.auth.onAuthStateChange((ev,s)=>{if(ev==='PASSWORD_RECOVERY'){SES=s;LOGIN={modo:'nueva',msg:''};render()}});
   const {data}=await sb.auth.getSession();SES=data.session;
   if(SES&&LOGIN.modo!=='nueva')await iniciar();else render();
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
   setInterval(async()=>{if(YO&&document.visibilityState==='visible'&&!$('#modal').innerHTML){try{await cargar();render()}catch(e){}}},90000);
 })();
 </script>
