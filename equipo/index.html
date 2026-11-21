@@ -83,6 +83,7 @@ tr.yo td{background:rgba(196,248,42,.06)}
 .mod>.btns:last-child{position:sticky;bottom:-20px;margin:16px -20px -20px;padding:12px 20px 16px;background:var(--card);border-top:1px solid var(--line)}
 .f2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .acciones{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.acciones a.primary{background:var(--acc);color:#0b1120;font-weight:600;box-shadow:none}
 .acciones a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:10px;background:var(--card2);box-shadow:0 0 0 1px var(--line);color:var(--tx);text-decoration:none;font-size:14px}
 .acciones a.wa{background:#25d366;color:#05230f;font-weight:700;box-shadow:none}
 .acciones a.dis{opacity:.4;pointer-events:none}
@@ -126,6 +127,20 @@ const hoyAR=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
 const mesAR=d=>new Date((d?new Date(d).getTime():Date.now())-3*3600e3).toISOString().slice(0,7);
 const nombreMes=m=>{const[a,b]=m.split('-');return new Date(+a,+b-1,15).toLocaleDateString('es-AR',{month:'long',year:'numeric'})};
 const sumarMes=(m,k)=>{const[a,b]=m.split('-').map(Number);const d=new Date(a,b-1+k,15);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+// Cita en el calendario: link de Google Calendar y archivo .ics (iPhone / Outlook). Hora de Argentina.
+const citaTxt=c=>'Demo ta-ca · '+c.nombre;
+const citaDet=c=>[c.proximo,c.telefono?'Tel: '+c.telefono:'',c.whatsapp?'WhatsApp: https://wa.me/'+c.whatsapp:'',c.notas?'Notas: '+c.notas:'',c.maps?'Mapa: '+c.maps:'','Ficha: '+location.origin+'/equipo/'].filter(Boolean).join('\n');
+const citaLugar=c=>[c.direccion,c.zona,'Rosario'].filter(Boolean).join(', ');
+function citaRango(c){const f=c.fecha.replace(/-/g,'');if(!c.hora){const d=new Date(c.fecha+'T12:00:00');d.setDate(d.getDate()+1);return{dia:1,a:f,b:d.toISOString().slice(0,10).replace(/-/g,'')}}
+  const [h,m]=c.hora.split(':').map(Number),fin=h*60+m+60,p=n=>String(n).padStart(2,'0');
+  return{a:f+'T'+p(h)+p(m)+'00',b:f+'T'+p(Math.min(23,Math.floor(fin/60)))+p(fin>=1440?59:fin%60)+'00'}}
+function gcalLink(c){const r=citaRango(c);return'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(citaTxt(c))+'&dates='+r.a+'/'+r.b+(r.dia?'':'&ctz=America/Argentina/Buenos_Aires')+'&location='+encodeURIComponent(citaLugar(c))+'&details='+encodeURIComponent(citaDet(c))}
+function icsLink(c){const r=citaRango(c),e=t=>String(t).replace(/[\\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
+  const t=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ta-ca//equipo//ES','BEGIN:VEVENT','UID:'+c.id+'-'+r.a+'@ta-ca.com.ar','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z',
+    r.dia?'DTSTART;VALUE=DATE:'+r.a:'DTSTART;TZID=America/Argentina/Buenos_Aires:'+r.a,r.dia?'DTEND;VALUE=DATE:'+r.b:'DTEND;TZID=America/Argentina/Buenos_Aires:'+r.b,
+    'SUMMARY:'+e(citaTxt(c)),'LOCATION:'+e(citaLugar(c)),'DESCRIPTION:'+e(citaDet(c)),'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+e(citaTxt(c)),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  return'data:text/calendar;charset=utf-8,'+encodeURIComponent(t)}
+const botonesCita=c=>c.fecha?`<a class="primary" href="${esc(gcalLink(c))}" target="_blank" rel="noopener">Agregar a Google Calendar</a><a href="${esc(icsLink(c))}" download="cita-${esc(c.id)}.ics">Calendario del iPhone</a>`:'';
 const fechaCorta=f=>f?new Date(f+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}):'';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const ICO={
@@ -221,6 +236,7 @@ function vRes(){
 <div class="card"><h3 style="margin-bottom:8px">Mis objetivos</h3>${bloqueProg(yoL,yoO)}</div>
 <div class="card"><h3 style="margin-bottom:8px">Objetivos del equipo</h3>${bloqueProg(gL,gO)}</div>
 </div>
+${(()=>{const cs=D.contactos.filter(c=>c.estado==='Demo agendada'&&c.fecha&&c.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||'')).localeCompare(b.fecha+(b.hora||''))).slice(0,8);return cs.length?`<div class="card" style="margin-top:12px"><h3 style="margin-bottom:8px">Próximas citas</h3>${cs.map(c=>`<div class="prog" style="grid-template-columns:1fr auto auto;gap:10px"><button class="link" style="text-align:left" data-a="verC" data-id="${esc(c.id)}">${esc(c.nombre)}</button><span class="muted">${esc(nombre(c.vendedor)||'')}</span><span class="${c.fecha===hoy?'':'muted'}">${c.fecha===hoy?'<b>Hoy</b>':esc(fechaCorta(c.fecha))}${c.hora?' · '+esc(c.hora):''}</span></div>`).join('')}</div>`:''})()}
 ${mios.length||misT.length?`<div class="card" style="margin-top:12px"><h3 style="margin-bottom:8px">Para hoy</h3>
 ${mios.slice(0,6).map(c=>`<div class="prog" style="grid-template-columns:1fr auto"><button class="link" style="text-align:left" data-a="verC" data-id="${esc(c.id)}">${esc(c.nombre)}</button><span class="${c.fecha<hoy?'vence':'muted'}">${esc(c.proximo||'Seguimiento')} · ${fechaCorta(c.fecha)}</span></div>`).join('')}
 ${misT.slice(0,5).map(t=>`<div class="prog" style="grid-template-columns:1fr auto"><span>${esc(t.titulo)}</span><span class="${t.vence&&t.vence<hoy?'vence':'muted'}">${t.vence?fechaCorta(t.vence):''}</span></div>`).join('')}</div>`:''}
@@ -302,8 +318,9 @@ ${wa?'':'<p class="muted" style="font-size:13px;margin:0 0 8px">No tiene WhatsAp
 <div class="f2"><label>Estado<select name="estado" data-estado="1">${ESTADOS.map(e=>`<option${e===c.estado?' selected':''}>${e}</option>`).join('')}</select></label>
 <label>Lo atiende<select name="vendedor"><option value="">Sin asignar</option>${D.equipo.filter(e=>e.activo).map(e=>`<option value="${esc(e.id)}"${e.id===c.vendedor?' selected':''}>${esc(e.nombre)}</option>`).join('')}</select></label></div>
 <div id="planVenta" style="${c.estado==='Pagó'&&!yaHito(c.id,'venta')?'':'display:none'};margin-top:10px"><label>Plan que contrató<select name="plan"><option value="local">Local (${fmt(cfg().precios.local)})</option><option value="encendido">Encendido (${fmt(cfg().precios.encendido)})</option></select></label></div>
-<div class="f2" style="margin-top:10px"><label>Próximo paso<input name="proximo" value="${esc(c.proximo||'')}" placeholder="Llamar el día 3 de la prueba"></label>
-<label>Fecha<input name="fecha" type="date" value="${esc(c.fecha||'')}"></label></div>
+<label style="margin-top:10px">Próximo paso<input name="proximo" value="${esc(c.proximo||'')}" placeholder="Demo con el dueño / Llamar el día 3 de la prueba"></label>
+<div class="f2" style="margin-top:10px"><label>Fecha<input name="fecha" type="date" value="${esc(c.fecha||'')}"></label><label>Hora (si es una cita)<input name="hora" type="time" value="${esc(c.hora||'')}"></label></div>
+${c.fecha?`<div class="acciones" style="margin-top:10px">${botonesCita(c)}</div>`:''}
 <div class="f2" style="margin-top:10px"><label>Teléfono<input name="telefono" value="${esc(c.telefono||'')}" inputmode="tel"></label><label>WhatsApp (549…)<input name="whatsapp" value="${esc(c.whatsapp||'')}" inputmode="numeric" placeholder="5493411234567"></label></div>
 <label style="margin-top:10px">Notas<textarea name="notas" rows="3" placeholder="Quién atiende, qué usan hoy, qué les dolió…">${esc(c.notas||'')}</textarea></label>
 ${c.actualizado_por?`<p class="muted" style="font-size:12px;margin:8px 0 0">Último cambio: ${esc(nombre(c.actualizado_por))}, ${new Date(c.actualizado).toLocaleString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</p>`:''}
@@ -354,8 +371,8 @@ const FORM={
   async olvido(d){await sb.auth.resetPasswordForEmail(d.email.trim(),{redirectTo:location.origin+'/equipo/'});LOGIN={modo:'entrar',msg:'Si ese mail tiene cuenta, te llegó un link para elegir otra contraseña.'};render()},
   async nueva(d){const r=await sb.auth.updateUser({password:d.pass});if(r.error){LOGIN={modo:'nueva',msg:'No se pudo cambiar. Probá de nuevo.',mal:1};return render()}LOGIN={modo:'entrar',msg:''};toast('Contraseña cambiada');await iniciar()},
   async guardarC(d,f){const c=D.contactos.find(x=>x.id===f.dataset.id);if(!c)return;
-    const antes=ESTADOS.indexOf(c.estado),desp=ESTADOS.indexOf(d.estado);
-    const cambios={estado:d.estado,vendedor:d.vendedor||null,proximo:d.proximo.trim()||null,fecha:d.fecha||null,notas:d.notas.trim()||null,telefono:d.telefono.trim()||null,whatsapp:d.whatsapp.replace(/\D/g,'')||null,actualizado:new Date().toISOString(),actualizado_por:YO.id};
+    const antes=ESTADOS.indexOf(c.estado),desp=ESTADOS.indexOf(d.estado),citaAntes=c.estado+'|'+(c.fecha||'')+'|'+(c.hora||'');
+    const cambios={estado:d.estado,vendedor:d.vendedor||null,proximo:d.proximo.trim()||null,fecha:d.fecha||null,hora:d.hora||null,notas:d.notas.trim()||null,telefono:d.telefono.trim()||null,whatsapp:d.whatsapp.replace(/\D/g,'')||null,actualizado:new Date().toISOString(),actualizado_por:YO.id};
     if(!cambios.vendedor&&desp>0&&desp<7)cambios.vendedor=YO.id;
     const r=await sb.from('taca_vt_contactos').update(cambios).eq('id',c.id);if(r.error)return toast('No se pudo guardar: '+r.error.message,1);
     Object.assign(c,cambios);
@@ -363,6 +380,8 @@ const FORM={
     if(desp>0&&desp<7)Object.keys(HITOS).map(Number).filter(k=>k<=desp&&(k>antes||antes===7)).forEach(k=>{const tipo=HITOS[k];if(yaHito(c.id,tipo))return;
       const fila={miembro:YO.id,contacto_id:c.id,tipo,detalle:c.nombre};if(tipo==='venta'){fila.plan=d.plan||'local';fila.monto=cfg().precios[fila.plan]||0}nuevos.push(fila)});
     if(nuevos.length){const a=await sb.from('taca_vt_actividad').insert(nuevos).select();if(a.error)toast('Se guardó el local pero no se contó el avance',1);else D.actividad=a.data.concat(D.actividad)}
+    const cita=c.estado==='Demo agendada'&&c.fecha&&citaAntes!==c.estado+'|'+c.fecha+'|'+(c.hora||'');
+    if(cita){render();return modal(`<h2>Cita agendada</h2><p class="muted" style="margin:0 0 4px">${esc(c.nombre)} · ${esc(fechaCorta(c.fecha))}${c.hora?' a las '+esc(c.hora):''}</p><p style="margin:0 0 12px;font-size:14px">Agregala a tu calendario y te llega el aviso antes de la cita. El equipo la ve en <b>Próximas citas</b>.</p><div class="acciones">${botonesCita(c)}</div><div class="btns"><button type="button" data-a="cerrar">Listo</button></div>`)}
     cerrar();toast(nuevos.some(n=>n.tipo==='venta')?'¡Venta! Se sumó tu comisión':'Guardado');render()},
   async crearC(d){const nro=Math.max(0,...D.contactos.map(c=>c.nro||0))+1;const c={id:'c'+uid(),nro,nombre:d.nombre.trim(),tipo:d.tipo,zona:d.zona.trim()||null,direccion:d.direccion.trim()||null,telefono:d.telefono.trim()||null,instagram:d.instagram.trim()||null,prioridad:'Alta',vendedor:YO.id,estado:'Sin contactar',actualizado_por:YO.id};
     const r=await sb.from('taca_vt_contactos').insert(c).select().single();if(r.error)return toast('No se pudo agregar',1);D.contactos.push(r.data);cerrar();toast('Local agregado');render()},
