@@ -141,6 +141,8 @@ function icsLink(c){const r=citaRango(c),e=t=>String(t).replace(/[\\;,]/g,m=>'\\
     'SUMMARY:'+e(citaTxt(c)),'LOCATION:'+e(citaLugar(c)),'DESCRIPTION:'+e(citaDet(c)),'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+e(citaTxt(c)),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
   return'data:text/calendar;charset=utf-8,'+encodeURIComponent(t)}
 const botonesCita=c=>c.fecha?`<a class="primary" href="${esc(gcalLink(c))}" target="_blank" rel="noopener">Agregar a Google Calendar</a><a href="${esc(icsLink(c))}" download="cita-${esc(c.id)}.ics">Calendario del iPhone</a>`:'';
+// Aviso al Telegram de Roman Web cuando alguien agenda una cita (no frena nada si falla).
+async function avisarCita(id){try{const t=(await sb.auth.getSession()).data.session;if(!t)return;await fetch('/api/equipo',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t.access_token},body:JSON.stringify({accion:'cita',contacto:id})})}catch(e){}}
 const fechaCorta=f=>f?new Date(f+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}):'';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const ICO={
@@ -381,6 +383,7 @@ const FORM={
       const fila={miembro:YO.id,contacto_id:c.id,tipo,detalle:c.nombre};if(tipo==='venta'){fila.plan=d.plan||'local';fila.monto=cfg().precios[fila.plan]||0}nuevos.push(fila)});
     if(nuevos.length){const a=await sb.from('taca_vt_actividad').insert(nuevos).select();if(a.error)toast('Se guardó el local pero no se contó el avance',1);else D.actividad=a.data.concat(D.actividad)}
     const cita=c.estado==='Demo agendada'&&c.fecha&&citaAntes!==c.estado+'|'+c.fecha+'|'+(c.hora||'');
+    if(cita)avisarCita(c.id);
     if(cita){render();return modal(`<h2>Cita agendada</h2><p class="muted" style="margin:0 0 4px">${esc(c.nombre)} · ${esc(fechaCorta(c.fecha))}${c.hora?' a las '+esc(c.hora):''}</p><p style="margin:0 0 12px;font-size:14px">Agregala a tu calendario y te llega el aviso antes de la cita. El equipo la ve en <b>Próximas citas</b>.</p><div class="acciones">${botonesCita(c)}</div><div class="btns"><button type="button" data-a="cerrar">Listo</button></div>`)}
     cerrar();toast(nuevos.some(n=>n.tipo==='venta')?'¡Venta! Se sumó tu comisión':'Guardado');render()},
   async crearC(d){const nro=Math.max(0,...D.contactos.map(c=>c.nro||0))+1;const c={id:'c'+uid(),nro,nombre:d.nombre.trim(),tipo:d.tipo,zona:d.zona.trim()||null,direccion:d.direccion.trim()||null,telefono:d.telefono.trim()||null,instagram:d.instagram.trim()||null,prioridad:'Alta',vendedor:YO.id,estado:'Sin contactar',actualizado_por:YO.id};

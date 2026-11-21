@@ -7,6 +7,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/equipo",
+      "destination": "/api/sistema?r=equipo"
+    },
+    {
       "source": "/api/mp-qr",
       "destination": "/api/sistema?r=mp-qr"
     },
