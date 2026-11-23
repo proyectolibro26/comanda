@@ -10,6 +10,7 @@ const { sb, tokenLocal, mpCon, cuerpo } = require('./_mpl');
 const { quien } = require('./_h_push');
 const { sbRpc } = require('./_lib');
 const { registrarPagoMesa } = require('./_cobro_mesa');
+const { telegram } = require('./_alerta');
 
 const enc = encodeURIComponent;
 const hash = (s, n) => crypto.createHash('sha256').update(s).digest('hex').slice(0, n).toUpperCase();
@@ -275,6 +276,12 @@ module.exports = async (req, res) => {
     if (valoresValidos(e, 'state_name')) return res.status(400).json({ error: 'Mercado Pago no reconoce esa provincia. Elegí otra de la lista' });
     if (e.status === 400 && e.mp && e.mp.message) return res.status(400).json({ error: 'Mercado Pago rechazó los datos: ' + String(e.mp.message).slice(0, 160) });
     if (e.status === 401) return res.status(409).json({ error: 'Se venció la conexión con Mercado Pago. Volvé a conectarlo en Ajustes', codigo: 'no_conectado' });
-    return res.status(502).json({ error: 'Mercado Pago no respondió. Probá de nuevo o cobrá con otro medio' });
+    // Detalle real de Mercado Pago, para el aviso a Roman Web y para mostrarlo en pantalla.
+    const m = e.mp || {}, er = (Array.isArray(m.errors) && m.errors[0]) || {};
+    const det = [e.status, er.code || m.error || m.code, er.message || m.message || e.message].filter(Boolean).join(' · ').slice(0, 220);
+    try { const bb = cuerpo(req); await telegram(`⚠️ QR Mercado Pago falló\nLocal: ${String(bb.local || '?').slice(0, 60)}\nAcción: ${String(bb.accion || '?').slice(0, 20)}\n${det}\n${JSON.stringify(m).slice(0, 600)}`); } catch (x) {}
+    if (e.status === 403) return res.status(403).json({ error: 'Mercado Pago no habilita el cobro con QR en esta cuenta (' + det + '). Revisá que la cuenta esté validada o cobrá con otro medio' });
+    if (e.status && e.status < 500) return res.status(400).json({ error: 'Mercado Pago rechazó el cobro: ' + det });
+    return res.status(502).json({ error: 'Mercado Pago no respondió (' + (det || 'sin detalle') + '). Probá de nuevo o cobrá con otro medio' });
   }
 };
