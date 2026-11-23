@@ -1044,9 +1044,12 @@ on conflict (id) do nothing;
 -- Resumen del equipo de ventas para el Panel Roman Web de la app.
 create or replace function public.taca_vt_resumen(p_mes text default to_char(now() at time zone 'America/Argentina/Buenos_Aires','YYYY-MM'))
 returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare ini timestamptz; fin timestamptz;
+declare ini timestamptz; fin timestamptz; cfg jsonb; por numeric; meses int;
 begin
   if taca_vt_yo_id() is null then return null; end if;
+  select data into cfg from taca_vt_config where id = 1;
+  por := coalesce((cfg->>'comVendedor')::numeric, 15000);
+  meses := greatest(1, coalesce((cfg->>'comMeses')::int, 6));
   ini := (p_mes || '-01')::timestamp at time zone 'America/Argentina/Buenos_Aires';
   fin := ini + interval '1 month';
   return jsonb_build_object(
@@ -1055,7 +1058,8 @@ begin
     'config', (select data from taca_vt_config where id = 1),
     'equipo', coalesce((select jsonb_agg(jsonb_build_object('id',id,'nombre',nombre,'rol',rol,'parte',parte,'email',email is not null) order by creado) from taca_vt_equipo where activo), '[]'::jsonb),
     'logros', coalesce((select jsonb_object_agg(miembro, t) from (select miembro, jsonb_object_agg(tipo, n) t from (select miembro, tipo, count(*) n from taca_vt_actividad where ts >= ini and ts < fin group by 1,2) a group by 1) b), '{}'::jsonb),
-    'comisiones', coalesce((select jsonb_object_agg(miembro, s) from (select miembro, sum(coalesce(monto,0)) s from taca_vt_actividad where tipo='venta' and ts >= ini and ts < fin group by 1) c), '{}'::jsonb),
+    'comisiones', coalesce((select jsonb_object_agg(miembro, n * por) from (select a.miembro, count(*) n from taca_vt_actividad a join taca_vt_equipo e on e.id = a.miembro and e.rol = 'vendedor' left join taca_vt_contactos k on k.id = a.contacto_id where a.tipo = 'venta' and a.ts >= ini - make_interval(months => meses - 1) and a.ts < fin and coalesce(k.estado, 'Pagó') = 'Pagó' group by 1) c), '{}'::jsonb),
+    'cuentas', coalesce((select jsonb_object_agg(miembro, n) from (select a.miembro, count(*) n from taca_vt_actividad a join taca_vt_equipo e on e.id = a.miembro and e.rol = 'vendedor' left join taca_vt_contactos k on k.id = a.contacto_id where a.tipo = 'venta' and a.ts >= ini - make_interval(months => meses - 1) and a.ts < fin and coalesce(k.estado, 'Pagó') = 'Pagó' group by 1) c), '{}'::jsonb),
     'objetivos', coalesce((select jsonb_object_agg(miembro, jsonb_build_object('contactos',contactos,'demos',demos,'pruebas',pruebas,'ventas',ventas)) from taca_vt_objetivos where mes = p_mes), '{}'::jsonb),
     'tareas', jsonb_build_object('total',(select count(*) from taca_vt_tareas where mes=p_mes),'hechas',(select count(*) from taca_vt_tareas where mes=p_mes and hecho)),
     'embudo', coalesce((select jsonb_object_agg(estado, n) from (select estado, count(*) n from taca_vt_contactos group by 1) e), '{}'::jsonb),
@@ -1068,3 +1072,6 @@ grant select, insert, update, delete on public.taca_vt_equipo, public.taca_vt_co
 grant usage, select on sequence public.taca_vt_actividad_id_seq to authenticated;
 grant execute on function public.taca_vt_yo_id(), public.taca_vt_soy_admin(), public.taca_vt_soy_socio() to authenticated;
 alter table public.taca_vt_contactos add column if not exists hora text;  -- hora de la cita (HH:MM)
+
+-- 23/11/2026: comisión por cuenta activa (vendedores: $15.000/mes por cuenta durante 6 meses) y fondo común 30%.
+update public.taca_vt_config set data = coalesce(data,'{}'::jsonb) || '{"fondoPct":30,"comVendedor":15000,"comMeses":6,"comision":"por_cuenta"}'::jsonb where id = 1;

@@ -164,7 +164,7 @@ function modal(h){$('#modal').innerHTML=`<div class="ov" data-ov="1"><div class=
 function cerrar(){$('#modal').innerHTML=''}
 const miembro=id=>D.equipo.find(x=>x.id===id);
 const nombre=id=>id==='todos'?'Todo el equipo':(miembro(id)||{}).nombre||id||'Sin asignar';
-const cfg=()=>Object.assign({precios:{local:49900,encendido:89900},fijos:168020,porLocal:3886,fondoPct:20},D.config||{});
+const cfg=()=>Object.assign({precios:{local:49900,encendido:89900},fijos:168020,porLocal:3886,fondoPct:30,comVendedor:15000,comMeses:6},D.config||{});
 
 /* ---------- datos ---------- */
 async function cargar(){
@@ -185,15 +185,17 @@ function objetivo(m,quien){return D.objetivos.find(o=>o.mes===m&&o.miembro===qui
 function plata(m){
   const c=cfg(),met=D.met||{},pag=+met.pagando||0,mrr=+met.mrr||0;
   const gastos=(+c.fijos||0)+pag*(+c.porLocal||0);
-  const com={};D.equipo.forEach(e=>com[e.id]=0);
-  actMes(m).filter(a=>a.tipo==='venta').forEach(a=>{com[a.miembro]=(com[a.miembro]||0)+(+a.monto||0)});
+  // Comisión: cada vendedor cobra un monto fijo por mes por cada cuenta que cerró y sigue pagando, durante sus primeros N meses (el mes de la venta cuenta como el 1.º).
+  const com={},ctas={};D.equipo.forEach(e=>{com[e.id]=0;ctas[e.id]=0});
+  const meses=Math.max(1,+c.comMeses||6),por=+c.comVendedor||0,desde=sumarMes(m,-(meses-1));
+  D.actividad.filter(a=>a.tipo==='venta'&&mesAR(a.ts)>=desde&&mesAR(a.ts)<=m).forEach(a=>{const e=miembro(a.miembro);if(!e||e.rol!=='vendedor')return;const k=D.contactos.find(x=>x.id===a.contacto_id);if(k&&k.estado!=='Pagó')return;ctas[a.miembro]=(ctas[a.miembro]||0)+1;com[a.miembro]=(com[a.miembro]||0)+por});
   const comTot=Object.values(com).reduce((s,v)=>s+v,0);
   const resultado=mrr-gastos-comTot;
   const fondo=resultado>0?resultado*(+c.fondoPct||0)/100:0;
   const reparto=resultado>0?resultado-fondo:0;
-  const filas=D.equipo.filter(e=>e.activo).map(e=>{const parte=e.rol==='socio'?reparto*(+e.parte||0)/100:0;return{e,com:com[e.id]||0,parte,total:(com[e.id]||0)+parte}});
+  const filas=D.equipo.filter(e=>e.activo).map(e=>{const parte=e.rol==='socio'?reparto*(+e.parte||0)/100:0;return{e,com:com[e.id]||0,ctas:ctas[e.id]||0,parte,total:(com[e.id]||0)+parte}});
   const ticket=(c.precios.local*0.6+c.precios.encendido*0.4);
-  return{mrr,cobrado:+met.cobrado_mes||0,pag,gastos,comTot,resultado,fondo,reparto,filas,ticket};
+  return{mrr,cobrado:+met.cobrado_mes||0,pag,gastos,comTot,resultado,fondo,reparto,filas,ticket,por,meses};
 }
 
 /* ---------- vistas ---------- */
@@ -249,17 +251,17 @@ ${misT.slice(0,5).map(t=>`<div class="prog" style="grid-template-columns:1fr aut
 <div class="card plata"><table><tbody>
 <tr><td>Abono mensual de los locales</td><td class="r num"><b>${fmt(p.mrr)}</b></td></tr>
 <tr><td>Gastos (fijos + ${p.pag} locales)</td><td class="r num">−${fmt(p.gastos)}</td></tr>
-<tr><td>Comisiones de cierre</td><td class="r num">−${fmt(p.comTot)}</td></tr>
+<tr><td>Comisiones de vendedores</td><td class="r num">−${fmt(p.comTot)}</td></tr>
 <tr><td><b>Queda</b></td><td class="r num"><b style="color:${p.resultado<0?'var(--bad)':'var(--acc)'}">${p.resultado<0?'−':''}${fmt(Math.abs(p.resultado))}</b></td></tr>
 <tr><td>Fondo común (${cfg().fondoPct}%)</td><td class="r num">${fmt(p.fondo)}</td></tr>
 <tr><td>Para repartir entre socios</td><td class="r num">${fmt(p.reparto)}</td></tr>
 <tr><td class="muted">Cobrado por Mercado Pago este mes</td><td class="r num muted">${fmt(p.cobrado)}</td></tr>
 </tbody></table>${p.resultado<0?'<p class="muted" style="margin:10px 0 0;font-size:13px">Todavía no alcanza para cubrir los gastos: ese mes no se reparte y lo que falta sale del fondo común.</p>':''}</div>
 <div class="card" style="overflow-x:auto"><table><thead><tr><th>Persona</th><th class="r">Comisiones</th><th class="r">Parte</th><th class="r">Cobra</th></tr></thead><tbody>
-${p.filas.map(f=>`<tr class="${f.e.id===YO.id?'yo':''}"><td>${esc(f.e.nombre)}${f.e.rol==='socio'?` <small class="muted">${+f.e.parte||0}%</small>`:''}</td><td class="r num">${fmt(f.com)}</td><td class="r num">${f.e.rol==='socio'?fmt(f.parte):'–'}</td><td class="r num"><b>${fmt(f.total)}</b></td></tr>`).join('')}
+${p.filas.map(f=>`<tr class="${f.e.id===YO.id?'yo':''}"><td>${esc(f.e.nombre)}${f.e.rol==='socio'?` <small class="muted">${+f.e.parte||0}%</small>`:''}</td><td class="r num">${f.e.rol==='vendedor'?`${fmt(f.com)} <small class="muted">${f.ctas} cta${f.ctas===1?'':'s'}</small>`:'–'}</td><td class="r num">${f.e.rol==='socio'?fmt(f.parte):'–'}</td><td class="r num"><b>${fmt(f.total)}</b></td></tr>`).join('')}
 <tr><td>Fondo común</td><td></td><td></td><td class="r num"><b>${fmt(p.fondo)}</b></td></tr>
 </tbody></table>
-<p class="muted" style="margin:10px 0 0;font-size:13px">Si cada uno cumple sus ventas del mes, ${p.filas.map(f=>`${esc(f.e.nombre)} suma ${fmt(objetivo(MES,f.e.id).ventas*p.ticket)} en comisiones`).join(', ')}.</p></div>
+<p class="muted" style="margin:10px 0 0;font-size:13px">Vendedores: ${fmt(p.por)} por mes por cada cuenta que cerraron y sigue pagando, durante ${p.meses} meses. ${p.filas.filter(f=>f.e.rol==='vendedor').map(f=>{const v=objetivo(MES,f.e.id).ventas;return v?`Si ${esc(f.e.nombre)} cierra sus ${v} ventas de este mes, suma ${fmt(v*p.por)} por mes durante ${p.meses} meses`:''}).filter(Boolean).join('. ')}</p></div>
 </div>`}
 
 function vCon(){
@@ -308,7 +310,9 @@ ${adm?`<div class="sec"><h2>Números para la plata</h2><button class="primary sm
 <label>Gastos fijos por mes ($)<input type="number" min="0" data-cfg="fijos" value="${c.fijos}"></label>
 <label>Gasto por cada local ($/mes)<input type="number" min="0" data-cfg="porLocal" value="${c.porLocal}"></label>
 <label>Fondo común (% de lo que queda)<input type="number" min="0" max="100" data-cfg="fondoPct" value="${c.fondoPct}"></label>
-</div><p class="muted" style="font-size:13px;margin:10px 0 0">Comisión de cierre: quien cierra un local cobra su primer mes (el precio del plan que eligió). La parte de cada socio se edita en su fila.</p></div>`:''}`}
+<label>Comisión del vendedor por cuenta activa ($/mes)<input type="number" min="0" data-cfg="comVendedor" value="${c.comVendedor}"></label>
+<label>Meses que cobra por cada cuenta<input type="number" min="1" max="36" data-cfg="comMeses" value="${c.comMeses}"></label>
+</div><p class="muted" style="font-size:13px;margin:10px 0 0">Cómo se reparte: del abono de los locales se restan los gastos y las comisiones de los vendedores (un monto fijo por mes por cada cuenta que cerraron y sigue pagando, durante los meses que pongas acá). De lo que queda, el porcentaje del fondo común va al fondo y el resto se reparte entre los socios según la parte de cada uno.</p></div>`:''}`}
 
 /* ---------- modales ---------- */
 function mContacto(c){
@@ -362,7 +366,7 @@ const A={
   async guardarObj(){const filas={};document.querySelectorAll('[data-obj]').forEach(i=>{const[m,k]=i.dataset.obj.split(':');(filas[m]=filas[m]||{mes:MES,miembro:m})[k]=Math.max(0,parseInt(i.value,10)||0)});
     const r=await sb.from('taca_vt_objetivos').upsert(Object.values(filas));if(r.error)return toast('No se pudo guardar: '+r.error.message,1);
     Object.values(filas).forEach(f=>{const o=D.objetivos.find(x=>x.mes===f.mes&&x.miembro===f.miembro);o?Object.assign(o,f):D.objetivos.push(f)});toast('Objetivos guardados');render()},
-  async guardarCfg(){const v=k=>Math.max(0,+($(`[data-cfg="${k}"]`).value)||0);const data=Object.assign({},D.config,{precios:{local:v('local'),encendido:v('encendido')},fijos:v('fijos'),porLocal:v('porLocal'),fondoPct:Math.min(100,v('fondoPct'))});
+  async guardarCfg(){const v=k=>Math.max(0,+($(`[data-cfg="${k}"]`).value)||0);const data=Object.assign({},D.config,{precios:{local:v('local'),encendido:v('encendido')},fijos:v('fijos'),porLocal:v('porLocal'),fondoPct:Math.min(100,v('fondoPct')),comVendedor:v('comVendedor'),comMeses:Math.max(1,v('comMeses')||6),comision:'por_cuenta'});
     const r=await sb.from('taca_vt_config').upsert({id:1,data});if(r.error)return toast('No se pudo guardar',1);D.config=data;await recargarMet();toast('Guardado');render()}
 };
 const FORM={

@@ -1026,7 +1026,7 @@ function vVentasEquipo(v){
   const com=Object.values(v.comisiones||{}).reduce((a,x)=>a+(+x||0),0);
   const queda=mrr-gastos-com,fondo=queda>0?Math.round(queda*(+cfg.fondoPct||0)/100):0,rep=queda>0?queda-fondo:0;
   const socios=(v.equipo||[]).filter(x=>x.rol==='socio');
-  const cobra=(v.equipo||[]).map(x=>{const c=+(v.comisiones||{})[x.id]||0,pa=x.rol==='socio'?Math.round(rep*(+x.parte||0)/100):0;return`<tr><td><b>${esc(x.nombre)}</b><small>${x.rol==='socio'?'Socio · '+(+x.parte||0)+'%':'Vendedor'}${x.email?'':' · sin acceso todavía'}</small></td><td style="text-align:right">${(v.logros||{})[x.id]?.venta||0}</td><td style="text-align:right">${fmt(c)}</td><td style="text-align:right">${x.rol==='socio'?fmt(pa):'–'}</td><td style="text-align:right"><b>${fmt(c+pa)}</b></td></tr>`}).join('');
+  const cobra=(v.equipo||[]).map(x=>{const c=+(v.comisiones||{})[x.id]||0,pa=x.rol==='socio'?Math.round(rep*(+x.parte||0)/100):0;return`<tr><td><b>${esc(x.nombre)}</b><small>${x.rol==='socio'?'Socio · '+(+x.parte||0)+'%':'Vendedor'}${x.email?'':' · sin acceso todavía'}</small></td><td style="text-align:right">${(v.logros||{})[x.id]?.venta||0}</td><td style="text-align:right">${x.rol==='vendedor'?fmt(c)+' <small>'+((v.cuentas||{})[x.id]||0)+' ctas</small>':'–'}</td><td style="text-align:right">${x.rol==='socio'?fmt(pa):'–'}</td><td style="text-align:right"><b>${fmt(c+pa)}</b></td></tr>`}).join('');
   const emb=v.embudo||{},EST=['Sin contactar','Mensaje enviado','Respondió','Demo agendada','Demo hecha','En prueba','Pagó','No le interesa'];
   const TIP={contacto:'contactó a',demo:'hizo la demo en',prueba:'puso en prueba a',venta:'cerró'};
   const nom=id=>((v.equipo||[]).find(x=>x.id===id)||{}).nombre||id;
