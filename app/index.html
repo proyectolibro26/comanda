@@ -965,10 +965,12 @@ async function despuesDeEntrar(){
   renderSafe();
 }
 function elegirLocal(id){LID=id;ls('taca-local',id);SY.base=null;SY.ver=0;SY.info=null;rol=null;personaId=null;render();conectar()}
+// Avisa a Roman Web (Telegram) que se creó un local. No frena nada si falla.
+async function avisarAlta(id){try{if(!NB||!NB.auth||!NB.auth.token||location.protocol!=='https:')return;const t=await NB.auth.token();if(!t)return;fetch('/api/aviso-alta',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify({local:id})}).catch(()=>{})}catch(e){}}
 async function crearLocalNube(nombre){
   AUTH.ocupado=true;render();
   try{const r=await NB.crearLocal(nombre,seedVacio(nombre));if(!r||!r.ok)throw new Error((r&&r.error)||'No se pudo crear');
-    AUTH.ocupado=false;toast('¡Tu local está listo! 14 días de prueba gratis 🎉');elegirLocal(r.id)}
+    AUTH.ocupado=false;avisarAlta(r.id);toast('¡Tu local está listo! 14 días de prueba gratis 🎉');elegirLocal(r.id)}
   catch(e){AUTH.ocupado=false;toast(errMsg(e),1);render()}
 }
 async function salirTodo(llamarSalir){

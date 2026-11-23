@@ -7,6 +7,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/aviso-alta",
+      "destination": "/api/sistema?r=aviso-alta"
+    },
+    {
       "source": "/api/equipo",
       "destination": "/api/sistema?r=equipo"
     },
