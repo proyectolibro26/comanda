@@ -126,6 +126,7 @@ const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(
 const hoyAR=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
 const mesAR=d=>new Date((d?new Date(d).getTime():Date.now())-3*3600e3).toISOString().slice(0,7);
 const nombreMes=m=>{const[a,b]=m.split('-');return new Date(+a,+b-1,15).toLocaleDateString('es-AR',{month:'long',year:'numeric'})};
+const mesesEntre=(a,b)=>{const[x,y]=a.split('-').map(Number),[z,w]=b.split('-').map(Number);return(z-x)*12+(w-y)};
 const sumarMes=(m,k)=>{const[a,b]=m.split('-').map(Number);const d=new Date(a,b-1+k,15);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 // Cita en el calendario: link de Google Calendar y archivo .ics (iPhone / Outlook). Hora de Argentina.
 const citaTxt=c=>'Demo ta-ca · '+c.nombre;
@@ -164,6 +165,8 @@ function modal(h){$('#modal').innerHTML=`<div class="ov" data-ov="1"><div class=
 function cerrar(){$('#modal').innerHTML=''}
 const miembro=id=>D.equipo.find(x=>x.id===id);
 const nombre=id=>id==='todos'?'Todo el equipo':(miembro(id)||{}).nombre||id||'Sin asignar';
+const SOC=()=>!!(YO&&YO.rol==='socio');
+const parteDe=e=>{const p=((D.config||{}).partes||{})[e.id];return p!=null?+p:(+e.parte||0)};
 const cfg=()=>Object.assign({precios:{local:49900,encendido:89900},fijos:168020,porLocal:3886,fondoPct:30,comVendedor:15000,comMeses:6},D.config||{});
 
 /* ---------- datos ---------- */
@@ -173,7 +176,8 @@ async function cargar(){
   const [eq,cf,ct,ac,ta,ob,mt]=await Promise.all([q('taca_vt_equipo','creado'),sb.from('taca_vt_config').select('*').eq('id',1).maybeSingle(),q('taca_vt_contactos','nro').limit(2000),
     sb.from('taca_vt_actividad').select('*').gte('ts',new Date(Date.now()-400*864e5).toISOString()).order('ts',{ascending:false}).limit(5000),q('taca_vt_tareas','creado'),q('taca_vt_objetivos','mes'),sb.rpc('taca_vt_metricas',{p_mes:MES})]);
   const err=[eq,cf,ct,ac,ta,ob].find(r=>r.error);if(err)throw err.error;
-  D={equipo:eq.data||[],config:(cf.data&&cf.data.data)||{},contactos:ct.data||[],actividad:ac.data||[],tareas:ta.data||[],objetivos:ob.data||[],met:mt.data||null};
+  let conf=(cf.data&&cf.data.data)||null;if(!conf){const r=await sb.rpc('taca_vt_cfg_vendedor');conf=r.data||{}}
+  D={equipo:eq.data||[],config:conf,contactos:ct.data||[],actividad:ac.data||[],tareas:ta.data||[],objetivos:ob.data||[],met:mt.data||null};
   CARG=false;
 }
 async function recargarMet(){const r=await sb.rpc('taca_vt_metricas',{p_mes:MES});D.met=r.data||null}
@@ -186,16 +190,16 @@ function plata(m){
   const c=cfg(),met=D.met||{},pag=+met.pagando||0,mrr=+met.mrr||0;
   const gastos=(+c.fijos||0)+pag*(+c.porLocal||0);
   // Comisión: cada vendedor cobra un monto fijo por mes por cada cuenta que cerró y sigue pagando, durante sus primeros N meses (el mes de la venta cuenta como el 1.º).
-  const com={},ctas={};D.equipo.forEach(e=>{com[e.id]=0;ctas[e.id]=0});
+  const com={},ctas={},misCtas=[];D.equipo.forEach(e=>{com[e.id]=0;ctas[e.id]=0});
   const meses=Math.max(1,+c.comMeses||6),por=+c.comVendedor||0,desde=sumarMes(m,-(meses-1));
-  D.actividad.filter(a=>a.tipo==='venta'&&mesAR(a.ts)>=desde&&mesAR(a.ts)<=m).forEach(a=>{const e=miembro(a.miembro);if(!e||e.rol!=='vendedor')return;const k=D.contactos.find(x=>x.id===a.contacto_id);if(k&&k.estado!=='Pagó')return;ctas[a.miembro]=(ctas[a.miembro]||0)+1;com[a.miembro]=(com[a.miembro]||0)+por});
+  D.actividad.filter(a=>a.tipo==='venta'&&mesAR(a.ts)>=desde&&mesAR(a.ts)<=m).forEach(a=>{const e=miembro(a.miembro);if(!e||e.rol!=='vendedor')return;const k=D.contactos.find(x=>x.id===a.contacto_id);if(k&&k.estado!=='Pagó')return;ctas[a.miembro]=(ctas[a.miembro]||0)+1;com[a.miembro]=(com[a.miembro]||0)+por;if(a.miembro===(YO&&YO.id))misCtas.push({nombre:(k&&k.nombre)||a.detalle||'Local',n:mesesEntre(mesAR(a.ts),m)+1})});
   const comTot=Object.values(com).reduce((s,v)=>s+v,0);
   const resultado=mrr-gastos-comTot;
   const fondo=resultado>0?resultado*(+c.fondoPct||0)/100:0;
   const reparto=resultado>0?resultado-fondo:0;
-  const filas=D.equipo.filter(e=>e.activo).map(e=>{const parte=e.rol==='socio'?reparto*(+e.parte||0)/100:0;return{e,com:com[e.id]||0,ctas:ctas[e.id]||0,parte,total:(com[e.id]||0)+parte}});
+  const filas=D.equipo.filter(e=>e.activo).map(e=>{const parte=e.rol==='socio'?reparto*parteDe(e)/100:0;return{e,com:com[e.id]||0,ctas:ctas[e.id]||0,parte,total:(com[e.id]||0)+parte}});
   const ticket=(c.precios.local*0.6+c.precios.encendido*0.4);
-  return{mrr,cobrado:+met.cobrado_mes||0,pag,gastos,comTot,resultado,fondo,reparto,filas,ticket,por,meses};
+  return{mrr,cobrado:+met.cobrado_mes||0,pag,gastos,comTot,resultado,fondo,reparto,filas,ticket,por,meses,misCtas};
 }
 
 /* ---------- vistas ---------- */
@@ -233,7 +237,7 @@ function vRes(){
 <div class="grid g4">
 <div class="card kpi hi"><small>Cobrarías este mes</small><b class="num">${fmt(mia.total)}</b></div>
 <div class="card kpi"><small>Locales pagando</small><b class="num">${met.pagando??'–'}</b></div>
-<div class="card kpi"><small>Abono mensual</small><b class="num">${fmt(met.mrr)}</b></div>
+${SOC()?`<div class="card kpi"><small>Abono mensual</small><b class="num">${fmt(met.mrr)}</b></div>`:`<div class="card kpi"><small>Mis cuentas activas</small><b class="num">${p.misCtas.length}</b></div>`}
 <div class="card kpi"><small>En prueba gratis</small><b class="num">${met.en_prueba??'–'}</b></div>
 </div>
 <div class="grid g2" style="margin-top:12px">
@@ -246,7 +250,7 @@ ${mios.slice(0,6).map(c=>`<div class="prog" style="grid-template-columns:1fr aut
 ${misT.slice(0,5).map(t=>`<div class="prog" style="grid-template-columns:1fr auto"><span>${esc(t.titulo)}</span><span class="${t.vence&&t.vence<hoy?'vence':'muted'}">${t.vence?fechaCorta(t.vence):''}</span></div>`).join('')}</div>`:''}
 <div class="sec"><h2>Quién va cómo</h2></div>
 <div class="card" style="overflow-x:auto"><table><thead><tr><th>Persona</th>${MET.map(([,t])=>`<th class="r">${t}</th>`).join('')}</tr></thead><tbody>${filasRank}</tbody></table></div>
-<div class="sec"><h2>La plata del mes</h2><span class="muted" style="font-size:13px">Estimado con el abono de los locales que pagan</span></div>
+${SOC()?`<div class="sec"><h2>La plata del mes</h2><span class="muted" style="font-size:13px">Estimado con el abono de los locales que pagan</span></div>
 <div class="grid g2">
 <div class="card plata"><table><tbody>
 <tr><td>Abono mensual de los locales</td><td class="r num"><b>${fmt(p.mrr)}</b></td></tr>
@@ -258,12 +262,18 @@ ${misT.slice(0,5).map(t=>`<div class="prog" style="grid-template-columns:1fr aut
 <tr><td class="muted">Cobrado por Mercado Pago este mes</td><td class="r num muted">${fmt(p.cobrado)}</td></tr>
 </tbody></table>${p.resultado<0?'<p class="muted" style="margin:10px 0 0;font-size:13px">Todavía no alcanza para cubrir los gastos: ese mes no se reparte y lo que falta sale del fondo común.</p>':''}</div>
 <div class="card" style="overflow-x:auto"><table><thead><tr><th>Persona</th><th class="r">Comisiones</th><th class="r">Parte</th><th class="r">Cobra</th></tr></thead><tbody>
-${p.filas.map(f=>`<tr class="${f.e.id===YO.id?'yo':''}"><td>${esc(f.e.nombre)}${f.e.rol==='socio'?` <small class="muted">${+f.e.parte||0}%</small>`:''}</td><td class="r num">${f.e.rol==='vendedor'?`${fmt(f.com)} <small class="muted">${f.ctas} cta${f.ctas===1?'':'s'}</small>`:'–'}</td><td class="r num">${f.e.rol==='socio'?fmt(f.parte):'–'}</td><td class="r num"><b>${fmt(f.total)}</b></td></tr>`).join('')}
+${p.filas.map(f=>`<tr class="${f.e.id===YO.id?'yo':''}"><td>${esc(f.e.nombre)}${f.e.rol==='socio'?` <small class="muted">${parteDe(f.e)}%</small>`:''}</td><td class="r num">${f.e.rol==='vendedor'?`${fmt(f.com)} <small class="muted">${f.ctas} cta${f.ctas===1?'':'s'}</small>`:'–'}</td><td class="r num">${f.e.rol==='socio'?fmt(f.parte):'–'}</td><td class="r num"><b>${fmt(f.total)}</b></td></tr>`).join('')}
 <tr><td>Fondo común</td><td></td><td></td><td class="r num"><b>${fmt(p.fondo)}</b></td></tr>
 </tbody></table>
 <p class="muted" style="margin:10px 0 0;font-size:13px">Vendedores: ${fmt(p.por)} por mes por cada cuenta que cerraron y sigue pagando, durante ${p.meses} meses. ${p.filas.filter(f=>f.e.rol==='vendedor').map(f=>{const v=objetivo(MES,f.e.id).ventas;return v?`Si ${esc(f.e.nombre)} cierra sus ${v} ventas de este mes, suma ${fmt(v*p.por)} por mes durante ${p.meses} meses`:''}).filter(Boolean).join('. ')}</p></div>
-</div>`}
+</div>`:vMisCom(p)}`}
 
+function vMisCom(p){
+  return`<div class="sec"><h2>Mis comisiones</h2><span class="muted" style="font-size:13px">${fmt(p.por)} por mes por cada cuenta que cerraste y sigue pagando, durante ${p.meses} meses</span></div>
+<div class="card plata"><table><thead><tr><th>Local</th><th class="r">Mes</th><th class="r">Este mes</th></tr></thead><tbody>
+${p.misCtas.length?p.misCtas.map(c=>`<tr><td>${esc(c.nombre)}</td><td class="r num">${c.n} de ${p.meses}</td><td class="r num">${fmt(p.por)}</td></tr>`).join(''):'<tr><td colspan="3" class="muted">Todavía no tenés cuentas activas. Cuando un local que cerraste pase a "Pagó", aparece acá.</td></tr>'}
+<tr><td><b>Total del mes</b></td><td></td><td class="r num"><b>${fmt(p.misCtas.length*p.por)}</b></td></tr>
+</tbody></table>${(()=>{const v=objetivo(MES,YO.id).ventas;return v?`<p class="muted" style="margin:10px 0 0;font-size:13px">Si cerrás tus ${v} ventas de este mes, sumás ${fmt(v*p.por)} más por mes durante ${p.meses} meses.</p>`:''})()}</div>`}
 function vCon(){
   const hoy=hoyAR(),q=norm(F.q),zonas=[...new Set(D.contactos.map(c=>c.zona).filter(Boolean))].sort();
   const L=D.contactos.filter(c=>(!F.estado||c.estado===F.estado)&&(!F.zona||c.zona===F.zona)&&(F.quien==='todos'||(F.quien==='mios'?c.vendedor===YO.id:!c.vendedor))&&(!q||norm([c.nombre,c.tipo,c.zona,c.direccion,c.notas].join(' ')).includes(q)))
@@ -299,8 +309,8 @@ ${filas.map(([id,n])=>{const o=objetivo(MES,id),l=logros(MES,id==='grupo'?null:i
 function vEq(){
   const adm=YO.admin,c=cfg();
   return`<div class="sec" style="margin-top:4px"><h2>Equipo</h2>${adm?'<button class="primary small" data-a="nuevoM">+ Sumar persona</button>':''}</div>
-<div class="card" style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Mail para entrar</th><th>Rol</th><th class="r">Parte</th><th></th></tr></thead><tbody>
-${D.equipo.map(e=>`<tr class="${e.id===YO.id?'yo':''}"><td><b>${esc(e.nombre)}</b>${e.admin?' <small class="muted">admin</small>':''}${e.activo?'':' <small class="muted">inactivo</small>'}</td><td>${e.email?esc(e.email):'<span class="vence">Falta el mail</span>'}</td><td>${e.rol==='socio'?'Socio':'Vendedor'}</td><td class="r num">${e.rol==='socio'?(+e.parte||0)+'%':'–'}</td><td class="r">${adm?`<button class="small" data-a="editM" data-id="${esc(e.id)}">Editar</button>`:''}</td></tr>`).join('')}
+<div class="card" style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Mail para entrar</th><th>Rol</th>${SOC()?'<th class="r">Parte</th>':''}<th></th></tr></thead><tbody>
+${D.equipo.map(e=>`<tr class="${e.id===YO.id?'yo':''}"><td><b>${esc(e.nombre)}</b>${e.admin?' <small class="muted">admin</small>':''}${e.activo?'':' <small class="muted">inactivo</small>'}</td><td>${e.email?esc(e.email):'<span class="vence">Falta el mail</span>'}</td><td>${e.rol==='socio'?'Socio':'Vendedor'}</td>${SOC()?`<td class="r num">${e.rol==='socio'?parteDe(e)+'%':'–'}</td>`:''}<td class="r">${adm?`<button class="small" data-a="editM" data-id="${esc(e.id)}">Editar</button>`:''}</td></tr>`).join('')}
 </tbody></table></div>
 <p class="muted" style="font-size:13px">Para entrar, cada uno crea su cuenta en <b>ta-ca.com.ar/equipo</b> con su mail y su contraseña. ${adm?'Después vos ponés ese mismo mail acá con Editar.':'Lucas le da acceso desde esta pestaña.'}</p>
 ${adm?`<div class="sec"><h2>Números para la plata</h2><button class="primary small" data-a="guardarCfg">Guardar</button></div>
@@ -345,7 +355,7 @@ function mMiembro(e){e=e||{id:'',nombre:'',email:'',rol:'vendedor',parte:0,activ
   modal(`<form data-f="guardarM" data-id="${esc(e.id)}"><h2>${e.id?'Editar '+esc(e.nombre):'Sumar persona'}</h2>
 <label>Nombre<input name="nombre" value="${esc(e.nombre)}" required></label>
 <label style="margin-top:10px">Mail con el que se registró<input name="email" type="email" value="${esc(e.email||'')}" placeholder="nombre@mail.com"></label>
-<div class="f2" style="margin-top:10px"><label>Rol<select name="rol"><option value="vendedor"${e.rol==='vendedor'?' selected':''}>Vendedor</option><option value="socio"${e.rol==='socio'?' selected':''}>Socio</option></select></label><label>Parte de la ganancia (%)<input name="parte" type="number" min="0" max="100" value="${+e.parte||0}"></label></div>
+<div class="f2" style="margin-top:10px"><label>Rol<select name="rol"><option value="vendedor"${e.rol==='vendedor'?' selected':''}>Vendedor</option><option value="socio"${e.rol==='socio'?' selected':''}>Socio</option></select></label><label>Parte de la ganancia (%)<input name="parte" type="number" min="0" max="100" value="${parteDe(e)}"></label></div>
 <label style="margin-top:10px;flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="activo" style="width:auto" ${e.activo?'checked':''}> Activo</label>
 <p class="muted" style="font-size:13px">La contraseña la elige cada uno al crear su cuenta en ta-ca.com.ar/equipo. Nadie más la ve.</p>
 <div class="btns"><button type="button" class="ghost" data-a="cerrar">Cancelar</button><button class="primary" type="submit">Guardar</button></div></form>`)}
@@ -394,11 +404,13 @@ const FORM={
     const r=await sb.from('taca_vt_contactos').insert(c).select().single();if(r.error)return toast('No se pudo agregar',1);D.contactos.push(r.data);cerrar();toast('Local agregado');render()},
   async crearT(d){const t={id:'t'+uid(),mes:MES,titulo:d.titulo.trim(),asignado:d.asignado,vence:d.vence||null,creado_por:YO.id};const r=await sb.from('taca_vt_tareas').insert(t).select().single();if(r.error)return toast('No se pudo crear',1);D.tareas.push(r.data);cerrar();render()},
   async guardarM(d,f){const id=f.dataset.id||norm(d.nombre).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'p'+uid();
-    const fila={id,nombre:d.nombre.trim(),email:d.email.trim().toLowerCase()||null,rol:d.rol,parte:Math.min(100,Math.max(0,+d.parte||0)),activo:!!d.activo};
+    const pct=Math.min(100,Math.max(0,+d.parte||0));const fila={id,nombre:d.nombre.trim(),email:d.email.trim().toLowerCase()||null,rol:d.rol,parte:0,activo:!!d.activo};
     if(id===YO.id){fila.activo=true;fila.admin=true}
     const r=await sb.from('taca_vt_equipo').upsert(fila).select().single();if(r.error)return toast(r.error.message.includes('unique')?'Ese mail ya está en otra persona':'No se pudo guardar',1);
     const i=D.equipo.findIndex(x=>x.id===id);i>=0?D.equipo[i]=r.data:D.equipo.push(r.data);
-    const socios=D.equipo.filter(x=>x.activo&&x.rol==='socio').reduce((s,x)=>s+(+x.parte||0),0);cerrar();render();toast(socios!==100?`Ojo: las partes de los socios suman ${socios}%`:'Guardado',socios!==100)}
+    const data=Object.assign({},D.config);data.partes=Object.assign({},data.partes||{});if(d.rol==='socio')data.partes[id]=pct;else delete data.partes[id];
+    const rc=await sb.from('taca_vt_config').upsert({id:1,data});if(rc.error)return toast('Se guardó la persona pero no su parte',1);D.config=data;
+    const socios=D.equipo.filter(x=>x.activo&&x.rol==='socio').reduce((s,x)=>s+parteDe(x),0);cerrar();render();toast(socios!==100?`Ojo: las partes de los socios suman ${socios}%`:'Guardado',socios!==100)}
 };
 
 document.addEventListener('click',e=>{const ov=e.target.closest('[data-ov]');if(ov&&e.target===ov)return cerrar();const b=e.target.closest('[data-a]');if(!b)return;const f=A[b.dataset.a];if(f){e.preventDefault();f(b)}});

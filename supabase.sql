@@ -1046,7 +1046,7 @@ create or replace function public.taca_vt_resumen(p_mes text default to_char(now
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare ini timestamptz; fin timestamptz; cfg jsonb; por numeric; meses int;
 begin
-  if taca_vt_yo_id() is null then return null; end if;
+  if not taca_vt_soy_socio() then return null; end if;
   select data into cfg from taca_vt_config where id = 1;
   por := coalesce((cfg->>'comVendedor')::numeric, 15000);
   meses := greatest(1, coalesce((cfg->>'comMeses')::int, 6));
@@ -1056,7 +1056,7 @@ begin
     'mes', p_mes,
     'metricas', taca_vt_metricas(p_mes),
     'config', (select data from taca_vt_config where id = 1),
-    'equipo', coalesce((select jsonb_agg(jsonb_build_object('id',id,'nombre',nombre,'rol',rol,'parte',parte,'email',email is not null) order by creado) from taca_vt_equipo where activo), '[]'::jsonb),
+    'equipo', coalesce((select jsonb_agg(jsonb_build_object('id',id,'nombre',nombre,'rol',rol,'parte',coalesce((cfg->'partes'->>id)::numeric, parte),'email',email is not null) order by creado) from taca_vt_equipo where activo), '[]'::jsonb),
     'logros', coalesce((select jsonb_object_agg(miembro, t) from (select miembro, jsonb_object_agg(tipo, n) t from (select miembro, tipo, count(*) n from taca_vt_actividad where ts >= ini and ts < fin group by 1,2) a group by 1) b), '{}'::jsonb),
     'comisiones', coalesce((select jsonb_object_agg(miembro, n * por) from (select a.miembro, count(*) n from taca_vt_actividad a join taca_vt_equipo e on e.id = a.miembro and e.rol = 'vendedor' left join taca_vt_contactos k on k.id = a.contacto_id where a.tipo = 'venta' and a.ts >= ini - make_interval(months => meses - 1) and a.ts < fin and coalesce(k.estado, 'Pagó') = 'Pagó' group by 1) c), '{}'::jsonb),
     'cuentas', coalesce((select jsonb_object_agg(miembro, n) from (select a.miembro, count(*) n from taca_vt_actividad a join taca_vt_equipo e on e.id = a.miembro and e.rol = 'vendedor' left join taca_vt_contactos k on k.id = a.contacto_id where a.tipo = 'venta' and a.ts >= ini - make_interval(months => meses - 1) and a.ts < fin and coalesce(k.estado, 'Pagó') = 'Pagó' group by 1) c), '{}'::jsonb),
@@ -1075,3 +1075,45 @@ alter table public.taca_vt_contactos add column if not exists hora text;  -- hor
 
 -- 23/11/2026: comisión por cuenta activa (vendedores: $15.000/mes por cuenta durante 6 meses) y fondo común 30%.
 update public.taca_vt_config set data = coalesce(data,'{}'::jsonb) || '{"fondoPct":30,"comVendedor":15000,"comMeses":6,"comision":"por_cuenta"}'::jsonb where id = 1;
+
+-- 23/11/2026: la plata de los socios solo la ven los socios.
+-- 1) Las partes de los socios pasan a la config (que solo leen los socios) y se borran de la tabla del equipo.
+update public.taca_vt_config set data = coalesce(data,'{}'::jsonb) || jsonb_build_object('partes', coalesce((select jsonb_object_agg(id, parte) from public.taca_vt_equipo where rol = 'socio'), '{}'::jsonb)) where id = 1 and not (coalesce(data,'{}'::jsonb) ? 'partes');
+update public.taca_vt_equipo set parte = 0 where parte <> 0;
+-- 2) La config (precios, gastos, fondo, partes) solo la leen los socios.
+drop policy if exists vt_config_ver on public.taca_vt_config;
+create policy vt_config_ver on public.taca_vt_config for select to authenticated using (taca_vt_soy_socio());
+-- 3) Los vendedores solo reciben lo que necesitan para ver su comisión.
+create or replace function public.taca_vt_cfg_vendedor() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when taca_vt_yo_id() is null then null else (select jsonb_build_object('comVendedor', coalesce((data->>'comVendedor')::numeric, 15000), 'comMeses', coalesce((data->>'comMeses')::int, 6)) from taca_vt_config where id = 1) end;
+$$;
+grant execute on function public.taca_vt_cfg_vendedor() to authenticated;
+-- 4) Las métricas de plata (abono mensual y cobrado) solo para socios.
+create or replace function public.taca_vt_metricas(p_mes text default to_char(now() at time zone 'America/Argentina/Buenos_Aires','YYYY-MM'))
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare r jsonb; ini timestamptz; fin timestamptz; cfg jsonb;
+begin
+  if taca_vt_yo_id() is null then return null; end if;
+  ini := (p_mes || '-01')::timestamp at time zone 'America/Argentina/Buenos_Aires';
+  fin := ini + interval '1 month';
+  select data into cfg from taca_vt_config where id = 1;
+  select jsonb_build_object(
+    'pagando',   count(*) filter (where plan = 'activo' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'pag_local', count(*) filter (where plan = 'activo' and coalesce(abono,'local') = 'local' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'pag_encendido', count(*) filter (where plan = 'activo' and abono = 'encendido' and taca_estado_plan(plan, prueba_hasta, pagado_hasta) <> 'bloqueado'),
+    'en_prueba', count(*) filter (where plan = 'prueba' and prueba_hasta > now()),
+    'nuevos_mes', count(*) filter (where creado >= ini and creado < fin),
+    'total', count(*)
+  ) into r from taca_locales where id not in (select m.local_id from taca_miembros m join taca_admins a on a.user_id = m.user_id);
+  if not taca_vt_soy_socio() then
+    return (r - 'pag_local' - 'pag_encendido') || jsonb_build_object('mes', p_mes);
+  end if;
+  r := r || jsonb_build_object(
+    'cobrado_mes', coalesce((select sum(monto) from taca_pagos where creado >= ini and creado < fin), 0),
+    'mrr', coalesce((r->>'pag_local')::numeric, 0) * coalesce((cfg->'precios'->>'local')::numeric, 49900)
+         + coalesce((r->>'pag_encendido')::numeric, 0) * coalesce((cfg->'precios'->>'encendido')::numeric, 89900),
+    'mes', p_mes);
+  return r;
+end $$;
+grant execute on function public.taca_vt_metricas(text) to authenticated;
