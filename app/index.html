@@ -2577,6 +2577,7 @@ ${esIOS()&&!esApp()?'<p class="chip warn" style="white-space:normal;margin-top:1
 
 /* ---------- avisos con la app cerrada (push) ---------- */
 const PUSH={ok:false,intentado:false};
+function enAppAjena(){return /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)|Telegram/i.test(navigator.userAgent)}
 function pushSoportado(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window&&location.protocol==='https:'}
 async function pushActivar(silencioso){
   if(!pushSoportado()||modoDemo()||!enNube()||!LID||Notification.permission!=='granted'||ls('taca-avisos-stock')==='off')return false;
@@ -2585,12 +2586,19 @@ async function pushActivar(silencioso){
     if(sub){const k=sub.options&&sub.options.applicationServerKey?new Uint8Array(sub.options.applicationServerKey):null;if(k&&(k.length!==u8.length||k.some((x,i)=>x!==u8[i]))){await sub.unsubscribe();sub=null}}
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8});
     const j=sub.toJSON();await NB.push({accion:'suscribir',local:LID,sub:{endpoint:j.endpoint,keys:j.keys}});ls('taca-push-ep',j.endpoint);PUSH.ok=true;return true}
-  catch(e){if(!silencioso)toast('No pudimos activar los avisos con la app cerrada en este equipo',1);return false}}
+  catch(e){console.error('push',e);if(!silencioso)toast('No pudimos activar los avisos con la app cerrada en este equipo ('+String(e&&e.message||e).slice(0,80)+'). Dentro de ta-ca te van a seguir apareciendo',1);return false}}
 async function pushDesactivar(){try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){const ep=sub.endpoint;await sub.unsubscribe();await NB.push({accion:'quitar',endpoint:ep})}}catch(e){}ls('taca-push-ep',null);PUSH.ok=false}
 function pushAvisar(titulo,lista){if(modoDemo()||!enNube()||!LID)return;NB.push({accion:'avisar',local:LID,titulo,avisos:lista.map(([clave,texto])=>({clave,texto})),excepto:ls('taca-push-ep')||''}).catch(()=>{})}
 
 const AV_ACC={
-  async avisosPedir(){try{const r=await Notification.requestPermission();if(r==='granted'){ls('taca-avisos-stock','on');const p=await pushActivar();toast(p?'Listo: te avisamos aunque ta-ca esté cerrado':'Listo: te avisamos cuando algo se agote')}}catch(e){}render()},
+  async avisosPedir(){
+    if(enAppAjena()){toast('Abriste ta-ca desde otra app (WhatsApp, Instagram…): abrila en Chrome o Safari para activar los avisos',1);return}
+    if(!('Notification' in window)){toast('Este navegador no permite notificaciones. Abrí ta-ca en Chrome',1);return}
+    let r;try{r=await new Promise(ok=>{const x=Notification.requestPermission(ok);if(x&&x.then)x.then(ok)})}catch(e){r=Notification.permission}
+    if(r==='granted'){ls('taca-avisos-stock','on');const p=await pushActivar();toast(p?'Listo: te avisamos aunque ta-ca esté cerrado':'Listo: te avisamos cuando algo se agote (con ta-ca abierta)')}
+    else if(r==='denied')toast('El celular tiene bloqueadas las notificaciones de ta-ca. Tocá el candado al lado de la dirección › Permisos › Notificaciones › Permitir, y volvé a tocar el botón',1);
+    else toast('No apareció el permiso. Si estás en el celular, instalá ta-ca (menú ⋮ › Instalar app) y probá desde ese ícono',1);
+    render()},
   async avisosProbar(){try{await pushActivar(true);const r=await NB.push({accion:'prueba',local:LID});toast(r.enviados?`Mandamos un aviso de prueba a ${r.enviados} equipo${r.enviados===1?'':'s'}`:'No hay equipos con avisos activados',r.enviados?0:1)}catch(e){toast(e.message,1)}},
   async avisosToggle(b){ls('taca-avisos-stock',b.checked?'on':'off');if(b.checked)await pushActivar();else await pushDesactivar();render()}
 };
