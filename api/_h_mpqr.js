@@ -46,6 +46,20 @@ function estadoOrden(o) {
 }
 
 // Que el QR no deje escribir un monto a mano: solo cobra lo que ta-ca le manda.
+// Crea una caja (POS). Mercado Pago dejó de aceptar fixed_amount al crearla en /v2/pos:
+// si lo rechaza, la crea sin ese campo y después lo fija con PUT /pos/{id}.
+async function crearPos(token, body) {
+  try { return await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body }); }
+  catch (e) {
+    if (!(e.status === 400 && /fixed_amount/.test(JSON.stringify(e.mp || {})))) throw e;
+    const b = Object.assign({}, body); delete b.fixed_amount;
+    const pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: b });
+    try { await mpCon(token, `/pos/${pos.id}`, { method: 'PUT', body: { fixed_amount: true } }); pos.fixed_amount = true; }
+    catch (x) { console.error('mp-qr fixed_amount PUT', x.message); pos.fixed_amount = false; }
+    return pos;
+  }
+}
+
 async function fijarMonto(token, local, c, clave, posId) {
   const m = Object.assign({}, c.qr_mesas || {});
   if (!posId || (m[clave] && m[clave].fijo)) return;
@@ -176,7 +190,7 @@ module.exports = async (req, res) => {
       }
       let pos;
       try {
-        pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Caja ta-ca', store_id: storeId, external_store_id: extStore, external_id: extPos, fixed_amount: true } });
+        pos = await crearPos(token, { name: 'Caja ta-ca', store_id: storeId, external_store_id: extStore, external_id: extPos, fixed_amount: true });
       } catch (e) {
         const s = await mpCon(token, `/pos?external_id=${extPos}`).catch(() => null);
         pos = s && (s.results || [])[0];
@@ -204,7 +218,7 @@ module.exports = async (req, res) => {
         if (Date.now() - inicio > 40e3) break; // el resto en la próxima llamada
         const ext = base + n;
         let pos;
-        try { pos = await mpCon(token, '/v2/pos', { method: 'POST', headers: { 'X-Idempotency-Key': idem() }, body: { name: 'Mesa ' + n, store_id: c.qr_store_id, external_store_id: extStore, external_id: ext, fixed_amount: true } }); }
+        try { pos = await crearPos(token, { name: 'Mesa ' + n, store_id: c.qr_store_id, external_store_id: extStore, external_id: ext, fixed_amount: true }); }
         catch (e) { const r = await mpCon(token, `/pos?external_id=${ext}`).catch(() => null); pos = r && (r.results || [])[0]; if (!pos) throw e; }
         const qr = (pos.qr_response && (pos.qr_response.qr_code || pos.qr_response.image)) || (pos.qr && (pos.qr.qr_code || pos.qr.image)) || null;
         mesas[n] = { id: String(pos.id || ''), ext, qr, fijo: pos.fixed_amount !== false };
