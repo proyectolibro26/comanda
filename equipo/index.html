@@ -309,8 +309,8 @@ ${filas.map(([id,n])=>{const o=objetivo(MES,id),l=logros(MES,id==='grupo'?null:i
 function vEq(){
   const adm=YO.admin,c=cfg();
   return`<div class="sec" style="margin-top:4px"><h2>Equipo</h2>${adm?'<button class="primary small" data-a="nuevoM">+ Sumar persona</button>':''}</div>
-<div class="card" style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Mail para entrar</th><th>Rol</th>${SOC()?'<th class="r">Parte</th>':''}<th></th></tr></thead><tbody>
-${D.equipo.map(e=>`<tr class="${e.id===YO.id?'yo':''}"><td><b>${esc(e.nombre)}</b>${e.admin?' <small class="muted">admin</small>':''}${e.activo?'':' <small class="muted">inactivo</small>'}</td><td>${e.email?esc(e.email):'<span class="vence">Falta el mail</span>'}</td><td>${e.rol==='socio'?'Socio':'Vendedor'}</td>${SOC()?`<td class="r num">${e.rol==='socio'?parteDe(e)+'%':'–'}</td>`:''}<td class="r">${adm?`<button class="small" data-a="editM" data-id="${esc(e.id)}">Editar</button>`:''}</td></tr>`).join('')}
+<div class="card" style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Mail para entrar</th><th>Teléfono</th><th>Rol</th>${SOC()?'<th class="r">Parte</th>':''}<th></th></tr></thead><tbody>
+${D.equipo.map(e=>`<tr class="${e.id===YO.id?'yo':''}"><td><b>${esc(e.nombre)}</b>${e.admin?' <small class="muted">admin</small>':''}${e.activo?'':' <small class="muted">inactivo</small>'}</td><td>${e.email?esc(e.email):'<span class="vence">Falta el mail</span>'}</td><td>${e.telefono?`<a href="https://wa.me/${esc(String(e.telefono).replace(/\D/g,''))}" target="_blank" rel="noopener">${esc(e.telefono)}</a>`:'<span class="muted">–</span>'}</td><td>${e.rol==='socio'?'Socio':'Vendedor'}</td>${SOC()?`<td class="r num">${e.rol==='socio'?parteDe(e)+'%':'–'}</td>`:''}<td class="r">${adm?`<button class="small" data-a="editM" data-id="${esc(e.id)}">Editar</button>`:''}</td></tr>`).join('')}
 </tbody></table></div>
 <p class="muted" style="font-size:13px">Para entrar, cada uno crea su cuenta en <b>ta-ca.com.ar/equipo</b> con su mail y su contraseña. ${adm?'Después vos ponés ese mismo mail acá con Editar.':'Lucas le da acceso desde esta pestaña.'}</p>
 ${adm?`<div class="sec"><h2>Números para la plata</h2><button class="primary small" data-a="guardarCfg">Guardar</button></div>
@@ -351,10 +351,11 @@ function mNuevoC(){modal(`<form data-f="crearC"><h2>Agregar local</h2><label>Nom
 function mNuevaT(){modal(`<form data-f="crearT"><h2>Nueva tarea</h2><label>Qué hay que hacer<input name="titulo" required></label>
 <div class="f2" style="margin-top:10px"><label>Para<select name="asignado"><option value="${esc(YO.id)}">Yo (${esc(YO.nombre)})</option><option value="todos">Todo el equipo</option>${D.equipo.filter(e=>e.activo&&e.id!==YO.id).map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}</option>`).join('')}</select></label><label>Vence<input name="vence" type="date"></label></div>
 <div class="btns"><button type="button" class="ghost" data-a="cerrar">Cancelar</button><button class="primary" type="submit">Crear</button></div></form>`)}
-function mMiembro(e){e=e||{id:'',nombre:'',email:'',rol:'vendedor',parte:0,activo:true};
+function mMiembro(e){e=e||{id:'',nombre:'',email:'',telefono:'',rol:'vendedor',parte:0,activo:true};
   modal(`<form data-f="guardarM" data-id="${esc(e.id)}"><h2>${e.id?'Editar '+esc(e.nombre):'Sumar persona'}</h2>
 <label>Nombre<input name="nombre" value="${esc(e.nombre)}" required></label>
 <label style="margin-top:10px">Mail con el que se registró<input name="email" type="email" value="${esc(e.email||'')}" placeholder="nombre@mail.com"></label>
+<label style="margin-top:10px">Teléfono / WhatsApp<input name="telefono" type="tel" inputmode="tel" value="${esc(e.telefono||'')}" placeholder="+54 9 341 123-4567"></label>
 <div class="f2" style="margin-top:10px"><label>Rol<select name="rol"><option value="vendedor"${e.rol==='vendedor'?' selected':''}>Vendedor</option><option value="socio"${e.rol==='socio'?' selected':''}>Socio</option></select></label><label>Parte de la ganancia (%)<input name="parte" type="number" min="0" max="100" value="${parteDe(e)}"></label></div>
 <label style="margin-top:10px;flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="activo" style="width:auto" ${e.activo?'checked':''}> Activo</label>
 <p class="muted" style="font-size:13px">La contraseña la elige cada uno al crear su cuenta en ta-ca.com.ar/equipo. Nadie más la ve.</p>
@@ -404,7 +405,7 @@ const FORM={
     const r=await sb.from('taca_vt_contactos').insert(c).select().single();if(r.error)return toast('No se pudo agregar',1);D.contactos.push(r.data);cerrar();toast('Local agregado');render()},
   async crearT(d){const t={id:'t'+uid(),mes:MES,titulo:d.titulo.trim(),asignado:d.asignado,vence:d.vence||null,creado_por:YO.id};const r=await sb.from('taca_vt_tareas').insert(t).select().single();if(r.error)return toast('No se pudo crear',1);D.tareas.push(r.data);cerrar();render()},
   async guardarM(d,f){const id=f.dataset.id||norm(d.nombre).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'p'+uid();
-    const pct=Math.min(100,Math.max(0,+d.parte||0));const fila={id,nombre:d.nombre.trim(),email:d.email.trim().toLowerCase()||null,rol:d.rol,parte:0,activo:!!d.activo};
+    const pct=Math.min(100,Math.max(0,+d.parte||0));const fila={id,nombre:d.nombre.trim(),email:d.email.trim().toLowerCase()||null,telefono:(d.telefono||'').trim()||null,rol:d.rol,parte:0,activo:!!d.activo};
     if(id===YO.id){fila.activo=true;fila.admin=true}
     const r=await sb.from('taca_vt_equipo').upsert(fila).select().single();if(r.error)return toast(r.error.message.includes('unique')?'Ese mail ya está en otra persona':'No se pudo guardar',1);
     const i=D.equipo.findIndex(x=>x.id===id);i>=0?D.equipo[i]=r.data:D.equipo.push(r.data);

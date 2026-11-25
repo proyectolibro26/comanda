@@ -1117,3 +1117,6 @@ begin
   return r;
 end $$;
 grant execute on function public.taca_vt_metricas(text) to authenticated;
+
+-- 25/11/2026: teléfono de cada persona del equipo.
+alter table public.taca_vt_equipo add column if not exists telefono text;
